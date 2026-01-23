@@ -134,7 +134,7 @@ pip install requests python-docx
 
 ## Configuration
 
-Create `config.llm.json` in the project root:
+Create `config.llm.json` in the project root (used by default):
 
 ```json
 {
@@ -168,7 +168,6 @@ Run fingerprinting:
 
 ```bash
 python fingerprint_style.py \
-  -c config.llm.json \
   -a my_corpus.tar.gz \
   -o my_fingerprint.json \
   --profile-id "me_style_v1" \
@@ -179,12 +178,13 @@ Or use the wrapper script:
 
 ```bash
 ./scripts/fingerprint_style.sh \
-  -c config.llm.json \
   -a my_corpus.tar.gz \
   -o my_fingerprint.json \
   --profile-id "me_style_v1" \
   --author-name "Me"
 ```
+
+Pass `-c/--config` to use a non-default config path. If `--profile-id` or `--author-name` are omitted, they default to the output filename without the `.json` extension (e.g., `my_fingerprint`).
 
 This will:
 - Extract the archive
@@ -200,7 +200,6 @@ Rewrite a Markdown file in your style:
 
 ```bash
 python apply_fingerprint.py \
-  -c config.llm.json \
   -f my_fingerprint.json \
   -i draft.md
 ```
@@ -209,10 +208,11 @@ Or use the wrapper script:
 
 ```bash
 ./scripts/apply_fingerprint.sh \
-  -c config.llm.json \
   -f my_fingerprint.json \
   -i draft.md
 ```
+
+Pass `-c/--config` to use a non-default config path.
 
 Outputs:
 

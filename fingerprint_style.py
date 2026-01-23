@@ -17,7 +17,10 @@ It:
 5) Validates/repairs JSON if needed and writes the output file
 
 Usage:
-  python fingerprint_style.py -c config.llm.json -a corpus.zip -o fingerprint.json
+  python fingerprint_style.py -a corpus.zip -o fingerprint.json
+
+Notes:
+  If --profile-id or --author-name are omitted, both default to the output filename without the .json extension.
 """
 
 from __future__ import annotations
@@ -503,15 +506,38 @@ def repair_json_with_llm(cfg: LLMConfig, bad_output: str) -> Dict[str, Any]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("-c", "--config", required=True, type=Path, help="Path to config.llm.json")
+    ap.add_argument(
+        "-c",
+        "--config",
+        type=Path,
+        default=Path("config.llm.json"),
+        help="Path to config.llm.json (default: config.llm.json)"
+    )
     ap.add_argument("-a", "--archive", required=True, type=Path, help="Path to .zip/.tar* corpus archive")
-    ap.add_argument("-o", "--out", required=True, type=Path, help="Output fingerprint JSON path")
-    ap.add_argument("--profile-id", default="author_style_v1", help="Profile ID to set in output JSON")
-    ap.add_argument("--author-name", default="(self)", help="Author name (metadata only)")
+    ap.add_argument(
+        "-o",
+        "--out",
+        required=True,
+        type=Path,
+        help="Output fingerprint JSON path (adds .json if no extension)"
+    )
+    ap.add_argument(
+        "--profile-id",
+        default=None,
+        help="Profile ID to set in output JSON (default: output filename without .json)"
+    )
+    ap.add_argument(
+        "--author-name",
+        default=None,
+        help="Author name (metadata only; default: output filename without .json)"
+    )
     ap.add_argument("--max-files", type=int, default=DEFAULT_MAX_FILES)
     ap.add_argument("--max-bytes-per-file", type=int, default=DEFAULT_MAX_BYTES_PER_FILE)
     ap.add_argument("--excerpt-char-budget", type=int, default=DEFAULT_MAX_TOTAL_CHARS_FOR_LLM)
     args = ap.parse_args()
+
+    if args.out.suffix == "":
+        args.out = args.out.with_suffix(".json")
 
     cfg = load_config(args.config)
 
@@ -542,9 +568,12 @@ def main() -> int:
 
         # Ensure essential fields
         fingerprint.setdefault("schema_version", "1.0.0")
-        fingerprint["profile_id"] = fingerprint.get("profile_id") or args.profile_id
+        inferred_id = args.out.stem
+        profile_id = args.profile_id or inferred_id
+        author_name = args.author_name or inferred_id
+        fingerprint["profile_id"] = fingerprint.get("profile_id") or profile_id
         fingerprint.setdefault("metadata", {})
-        fingerprint["metadata"].setdefault("author", {"name": args.author_name, "is_self": True})
+        fingerprint["metadata"].setdefault("author", {"name": author_name, "is_self": True})
         fingerprint["metadata"].setdefault("extraction", {})
         # put model and date if missing
         fingerprint["metadata"].setdefault("extraction", {})
