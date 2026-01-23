@@ -156,6 +156,49 @@ def iter_corpus_texts(root: Path, max_files: int, max_bytes_per_file: int) -> Li
     return items
 
 
+def extract_title(text: str) -> Optional[str]:
+    # Try HTML <title>...</title>
+    m = re.search(r"(?is)<title[^>]*>(.*?)</title>", text)
+    if m:
+        title = re.sub(r"\s+", " ", m.group(1)).strip()
+        if title:
+            return title
+
+    # Try HTML <h1>...</h1>
+    m = re.search(r"(?is)<h1[^>]*>(.*?)</h1>", text)
+    if m:
+        title = re.sub(r"<[^>]+>", "", m.group(1))
+        title = re.sub(r"\s+", " ", title).strip()
+        if title:
+            return title
+
+    lines = text.splitlines()
+    # Try Markdown ATX heading
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            heading = stripped.lstrip("#").strip()
+            if heading:
+                return heading
+        break
+
+    # Try Markdown setext heading
+    for i in range(len(lines) - 1):
+        line = lines[i].strip()
+        if not line:
+            continue
+        underline = lines[i + 1].strip()
+        if underline and all(ch == "=" for ch in underline):
+            return line
+        if underline and all(ch == "-" for ch in underline):
+            return line
+        break
+
+    return None
+
+
 def build_corpus_documents(files_and_texts: List[Tuple[str, str]]) -> List[Dict[str, Any]]:
     documents: List[Dict[str, Any]] = []
     for rel_path, text in files_and_texts:
@@ -165,6 +208,7 @@ def build_corpus_documents(files_and_texts: List[Tuple[str, str]]) -> List[Dict[
         documents.append({
             "path": rel_path,
             "name": Path(rel_path).stem,
+            "title": extract_title(text),
             "description": None,
             "language": None,
             "locale": None,
@@ -445,6 +489,7 @@ def fingerprint_schema_template() -> Dict[str, Any]:
                 "documents": [
                     {
                         "path": "string",
+                        "title": "string|null",
                         "description": "string|null",
                         "language": "en|null",
                         "locale": "en-CA|null",

@@ -64,7 +64,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Call LLM with fingerprint + measurements
     - Enforce preservation of meaning
     - Return rewritten text and deviations
-  - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint), `-i` (input), `-o` (out), `-v` (verbose)
+  - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
 
 - `scripts/fingerprint_style.sh` and `scripts/apply_fingerprint.sh`
   - Bash wrappers around the Python entry points
@@ -138,7 +138,7 @@ The fingerprint JSON contains these top‑level keys:
 
 The schema is **extensible**, but backward compatibility should be preserved when possible.
 
-Note: `metadata.corpus` includes `document_count` and `documents` (per-document metadata list).
+Note: `metadata.corpus` includes `document_count` and `documents` (per-document metadata list, including title when available).
 
 ---
 

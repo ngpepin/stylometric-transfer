@@ -1,4 +1,6 @@
 config.llm.json
 Lithonia.md
-test/Lithonia.md
-test
+test/
+scripts/Nico.json
+scripts/NASA_Nico.md
+scripts/NASA_Nico.md.deviations.json

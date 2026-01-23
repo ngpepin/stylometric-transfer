@@ -213,7 +213,7 @@ Or use the wrapper script:
   -i draft.md
 ```
 
-Pass `-c/--config` to use a non-default config path. Use `-v/--verbose` for progress logging.
+Pass `-c/--config` to use a non-default config path. Use `-v/--verbose` for progress logging. `-f/--fingerprint` adds `.json` if no extension is provided.
 
 Outputs:
 
@@ -230,7 +230,7 @@ Contains:
 
 - `metadata` — corpus and extraction info  
   - `metadata.corpus.document_count` — number of corpus documents  
-  - `metadata.corpus.documents` — per-document metadata (path, size, language/locale, genres, time range)  
+- `metadata.corpus.documents` — per-document metadata (path, title when available, size, language/locale, genres, time range)  
 - `measurements` — raw statistical signals  
 - `targets` — stylistic constraints and distributions  
 - `lexicon` — preferred / avoided words and phrases  

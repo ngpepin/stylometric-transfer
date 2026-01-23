@@ -53,6 +53,7 @@
                 "properties": {
                   "path": { "type": "string" },
                   "name": { "type": "string" },
+                  "title": { "type": ["string", "null"] },
                   "description": { "type": ["string", "null"] },
                   "language": { "type": ["string", "null"] },
                   "locale": { "type": ["string", "null"] },

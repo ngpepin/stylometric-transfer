@@ -1256,6 +1256,7 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
                 "properties": {
                   "path": { "type": "string" },
                   "name": { "type": "string" },
+                  "title": { "type": ["string", "null"] },
                   "description": { "type": ["string", "null"] },
                   "language": { "type": ["string", "null"] },
                   "locale": { "type": ["string", "null"] },

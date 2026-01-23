@@ -227,11 +227,20 @@ def main() -> int:
         default=None,
         help="Path to config.llm.json (default: ./config.llm.json if present; else next to script)"
     )
-    ap.add_argument("-f", "--fingerprint", required=True, type=Path, help="Fingerprint JSON from fingerprint_style.py")
+    ap.add_argument(
+        "-f",
+        "--fingerprint",
+        required=True,
+        type=Path,
+        help="Fingerprint JSON from fingerprint_style.py (adds .json if no extension)"
+    )
     ap.add_argument("-i", "--in", dest="inp", required=True, type=Path, help="Input markdown file to rewrite")
     ap.add_argument("-o", "--out", type=Path, default=None, help="Output markdown path (default: <input>.styled.md)")
     ap.add_argument("-v", "--verbose", action="store_true", help="Enable progress logging")
     args = ap.parse_args()
+
+    if args.fingerprint.suffix == "":
+        args.fingerprint = args.fingerprint.with_suffix(".json")
 
     if args.config is None:
         cwd_cfg = Path.cwd() / "config.llm.json"
