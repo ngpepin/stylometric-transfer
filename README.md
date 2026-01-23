@@ -327,7 +327,15 @@ Representative terms:
 
 ## License
 
-MIT (recommended) or your preferred license.
+PolyForm Noncommercial License 1.0.0. See This project is licensed under the **PolyForm Noncommercial License 1.0.0** (see `LICENSE.md`).
+
+**Key points (plain English):**
+- **Noncommercial only**: You may use, modify, and redistribute this project for **noncommercial purposes**.
+- **Commercial use requires permission**: Any **commercial** use (including offering a paid product/service that includes this code) requires **explicit permission from the author**.
+- **Attribution required**: If you redistribute or use substantial portions of this project, you must **include clear credit** and preserve the license/notice requirements described in `LICENSE.md`.
+
+If you want to use this project commercially, please contact the author to discuss licensing.
+
 
 ---
 
