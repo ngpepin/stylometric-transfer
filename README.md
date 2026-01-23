@@ -4,6 +4,12 @@
 
 `stylometric-transfer` builds an explicit, interpretable **stylometric style profile** from an author’s corpus and then applies that profile to rewrite or generate new text in the same voice.
 
+Or, in plain language: Get an LLM to apply your writing style to any text input. Performs stylometric profiling on your writing samples and constraint-guided author-style transfer to a target document. How? It builds a style "fingerprint" from your writing corpus using classic stylometric measurements graph structure and applies that fingerprint via an LLM to rewrite any text.
+
+It really works but comments welcome ;)!
+
+For more information, see `Article-Teaching-Machines-to-Write-Like-You.md` amd `Research-Paper.md`. 
+
 This repository provides:
 - `fingerprint_style.py` — extract a **style fingerprint (stylometric profile)** from an archive of writing
 - `apply_fingerprint.py` — rewrite Markdown to match that fingerprint
@@ -12,7 +18,19 @@ This repository provides:
 Unlike fine‑tuning or opaque embeddings, this system uses an **explicit, versionable JSON style model** that you can inspect, edit, audit, and reuse.
 
 ---
+## License
 
+PolyForm Noncommercial License 1.0.0. See This project is licensed under the **PolyForm Noncommercial License 1.0.0** (see `LICENSE.md`).
+
+**Key points (plain English):**
+- **Noncommercial only**: You may use, modify, and redistribute this project for **noncommercial purposes**.
+- **Commercial use requires permission**: Any **commercial** use (including offering a paid product/service that includes this code) requires **explicit permission from the author**.
+- **Attribution required**: If you redistribute or use substantial portions of this project, you must **include clear credit** and preserve the license/notice requirements described in `LICENSE.md`.
+
+If you want to use this project commercially, please contact the author to discuss licensing.
+
+
+---
 ## Table of Contents
 
 - [Overview](#overview)
@@ -325,19 +343,7 @@ Representative terms:
 
 ---
 
-## License
 
-PolyForm Noncommercial License 1.0.0. See This project is licensed under the **PolyForm Noncommercial License 1.0.0** (see `LICENSE.md`).
-
-**Key points (plain English):**
-- **Noncommercial only**: You may use, modify, and redistribute this project for **noncommercial purposes**.
-- **Commercial use requires permission**: Any **commercial** use (including offering a paid product/service that includes this code) requires **explicit permission from the author**.
-- **Attribution required**: If you redistribute or use substantial portions of this project, you must **include clear credit** and preserve the license/notice requirements described in `LICENSE.md`.
-
-If you want to use this project commercially, please contact the author to discuss licensing.
-
-
----
 
 ## Acknowledgments
 
