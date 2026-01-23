@@ -53,7 +53,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Select representative excerpts
     - Call LLM to synthesise fingerprint JSON
     - Repair invalid JSON if necessary
-  - CLI short flags: `-c` (config, optional; defaults to `config.llm.json`), `-a` (archive), `-o` (out)
+  - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-a` (archive), `-o` (out)
   - Defaults: if `--profile-id` or `--author-name` are omitted, both default to the output filename without the `.json` extension
 
 - `apply_fingerprint.py`
@@ -64,7 +64,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Call LLM with fingerprint + measurements
     - Enforce preservation of meaning
     - Return rewritten text and deviations
-  - CLI short flags: `-c` (config, optional; defaults to `config.llm.json`), `-f` (fingerprint), `-i` (input), `-o` (out)
+  - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint), `-i` (input), `-o` (out)
 
 - `scripts/fingerprint_style.sh` and `scripts/apply_fingerprint.sh`
   - Bash wrappers around the Python entry points

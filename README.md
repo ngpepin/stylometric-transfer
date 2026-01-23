@@ -148,6 +148,7 @@ Create `config.llm.json` in the project root (used by default):
 ```
 
 Notes:
+- Default lookup for `config.llm.json`: current working directory first, then the directory containing the Python scripts
 - `base_url` should be the API root (no `/chat/completions`)
 - Any OpenAI‑compatible endpoint can be used
 - Lower temperature is recommended for consistency

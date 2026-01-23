@@ -510,8 +510,8 @@ def main() -> int:
         "-c",
         "--config",
         type=Path,
-        default=Path("config.llm.json"),
-        help="Path to config.llm.json (default: config.llm.json)"
+        default=None,
+        help="Path to config.llm.json (default: ./config.llm.json if present; else next to script)"
     )
     ap.add_argument("-a", "--archive", required=True, type=Path, help="Path to .zip/.tar* corpus archive")
     ap.add_argument(
@@ -538,6 +538,11 @@ def main() -> int:
 
     if args.out.suffix == "":
         args.out = args.out.with_suffix(".json")
+
+    if args.config is None:
+        cwd_cfg = Path.cwd() / "config.llm.json"
+        script_cfg = Path(__file__).resolve().parent / "config.llm.json"
+        args.config = cwd_cfg if cwd_cfg.exists() else script_cfg
 
     cfg = load_config(args.config)
 

@@ -224,13 +224,18 @@ def main() -> int:
         "-c",
         "--config",
         type=Path,
-        default=Path("config.llm.json"),
-        help="Path to config.llm.json (default: config.llm.json)"
+        default=None,
+        help="Path to config.llm.json (default: ./config.llm.json if present; else next to script)"
     )
     ap.add_argument("-f", "--fingerprint", required=True, type=Path, help="Fingerprint JSON from fingerprint_style.py")
     ap.add_argument("-i", "--in", dest="inp", required=True, type=Path, help="Input markdown file to rewrite")
     ap.add_argument("-o", "--out", type=Path, default=None, help="Output markdown path (default: <input>.styled.md)")
     args = ap.parse_args()
+
+    if args.config is None:
+        cwd_cfg = Path.cwd() / "config.llm.json"
+        script_cfg = Path(__file__).resolve().parent / "config.llm.json"
+        args.config = cwd_cfg if cwd_cfg.exists() else script_cfg
 
     cfg = load_config(args.config)
 
