@@ -7,6 +7,7 @@
 This repository provides:
 - `fingerprint_style.py` — extract a **style fingerprint (stylometric profile)** from an archive of writing
 - `apply_fingerprint.py` — rewrite Markdown to match that fingerprint
+- `scripts/` — bash wrappers for invoking the Python entry points
 
 Unlike fine‑tuning or opaque embeddings, this system uses an **explicit, versionable JSON style model** that you can inspect, edit, audit, and reuse.
 
@@ -167,9 +168,20 @@ Run fingerprinting:
 
 ```bash
 python fingerprint_style.py \
-  --config config.llm.json \
-  --archive my_corpus.tar.gz \
-  --out my_fingerprint.json \
+  -c config.llm.json \
+  -a my_corpus.tar.gz \
+  -o my_fingerprint.json \
+  --profile-id "me_style_v1" \
+  --author-name "Me"
+```
+
+Or use the wrapper script:
+
+```bash
+./scripts/fingerprint_style.sh \
+  -c config.llm.json \
+  -a my_corpus.tar.gz \
+  -o my_fingerprint.json \
   --profile-id "me_style_v1" \
   --author-name "Me"
 ```
@@ -188,9 +200,18 @@ Rewrite a Markdown file in your style:
 
 ```bash
 python apply_fingerprint.py \
-  --config config.llm.json \
-  --fingerprint my_fingerprint.json \
-  --in draft.md
+  -c config.llm.json \
+  -f my_fingerprint.json \
+  -i draft.md
+```
+
+Or use the wrapper script:
+
+```bash
+./scripts/apply_fingerprint.sh \
+  -c config.llm.json \
+  -f my_fingerprint.json \
+  -i draft.md
 ```
 
 Outputs:
@@ -317,4 +338,3 @@ Inspired by:
 ---
 
 *stylometric-transfer — explicit style models for interpretable author voice transfer*
-

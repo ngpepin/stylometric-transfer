@@ -11,8 +11,8 @@ It:
 4) Writes rewritten markdown to an output file (default: <input>.styled.md)
 
 Usage:
-  python apply_fingerprint.py --config config.llm.json --fingerprint fingerprint.json --in draft.md
-  python apply_fingerprint.py --config config.llm.json --fingerprint fingerprint.json --in draft.md --out draft.styled.md
+  python apply_fingerprint.py -c config.llm.json -f fingerprint.json -i draft.md
+  python apply_fingerprint.py -c config.llm.json -f fingerprint.json -i draft.md -o draft.styled.md
 """
 
 from __future__ import annotations
@@ -220,10 +220,10 @@ def build_apply_prompt(fingerprint: Dict[str, Any], input_md: str, input_meas: D
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", required=True, type=Path, help="Path to config.llm.json")
-    ap.add_argument("--fingerprint", required=True, type=Path, help="Fingerprint JSON from fingerprint_style.py")
-    ap.add_argument("--in", dest="inp", required=True, type=Path, help="Input markdown file to rewrite")
-    ap.add_argument("--out", type=Path, default=None, help="Output markdown path (default: <input>.styled.md)")
+    ap.add_argument("-c", "--config", required=True, type=Path, help="Path to config.llm.json")
+    ap.add_argument("-f", "--fingerprint", required=True, type=Path, help="Fingerprint JSON from fingerprint_style.py")
+    ap.add_argument("-i", "--in", dest="inp", required=True, type=Path, help="Input markdown file to rewrite")
+    ap.add_argument("-o", "--out", type=Path, default=None, help="Output markdown path (default: <input>.styled.md)")
     args = ap.parse_args()
 
     cfg = load_config(args.config)

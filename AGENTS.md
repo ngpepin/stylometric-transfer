@@ -53,6 +53,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Select representative excerpts
     - Call LLM to synthesise fingerprint JSON
     - Repair invalid JSON if necessary
+  - CLI short flags: `-c` (config), `-a` (archive), `-o` (out)
 
 - `apply_fingerprint.py`
   - Input: fingerprint JSON + Markdown file
@@ -62,6 +63,11 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Call LLM with fingerprint + measurements
     - Enforce preservation of meaning
     - Return rewritten text and deviations
+  - CLI short flags: `-c` (config), `-f` (fingerprint), `-i` (input), `-o` (out)
+
+- `scripts/fingerprint_style.sh` and `scripts/apply_fingerprint.sh`
+  - Bash wrappers around the Python entry points
+  - Pass all CLI args through unchanged
 
 - `config.llm.json`
   - Stores API configuration
@@ -338,4 +344,3 @@ Any new feature should improve:
 ---
 
 *AGENTS.md — operational context for stylometric-transfer*
-

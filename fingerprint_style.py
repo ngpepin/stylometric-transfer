@@ -17,7 +17,7 @@ It:
 5) Validates/repairs JSON if needed and writes the output file
 
 Usage:
-  python fingerprint_style.py --config config.llm.json --archive corpus.zip --out fingerprint.json
+  python fingerprint_style.py -c config.llm.json -a corpus.zip -o fingerprint.json
 """
 
 from __future__ import annotations
@@ -503,9 +503,9 @@ def repair_json_with_llm(cfg: LLMConfig, bad_output: str) -> Dict[str, Any]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", required=True, type=Path, help="Path to config.llm.json")
-    ap.add_argument("--archive", required=True, type=Path, help="Path to .zip/.tar* corpus archive")
-    ap.add_argument("--out", required=True, type=Path, help="Output fingerprint JSON path")
+    ap.add_argument("-c", "--config", required=True, type=Path, help="Path to config.llm.json")
+    ap.add_argument("-a", "--archive", required=True, type=Path, help="Path to .zip/.tar* corpus archive")
+    ap.add_argument("-o", "--out", required=True, type=Path, help="Output fingerprint JSON path")
     ap.add_argument("--profile-id", default="author_style_v1", help="Profile ID to set in output JSON")
     ap.add_argument("--author-name", default="(self)", help="Author name (metadata only)")
     ap.add_argument("--max-files", type=int, default=DEFAULT_MAX_FILES)
