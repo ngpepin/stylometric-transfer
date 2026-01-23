@@ -1,4 +1,4 @@
-# Teaching Machines to Write Like You — Without Stealing Your Voice
+# Teaching Machines to Write Like You -- Without Stealing Your Voice
 
 *How a new approach to AI writing models learns style the way linguists do, and why that matters for trust, creativity, and authorship*
 
@@ -6,17 +6,17 @@
 
 ---
 
-When people hear that an AI can “write like you,” the reaction is often a mix of fascination and unease.
+When people hear that an AI can "write like you," the reaction is often a mix of fascination and unease.
 
 - Is it copying you?  
 - Is it memorizing your sentences?  
 - Is it secretly training a shadow version of your brain?
 
-In most current systems, the honest answer is: *we don’t really know.*
+In most current systems, the honest answer is: *we don't really know.*
 
-But a new approach called **stylometric transfer** offers a very different vision. Instead of hiding style inside millions of opaque neural weights, it teaches machines to write the way linguists analyze writing: by measuring rhythm, punctuation, structure, and word choice — and then using those measurements as explicit rules for rewriting.
+But a new approach called **stylometric transfer** offers a very different vision. Instead of hiding style inside millions of opaque neural weights, it teaches machines to write the way linguists analyze writing: by measuring rhythm, punctuation, structure, and word choice -- and then using those measurements as explicit rules for rewriting.
 
-It’s less like cloning a voice, and more like giving an editor a very precise style guide.
+It's less like cloning a voice, and more like giving an editor a very precise style guide.
 
 
 ---
@@ -27,16 +27,16 @@ Long before AI, scholars studied writing style with statistics.
 
 This field, called **stylometry**, asks questions like:
 
-- How long are an author’s sentences, on average?
+- How long are an author's sentences, on average?
 - How often do they use commas versus semicolons?
 - Do they favor short paragraphs or long ones?
 - Which phrases appear again and again?
 
-These patterns turn out to be remarkably stable. In the 1960s, statisticians used them to settle the authorship of disputed Federalist Papers. Today they’re used in forensics, literary analysis, and plagiarism detection.
+These patterns turn out to be remarkably stable. In the 1960s, statisticians used them to settle the authorship of disputed Federalist Papers. Today they're used in forensics, literary analysis, and plagiarism detection.
 
 Stylometric transfer takes this old idea and combines it with modern language models.
 
-Instead of feeding an AI thousands of pages and hoping it “absorbs” a style, the system first builds a **style fingerprint**: a structured profile that records measurable features of an author’s writing.
+Instead of feeding an AI thousands of pages and hoping it "absorbs" a style, the system first builds a **style fingerprint**: a structured profile that records measurable features of an author's writing.
 
 Not impressions. Not vibes. Actual numbers.
 
@@ -54,41 +54,41 @@ The result is a kind of linguistic passport for a writing voice.
 
 How does a list of numbers turn into new prose?
 
-The key insight is that modern language models are extremely good at following instructions — if those instructions are clear enough.
+The key insight is that modern language models are extremely good at following instructions -- if those instructions are clear enough.
 
 Instead of saying:
 
-> “Write this in Alice’s style.”
+> "Write this in Alice's style."
 
-(which leaves the model guessing what “Alice’s style” even means), the system says something much more precise:
+(which leaves the model guessing what "Alice's style" even means), the system says something much more precise:
 
 - Prefer sentences between 10 and 18 words.
 - Occasionally use one-sentence paragraphs (~15% of the time).
 - Avoid semicolons almost entirely.
-- Favor transitions like “however” and “in practice.”
+- Favor transitions like "however" and "in practice."
 - Never use these specific phrases.
 
 At the same time, it adds the most important rule of all:
 
 > **Preserve the meaning. Do not change facts, claims, or examples.**
 
-The model rewrites the text under these constraints, then the system measures the result again — checking whether the output actually matches the fingerprint. If not, it sends the model a short audit report and asks it to try again.
+The model rewrites the text under these constraints, then the system measures the result again -- checking whether the output actually matches the fingerprint. If not, it sends the model a short audit report and asks it to try again.
 
-It’s a feedback loop between statistics and generation.
+It's a feedback loop between statistics and generation.
 
 In effect, the AI is being graded on style.
 
 ---
 
-## Why This Is Different from “Voice Cloning”
+## Why This Is Different from "Voice Cloning"
 
 Most personalization systems today rely on training.
 
-You feed in examples. The model adjusts millions of internal parameters. The style becomes part of the model’s hidden state.
+You feed in examples. The model adjusts millions of internal parameters. The style becomes part of the model's hidden state.
 
-That works — but it creates three serious problems.
+That works -- but it creates three serious problems.
 
-### 1. You can’t see what it learned
+### 1. You can't see what it learned
 
 If the model writes strangely, you have no idea why.
 
@@ -98,9 +98,9 @@ With a style fingerprint, every stylistic feature is explicit and inspectable.
 
 You can literally open the file and read:
 
-> “Comma density: 42 per 1,000 words.”
+> "Comma density: 42 per 1,000 words."
 
-### 2. You can’t edit it
+### 2. You can't edit it
 
 If a fine-tuned model overuses exclamation marks, fixing it means retraining.
 
@@ -111,9 +111,9 @@ Too formal? Add contractions to the preferred list.
 
 Style becomes adjustable, not frozen.
 
-### 3. You can’t audit it
+### 3. You can't audit it
 
-When a fine-tuned model imitates someone, it’s hard to prove what it’s doing.
+When a fine-tuned model imitates someone, it's hard to prove what it's doing.
 
 With stylometric transfer, the system can show:
 
@@ -135,11 +135,11 @@ One region contains texts with short, punchy sentences.
 Another has long, flowing clauses.  
 Some regions are comma-heavy. Others barely punctuate at all.
 
-The fingerprint doesn’t point to a single spot. It defines a **region** — an “allowed zone” of stylistic behavior.
+The fingerprint doesn't point to a single spot. It defines a **region** -- an "allowed zone" of stylistic behavior.
 
 Rewriting becomes a geometric problem:
 
-> Find a version of this text that lies inside the author’s style region *and* means the same thing.
+> Find a version of this text that lies inside the author's style region *and* means the same thing.
 
 If the first attempt lands outside the region, the system nudges it back.
 
@@ -155,20 +155,20 @@ At first glance, this may sound like an elaborate way to get nicer prose. But th
 
 ### Editing, not impersonation
 
-Because the system is rule-based and auditable, it’s naturally suited for:
+Because the system is rule-based and auditable, it's naturally suited for:
 
 - personal editing tools  
 - consistency across long documents  
 - collaborative writing where multiple voices must align  
 - maintaining tone across translations or revisions
 
-It’s less about copying someone, and more about preserving a voice across time.
+It's less about copying someone, and more about preserving a voice across time.
 
 ### Scientific value
 
 For researchers, this approach is rare: a way to connect modern language models back to **measurable linguistic theory**.
 
-Instead of asking what the model “learned,” we ask:
+Instead of asking what the model "learned," we ask:
 
 - Which stylistic features actually matter?
 - Which ones are redundant?
@@ -190,7 +190,7 @@ In an era when AI-generated text is increasingly hard to distinguish from human 
 
 ## The Editor Inside the Machine
 
-In the end, stylometric transfer doesn’t turn AI into a ghostwriter.
+In the end, stylometric transfer doesn't turn AI into a ghostwriter.
 
 It turns it into something more familiar.
 
@@ -203,7 +203,7 @@ One that:
 - respects meaning the way a fact-checker does  
 - and explains every change it makes
 
-Instead of hiding style inside black-box parameters, it brings style back into the open — where writers, editors, and readers can see it, argue with it, and shape it.
+Instead of hiding style inside black-box parameters, it brings style back into the open -- where writers, editors, and readers can see it, argue with it, and shape it.
 
 That may be the most human way for machines to learn how we write.
 

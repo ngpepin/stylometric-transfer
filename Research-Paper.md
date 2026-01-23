@@ -7,7 +7,7 @@
 
 ## Abstract
 
-We present **Stylometric-Transfer**, a practical method for (i) **stylometric profiling** of an author’s writing corpus into an explicit, interpretable JSON artifact (a *style fingerprint*) and (ii) **meaning-preserving style transfer** that rewrites new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement—e.g., punctuation rates and sentence-length distributions—with LLM-mediated synthesis into human-editable constraints (ranges, histograms, lexicon rules, rhetorical templates). We formalize the fingerprint as a constraint set and provide a constraint-satisfaction decoding view for LLM rewriting, together with compliance scoring based on distributional divergences. This hybrid design offers an auditable alternative to purely latent “style embeddings” while remaining consistent with established stylometry and text style transfer literature.
+We present **Stylometric-Transfer**, a practical method for (i) **stylometric profiling** of an author's writing corpus into an explicit, interpretable JSON artifact (a *style fingerprint*) and (ii) **meaning-preserving style transfer** that rewrites new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement--e.g., punctuation rates and sentence-length distributions--with LLM-mediated synthesis into human-editable constraints (ranges, histograms, lexicon rules, rhetorical templates). We formalize the fingerprint as a constraint set and provide a constraint-satisfaction decoding view for LLM rewriting, together with compliance scoring based on distributional divergences. This hybrid design offers an auditable alternative to purely latent "style embeddings" while remaining consistent with established stylometry and text style transfer literature.
 
 ---
 
@@ -15,7 +15,7 @@ We present **Stylometric-Transfer**, a practical method for (i) **stylometric pr
 
 **Stylometry** studies quantitative signals of writing style for tasks including authorship attribution and author profiling. A canonical demonstration is the Federalist Papers authorship analysis, where frequent-word statistics support Bayesian inference over disputed authorship. ([press.uchicago.edu](https://press.uchicago.edu/ucp/books/book/distributed/I/bo5667096.html?utm_source=chatgpt.com))
 
-Separately, **text style transfer (TST)** aims to transform text so stylistic properties match a target style while preserving style-independent content. A recurring challenge is separating “content” from “style” without parallel data, motivating methods such as cross-alignment approaches and ongoing evaluation/ethical discussions. ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com))
+Separately, **text style transfer (TST)** aims to transform text so stylistic properties match a target style while preserving style-independent content. A recurring challenge is separating "content" from "style" without parallel data, motivating methods such as cross-alignment approaches and ongoing evaluation/ethical discussions. ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com))
 
 This paper motivates a hybrid approach: represent style explicitly as a **stylometric style fingerprint** (JSON) and use an LLM as a constrained rewriter guided by (a) the fingerprint and (b) locally measured statistics of both the author corpus and the candidate text.
 
@@ -25,7 +25,7 @@ This paper motivates a hybrid approach: represent style explicitly as a **stylom
 
 ### 2.1 Stylometry and Distance-Based Measures
 
-Stylometric authorship attribution typically uses robust, interpretable features (e.g., word frequency profiles) and distance measures. Burrows’s Delta and its variants are widely used; more recent work provides detailed explanations that decompose feature selection, feature scaling (e.g., z-transformation), and distance metrics, clarifying why Delta-style measures can be effective. ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com))
+Stylometric authorship attribution typically uses robust, interpretable features (e.g., word frequency profiles) and distance measures. Burrows's Delta and its variants are widely used; more recent work provides detailed explanations that decompose feature selection, feature scaling (e.g., z-transformation), and distance metrics, clarifying why Delta-style measures can be effective. ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com))
 
 ### 2.2 Text Style Transfer and Evaluation
 
@@ -74,7 +74,7 @@ For sentence lengths $\ell_1,\dots,\ell_m$ (in words), define a binned histogram
 
 $$\mathbf{h} \in \Delta^{B-1}, \quad h_b = \frac{1}{m}\sum_{i=1}^m \mathbf{1}[\ell_i \in \text{bin}(b)],$$
 
-where $\Delta^{B-1}$ is the probability simplex and bins are ordinal intervals (e.g., $<10$, 10–17, 18–25, …).
+where $\Delta^{B-1}$ is the probability simplex and bins are ordinal intervals (e.g., $<10$, 10-17, 18-25, ...).
 
 ### 4.3 Delta-Style Diagnostics (Optional)
 
@@ -114,7 +114,7 @@ This section expands the mathematical view of rewriting as a **constraint satisf
 
 ### 6.1 Soft-Constrained Objective
 
-Let $p_\theta(y\mid x)$ be the LLM’s conditional probability of an output $y$ given input $x$. We define a soft-constrained objective:
+Let $p_\theta(y\mid x)$ be the LLM's conditional probability of an output $y$ given input $x$. We define a soft-constrained objective:
 
 $$\max_{y \in \mathcal{Y}} \; \log p_\theta(y \mid x) - \lambda\, \mathcal{L}_{style}(y;\mathcal{F}) - \mu\,\mathcal{L}_{sem}(y;x),$$
 
@@ -143,7 +143,7 @@ $$\ell_j(\mathbf{h},\mathbf{h}^*) = D_{KL}(\mathbf{h}^*\|\mathbf{h}) = \sum_{b=1
 Some constraints are best treated as hard feasibility requirements:
 
 - Entity/number preservation constraints $\Rightarrow$ must hold unless explicitly overridden.
-- Hard forbidden lexicon constraints (e.g., “must not appear”).
+- Hard forbidden lexicon constraints (e.g., "must not appear").
 
 Define the feasible set:
 
@@ -242,10 +242,10 @@ Stylometric-Transfer bridges **classic stylometry** and **LLM-based rewriting** 
 ## References
 
 - Mosteller, F., & Wallace, D. L. *Inference and Disputed Authorship: The Federalist.* Addison-Wesley (1964). ([archive.org](https://archive.org/details/inferencedispute00most?utm_source=chatgpt.com))
-- Evert, S., et al. “Understanding and explaining Delta measures for authorship attribution.” *Digital Scholarship in the Humanities* (2017). ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com))
-- Shen, T., Lei, T., Barzilay, R., & Jaakkola, T. “Style Transfer from Non-Parallel Text by Cross-Alignment.” (2017). ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com))
-- Mukherjee, S., et al. “A Survey of Text Style Transfer: Applications and Ethical Implications.” (2024). ([arxiv.org](https://arxiv.org/abs/2407.16737?utm_source=chatgpt.com))
-- Hu, Z., et al. “Text Style Transfer: A Review and Experimental Evaluation.” *KDD Explorations* (PDF). ([kdd.org](https://www.kdd.org/exploration_files/vol24issue1_2._Text_Style_Transfer__A_Review_and_Experimental_Evaluation.pdf?utm_source=chatgpt.com))
+- Evert, S., et al. "Understanding and explaining Delta measures for authorship attribution." *Digital Scholarship in the Humanities* (2017). ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com))
+- Shen, T., Lei, T., Barzilay, R., & Jaakkola, T. "Style Transfer from Non-Parallel Text by Cross-Alignment." (2017). ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com))
+- Mukherjee, S., et al. "A Survey of Text Style Transfer: Applications and Ethical Implications." (2024). ([arxiv.org](https://arxiv.org/abs/2407.16737?utm_source=chatgpt.com))
+- Hu, Z., et al. "Text Style Transfer: A Review and Experimental Evaluation." *KDD Explorations* (PDF). ([kdd.org](https://www.kdd.org/exploration_files/vol24issue1_2._Text_Style_Transfer__A_Review_and_Experimental_Evaluation.pdf?utm_source=chatgpt.com))
 
 ---
 
@@ -338,7 +338,6 @@ procedure REWRITE_WITH_ITERATIVE_REPAIR(fingerprint F, input x, llm_config C, ma
 end procedure
 ```
 
----
 
 ---
 
@@ -508,7 +507,7 @@ Else continue up to $T_{max}$ repair passes.
 
 ## Appendix D. Mechanism of Fingerprint-Conditioned Rewriting
 
-This appendix provides a detailed account of **how an explicit stylometric fingerprint guides an LLM to rewrite text in the target author style**, despite the LLM’s internal representations being latent and opaque. We formalize the process as *externalized style conditioning* through instruction embedding, constraint activation, and iterative projection.
+This appendix provides a detailed account of **how an explicit stylometric fingerprint guides an LLM to rewrite text in the target author style**, despite the LLM's internal representations being latent and opaque. We formalize the process as *externalized style conditioning* through instruction embedding, constraint activation, and iterative projection.
 
 ---
 
@@ -540,9 +539,9 @@ This compilation step performs three key transformations:
 
 Numeric constraints are converted into qualitative instructions:
 
-- “Use short-to-medium sentences (10–18 words typical)”  
-- “Favor one-sentence paragraphs occasionally (~15%)”  
-- “Avoid heavy semicolon usage; commas preferred”  
+- "Use short-to-medium sentences (10-18 words typical)"  
+- "Favor one-sentence paragraphs occasionally (~15%)"  
+- "Avoid heavy semicolon usage; commas preferred"  
 
 This converts $\psi_j(y)\in\mathcal{C}_j$ into *behavioral descriptors*.
 
@@ -552,7 +551,7 @@ Constraint weights $w_j$ are mapped to:
 
 - ordering in the prompt  
 - emphasis (phrasing, repetition)  
-- explicit “must” vs “prefer” language  
+- explicit "must" vs "prefer" language  
 
 ### (iii) Conflict resolution policy
 
@@ -947,7 +946,7 @@ This yields a controllable, auditable, and theoretically grounded mechanism for 
    
    i.e., **finite-step convergence** in expectation.
    
-   This explains empirically observed rapid convergence (1–3 iterations) in most rewrites.
+   This explains empirically observed rapid convergence (1-3 iterations) in most rewrites.
    
    ---
    
@@ -1140,7 +1139,7 @@ to stabilize latent style representations.
 Stylometric-Transfer requires:
 
 - only sufficient data to estimate low-variance statistics  
-- often $N \approx 10^3–10^4$ tokens  
+- often $N \approx 10^3-10^4$ tokens  
 - robust even on heterogeneous corpora  
 
 ---
