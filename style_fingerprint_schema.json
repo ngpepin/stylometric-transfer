@@ -1,0 +1,310 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://stylometric-transfer/schema/style_fingerprint.schema.json",
+  "title": "Stylometric Style Fingerprint Schema",
+  "description": "Explicit, interpretable stylometric style model for author-conditioned style transfer",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "profile_id",
+    "metadata",
+    "measurements",
+    "targets",
+    "lexicon",
+    "templates",
+    "controls",
+    "validators",
+    "derived_instructions"
+  ],
+
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+
+    "profile_id": {
+      "type": "string",
+      "description": "Unique identifier for this fingerprint"
+    },
+
+    "metadata": {
+      "type": "object",
+      "required": ["author", "corpus_stats", "created_at"],
+      "properties": {
+        "author": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "language": { "type": "string", "default": "en" },
+        "license": { "type": "string" },
+        "notes": { "type": "string" },
+
+        "corpus_stats": {
+          "type": "object",
+          "required": ["documents", "total_words"],
+          "properties": {
+            "documents": { "type": "integer", "minimum": 1 },
+            "total_words": { "type": "integer", "minimum": 100 },
+            "avg_words_per_doc": { "type": "number" }
+          }
+        }
+      }
+    },
+
+    "measurements": {
+      "type": "object",
+      "description": "Raw stylometric measurements extracted from corpus",
+      "required": [
+        "sentence_length_histogram",
+        "paragraph_length_histogram",
+        "punctuation_rates",
+        "orthography",
+        "structure"
+      ],
+
+      "properties": {
+        "sentence_length_histogram": { "$ref": "#/definitions/histogram" },
+        "paragraph_length_histogram": { "$ref": "#/definitions/histogram" },
+
+        "punctuation_rates": {
+          "type": "object",
+          "description": "Per-1000-word punctuation densities",
+          "properties": {
+            "comma": { "type": "number" },
+            "semicolon": { "type": "number" },
+            "colon": { "type": "number" },
+            "dash": { "type": "number" },
+            "ellipsis": { "type": "number" },
+            "exclamation": { "type": "number" },
+            "question": { "type": "number" }
+          }
+        },
+
+        "orthography": {
+          "type": "object",
+          "properties": {
+            "contractions_rate": { "type": "number" },
+            "uppercase_sentence_rate": { "type": "number" },
+            "quotes_double_ratio": { "type": "number" }
+          }
+        },
+
+        "structure": {
+          "type": "object",
+          "properties": {
+            "one_sentence_paragraph_rate": { "type": "number" },
+            "avg_sentences_per_paragraph": { "type": "number" }
+          }
+        }
+      }
+    },
+
+    "targets": {
+      "type": "object",
+      "description": "Target ranges and distributions for rewriting",
+      "required": ["sentence", "paragraph", "punctuation", "orthography"],
+
+      "properties": {
+        "sentence": {
+          "type": "object",
+          "properties": {
+            "length_words": {
+              "type": "object",
+              "required": ["distribution", "tolerance"],
+              "properties": {
+                "distribution": { "$ref": "#/definitions/histogram" },
+                "tolerance": { "type": "number", "default": 0.08 }
+              }
+            }
+          }
+        },
+
+        "paragraph": {
+          "type": "object",
+          "properties": {
+            "length_sentences": {
+              "type": "object",
+              "required": ["distribution", "tolerance"],
+              "properties": {
+                "distribution": { "$ref": "#/definitions/histogram" },
+                "tolerance": { "type": "number", "default": 0.10 }
+              }
+            }
+          }
+        },
+
+        "punctuation": {
+          "type": "object",
+          "properties": {
+            "comma_density_per_100w": { "$ref": "#/definitions/range" },
+            "semicolon_density_per_100w": { "$ref": "#/definitions/range" },
+            "dash_density_per_100w": { "$ref": "#/definitions/range" },
+            "ellipsis_density_per_100w": { "$ref": "#/definitions/range" }
+          }
+        },
+
+        "orthography": {
+          "type": "object",
+          "properties": {
+            "contractions_rate": { "$ref": "#/definitions/range" },
+            "uppercase_sentence_rate": { "$ref": "#/definitions/range" }
+          }
+        }
+      }
+    },
+
+    "lexicon": {
+      "type": "object",
+      "required": ["avoid_words", "avoid_phrases", "preferred_phrases"],
+      "properties": {
+        "avoid_words": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "avoid_phrases": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "preferred_phrases": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "templates": {
+      "type": "object",
+      "description": "Rhetorical and syntactic templates",
+      "properties": {
+        "sentence_openers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "paragraph_openers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "preferred_transitions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "controls": {
+      "type": "object",
+      "required": ["priority_order", "strictness", "rewrite_policy"],
+      "properties": {
+        "priority_order": {
+          "type": "array",
+          "description": "Constraint families in decreasing priority",
+          "items": {
+            "enum": [
+              "meaning_preservation",
+              "lexicon",
+              "sentence_rhythm",
+              "paragraph_structure",
+              "punctuation",
+              "orthography",
+              "templates"
+            ]
+          }
+        },
+
+        "strictness": {
+          "type": "object",
+          "properties": {
+            "hard_constraints": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "soft_constraints": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+
+        "rewrite_policy": {
+          "type": "object",
+          "properties": {
+            "preserve_entities": { "type": "boolean", "default": true },
+            "preserve_numbers": { "type": "boolean", "default": true },
+            "allow_sentence_split": { "type": "boolean", "default": true },
+            "allow_sentence_merge": { "type": "boolean", "default": true }
+          }
+        }
+      }
+    },
+
+    "validators": {
+      "type": "object",
+      "required": ["weights", "scoring", "checks"],
+      "properties": {
+        "weights": {
+          "type": "object",
+          "description": "Per-constraint weights (normalized externally)",
+          "additionalProperties": { "type": "number", "minimum": 0 }
+        },
+
+        "scoring": {
+          "type": "object",
+          "properties": {
+            "overall_threshold": {
+              "type": "object",
+              "properties": {
+                "pass": { "type": "number", "default": 0.75 },
+                "warn": { "type": "number", "default": 0.60 }
+              }
+            }
+          }
+        },
+
+        "checks": {
+          "type": "object",
+          "properties": {
+            "max_iterations": { "type": "integer", "default": 3 },
+            "require_zero_hard_violations": { "type": "boolean", "default": true }
+          }
+        }
+      }
+    },
+
+    "derived_instructions": {
+      "type": "object",
+      "description": "Compiled prompts and guidance for LLM",
+      "properties": {
+        "fingerprint_prompt": { "type": "string" },
+        "rewrite_prompt": { "type": "string" },
+        "repair_prompt": { "type": "string" }
+      }
+    }
+  },
+
+  "definitions": {
+    "range": {
+      "type": "object",
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" }
+      }
+    },
+
+    "histogram": {
+      "type": "object",
+      "required": ["bins", "values"],
+      "properties": {
+        "bins": {
+          "type": "array",
+          "description": "Ordinal bin boundaries",
+          "items": { "type": "string" }
+        },
+        "values": {
+          "type": "array",
+          "description": "Probability mass per bin",
+          "items": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    }
+  }
+}
