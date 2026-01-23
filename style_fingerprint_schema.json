@@ -30,21 +30,79 @@
 
     "metadata": {
       "type": "object",
-      "required": ["author", "corpus_stats", "created_at"],
+      "required": ["author", "corpus", "extraction"],
       "properties": {
-        "author": { "type": "string" },
-        "created_at": { "type": "string", "format": "date-time" },
-        "language": { "type": "string", "default": "en" },
-        "license": { "type": "string" },
-        "notes": { "type": "string" },
-
-        "corpus_stats": {
+        "author": {
           "type": "object",
-          "required": ["documents", "total_words"],
+          "required": ["name", "is_self"],
           "properties": {
-            "documents": { "type": "integer", "minimum": 1 },
-            "total_words": { "type": "integer", "minimum": 100 },
-            "avg_words_per_doc": { "type": "number" }
+            "name": { "type": "string" },
+            "is_self": { "type": "boolean" }
+          }
+        },
+        "corpus": {
+          "type": "object",
+          "required": ["document_count", "documents", "size", "sampling"],
+          "properties": {
+            "document_count": { "type": "integer", "minimum": 1 },
+            "documents": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["path", "size"],
+                "properties": {
+                  "path": { "type": "string" },
+                  "name": { "type": "string" },
+                  "description": { "type": ["string", "null"] },
+                  "language": { "type": ["string", "null"] },
+                  "locale": { "type": ["string", "null"] },
+                  "genres": { "type": "array", "items": { "type": "string" } },
+                  "time_range": {
+                    "type": "object",
+                    "properties": {
+                      "start": { "type": ["string", "null"] },
+                      "end": { "type": ["string", "null"] }
+                    }
+                  },
+                  "size": {
+                    "type": "object",
+                    "required": ["words_est"],
+                    "properties": {
+                      "words_est": { "type": "integer", "minimum": 0 },
+                      "pages_est": { "type": ["integer", "null"] },
+                      "sentences_est": { "type": "integer", "minimum": 0 },
+                      "paragraphs_est": { "type": "integer", "minimum": 0 },
+                      "chars": { "type": "integer", "minimum": 0 }
+                    }
+                  }
+                }
+              }
+            },
+            "size": {
+              "type": "object",
+              "properties": {
+                "words_est": { "type": "integer", "minimum": 0 },
+                "pages_est": { "type": ["integer", "null"] }
+              }
+            },
+            "sampling": {
+              "type": "object",
+              "properties": {
+                "method": { "type": "string" },
+                "notes": { "type": "string" }
+              }
+            }
+          }
+        },
+        "extraction": {
+          "type": "object",
+          "required": ["model", "date", "methods", "confidence"],
+          "properties": {
+            "model": { "type": "string" },
+            "date": { "type": "string" },
+            "methods": { "type": "array", "items": { "type": "string" } },
+            "confidence": { "type": "string" },
+            "limitations": { "type": "array", "items": { "type": "string" } }
           }
         }
       }

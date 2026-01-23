@@ -156,6 +156,30 @@ def iter_corpus_texts(root: Path, max_files: int, max_bytes_per_file: int) -> Li
     return items
 
 
+def build_corpus_documents(files_and_texts: List[Tuple[str, str]]) -> List[Dict[str, Any]]:
+    documents: List[Dict[str, Any]] = []
+    for rel_path, text in files_and_texts:
+        words_list = words(text)
+        sentences_list = split_sentences(text)
+        paragraphs_list = split_paragraphs(text)
+        documents.append({
+            "path": rel_path,
+            "name": Path(rel_path).stem,
+            "description": None,
+            "language": None,
+            "locale": None,
+            "genres": [],
+            "time_range": {"start": None, "end": None},
+            "size": {
+                "words_est": len(words_list),
+                "sentences_est": len(sentences_list),
+                "paragraphs_est": len(paragraphs_list),
+                "chars": len(text)
+            }
+        })
+    return documents
+
+
 # ----------------------------
 # Measurement: token-ish stats
 # ----------------------------
@@ -417,12 +441,19 @@ def fingerprint_schema_template() -> Dict[str, Any]:
         "metadata": {
             "author": {"name": "string", "is_self": True},
             "corpus": {
-                "description": "string",
-                "language": "en",
-                "locale": "en-CA",
-                "genres": ["essay", "memoir", "technical", "fiction", "email", "notes", "other"],
-                "time_range": {"start": "YYYY-MM-DD|null", "end": "YYYY-MM-DD|null"},
-                "size": {"documents": "int", "words_est": "int", "pages_est": "int|null"},
+                "document_count": "int",
+                "documents": [
+                    {
+                        "path": "string",
+                        "description": "string|null",
+                        "language": "en|null",
+                        "locale": "en-CA|null",
+                        "genres": ["essay", "memoir", "technical", "fiction", "email", "notes", "other"],
+                        "time_range": {"start": "YYYY-MM-DD|null", "end": "YYYY-MM-DD|null"},
+                        "size": {"words_est": "int", "pages_est": "int|null"}
+                    }
+                ],
+                "size": {"words_est": "int", "pages_est": "int|null"},
                 "sampling": {"method": "full|stratified|random|manual", "notes": "string"}
             },
             "extraction": {
@@ -464,6 +495,7 @@ def build_fingerprint_prompt(measurements: Dict[str, Any], excerpts: List[Dict[s
             "Output MUST be valid JSON only.",
             "Must include keys: schema_version, profile_id, metadata, measurements, targets, lexicon, templates, controls, validators, derived_instructions.",
             "metadata.extraction.model should be set to the model name provided.",
+            "metadata.corpus.document_count should reflect the number of documents, and metadata.corpus.documents must be an array of per-document entries.",
             "Embed the provided measurements verbatim under measurements.",
             "Use controlled vocabulary values where possible (low|medium|high, rare|sometimes|often, etc.).",
             "Include numeric targets/ranges based on measurements (reasonable ranges reflecting variability).",
@@ -521,6 +553,7 @@ def main() -> int:
         type=Path,
         help="Output fingerprint JSON path (adds .json if no extension)"
     )
+    ap.add_argument("-v", "--verbose", action="store_true", help="Enable progress logging")
     ap.add_argument(
         "--profile-id",
         default=None,
@@ -544,31 +577,45 @@ def main() -> int:
         script_cfg = Path(__file__).resolve().parent / "config.llm.json"
         args.config = cwd_cfg if cwd_cfg.exists() else script_cfg
 
+    def vprint(msg: str) -> None:
+        if args.verbose:
+            print(msg)
+
+    vprint(f"Using config: {args.config}")
+    vprint(f"Output path: {args.out}")
+
     cfg = load_config(args.config)
 
     if not args.archive.exists():
         print(f"Archive not found: {args.archive}", file=sys.stderr)
         return 2
 
+    vprint(f"Extracting archive: {args.archive}")
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
         extract_archive(args.archive, tmp)
 
+        vprint("Reading corpus files...")
         files_and_texts = iter_corpus_texts(tmp, max_files=args.max_files, max_bytes_per_file=args.max_bytes_per_file)
         if not files_and_texts:
             print("No readable corpus files found (txt/md/docx/html/etc).", file=sys.stderr)
             return 3
 
+        corpus_documents = build_corpus_documents(files_and_texts)
+        vprint(f"Found {len(files_and_texts)} files; computing measurements...")
         texts = [t for _, t in files_and_texts]
         measurements = compute_measurements(texts)
+        vprint("Selecting representative excerpts...")
         excerpts = pick_representative_excerpts(files_and_texts, max_total_chars=args.excerpt_char_budget)
 
+        vprint("Calling LLM to synthesize fingerprint...")
         messages = build_fingerprint_prompt(measurements, excerpts, cfg)
         raw = chat_completions(cfg, messages)
 
         try:
             fingerprint = parse_json_strict(raw)
         except Exception:
+            vprint("Invalid JSON returned; attempting repair...")
             fingerprint = repair_json_with_llm(cfg, raw)
 
         # Ensure essential fields
@@ -587,11 +634,39 @@ def main() -> int:
             fingerprint["metadata"]["extraction"].setdefault("methods", ["hybrid"])
             fingerprint["metadata"]["extraction"].setdefault("confidence", "medium")
 
+        corpus = fingerprint["metadata"].setdefault("corpus", {})
+        corpus_defaults = {}
+        for key in ("description", "language", "locale", "genres", "time_range"):
+            if key in corpus:
+                corpus_defaults[key] = corpus.get(key)
+
+        for doc in corpus_documents:
+            for key, value in corpus_defaults.items():
+                if value is not None:
+                    doc.setdefault(key, value)
+
+        for key in corpus_defaults.keys():
+            corpus.pop(key, None)
+
+        corpus["document_count"] = len(corpus_documents)
+        corpus["documents"] = corpus_documents
+
+        corpus_size = corpus.get("size")
+        if not isinstance(corpus_size, dict):
+            corpus_size = {}
+        total_words = measurements.get("totals", {}).get("total_words_est")
+        if isinstance(total_words, int):
+            corpus_size.setdefault("words_est", total_words)
+        corpus_size.pop("documents", None)
+        corpus["size"] = corpus_size
+
         # Always embed measurements (verbatim local measurements)
         fingerprint["measurements"] = measurements
 
+        vprint("Writing fingerprint JSON...")
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(fingerprint, ensure_ascii=False, indent=2), encoding="utf-8")
+        vprint("Done.")
         print(f"Wrote fingerprint JSON to: {args.out}")
         return 0
 

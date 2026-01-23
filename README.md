@@ -185,7 +185,7 @@ Or use the wrapper script:
   --author-name "Me"
 ```
 
-Pass `-c/--config` to use a non-default config path. If `--profile-id` or `--author-name` are omitted, they default to the output filename without the `.json` extension (e.g., `my_fingerprint`).
+Pass `-c/--config` to use a non-default config path. If `--profile-id` or `--author-name` are omitted, they default to the output filename without the `.json` extension (e.g., `my_fingerprint`). Use `-v/--verbose` for progress logging.
 
 This will:
 - Extract the archive
@@ -213,7 +213,7 @@ Or use the wrapper script:
   -i draft.md
 ```
 
-Pass `-c/--config` to use a non-default config path.
+Pass `-c/--config` to use a non-default config path. Use `-v/--verbose` for progress logging.
 
 Outputs:
 
@@ -229,6 +229,8 @@ Outputs:
 Contains:
 
 - `metadata` — corpus and extraction info  
+  - `metadata.corpus.document_count` — number of corpus documents  
+  - `metadata.corpus.documents` — per-document metadata (path, size, language/locale, genres, time range)  
 - `measurements` — raw statistical signals  
 - `targets` — stylistic constraints and distributions  
 - `lexicon` — preferred / avoided words and phrases  

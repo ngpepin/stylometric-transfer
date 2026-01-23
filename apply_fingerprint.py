@@ -230,12 +230,19 @@ def main() -> int:
     ap.add_argument("-f", "--fingerprint", required=True, type=Path, help="Fingerprint JSON from fingerprint_style.py")
     ap.add_argument("-i", "--in", dest="inp", required=True, type=Path, help="Input markdown file to rewrite")
     ap.add_argument("-o", "--out", type=Path, default=None, help="Output markdown path (default: <input>.styled.md)")
+    ap.add_argument("-v", "--verbose", action="store_true", help="Enable progress logging")
     args = ap.parse_args()
 
     if args.config is None:
         cwd_cfg = Path.cwd() / "config.llm.json"
         script_cfg = Path(__file__).resolve().parent / "config.llm.json"
         args.config = cwd_cfg if cwd_cfg.exists() else script_cfg
+
+    def vprint(msg: str) -> None:
+        if args.verbose:
+            print(msg)
+
+    vprint(f"Using config: {args.config}")
 
     cfg = load_config(args.config)
 
@@ -246,16 +253,20 @@ def main() -> int:
         print(f"Input markdown not found: {args.inp}", file=sys.stderr)
         return 2
 
+    vprint("Loading fingerprint and input...")
     fingerprint = json.loads(args.fingerprint.read_text(encoding="utf-8"))
     input_md = args.inp.read_text(encoding="utf-8")
+    vprint("Computing input measurements...")
     input_meas = compute_measurements(input_md)
 
+    vprint("Calling LLM to apply fingerprint...")
     messages = build_apply_prompt(fingerprint, input_md, input_meas, cfg)
     raw = chat_completions(cfg, messages)
 
     try:
         out_obj = parse_json_strict(raw)
     except Exception:
+        vprint("Invalid JSON returned; attempting repair...")
         out_obj = repair_json_with_llm(cfg, raw)
 
     final_md = out_obj.get("final_markdown")
@@ -266,6 +277,7 @@ def main() -> int:
         return 3
 
     out_path = args.out or args.inp.with_suffix(args.inp.suffix + ".styled.md")
+    vprint(f"Writing output: {out_path}")
     out_path.write_text(final_md, encoding="utf-8")
     print(f"Wrote rewritten markdown to: {out_path}")
 
@@ -275,6 +287,7 @@ def main() -> int:
         rep = out_path.with_suffix(out_path.suffix + ".deviations.json")
         rep.write_text(json.dumps(deviations, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"Wrote deviations report to: {rep}")
+    vprint("Done.")
 
     return 0
 
