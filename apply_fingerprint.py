@@ -448,7 +448,7 @@ def main() -> int:
     input_md = args.inp.read_text(encoding="utf-8")
     input_md, base64_map = strip_base64_images(input_md)
     if base64_map:
-        vprint(f"Stripped {len(base64_map)} base64 image embeds from prompt.")
+        vprint(f"Stripped {len(base64_map)} base64 image embed(s) from prompt.")
 
     all_deviations: List[Any] = []
     outputs: List[str] = []
