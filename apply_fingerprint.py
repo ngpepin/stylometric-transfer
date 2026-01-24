@@ -79,7 +79,7 @@ def strip_base64_images(text: str) -> tuple[str, Dict[str, str]]:
 def restore_base64_images(text: str, mapping: Dict[str, str], placeholders: List[str] | None = None) -> str:
     if not mapping:
         return text
-    if placeholders is None:
+    if not placeholders:
         placeholders = list(mapping.keys())
     for placeholder in placeholders:
         if placeholder in text:
@@ -88,7 +88,7 @@ def restore_base64_images(text: str, mapping: Dict[str, str], placeholders: List
 
 
 def find_base64_placeholders(text: str) -> List[str]:
-    return re.findall(r"\\[\\[BASE64_IMAGE_\\d+\\]\\]", text)
+    return re.findall(r"\[\[BASE64_IMAGE_\d+\]\]", text)
 
 
 def estimate_tokens(text: str) -> int:
