@@ -32,6 +32,7 @@ import requests
 WORD_RE = re.compile(r"[A-Za-z0-9]+(?:'[A-Za-z0-9]+)?")
 SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[])")
 PARA_SPLIT_RE = re.compile(r"\n\s*\n+")
+BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\s]+", re.IGNORECASE)
 
 def words(text: str) -> List[str]:
     return WORD_RE.findall(text)
@@ -58,6 +59,36 @@ def histogram(values: List[int], bins: List[tuple[int, int | None]]) -> List[flo
                 break
     total = sum(counts)
     return [c / total for c in counts] if total else [0.0] * len(bins)
+
+
+def strip_base64_images(text: str) -> tuple[str, Dict[str, str]]:
+    mapping: Dict[str, str] = {}
+    counter = 0
+
+    def repl(match: re.Match[str]) -> str:
+        nonlocal counter
+        placeholder = f"[[BASE64_IMAGE_{counter}]]"
+        mapping[placeholder] = match.group(0)
+        counter += 1
+        return placeholder
+
+    stripped = BASE64_IMAGE_RE.sub(repl, text)
+    return stripped, mapping
+
+
+def restore_base64_images(text: str, mapping: Dict[str, str], placeholders: List[str] | None = None) -> str:
+    if not mapping:
+        return text
+    if placeholders is None:
+        placeholders = list(mapping.keys())
+    for placeholder in placeholders:
+        if placeholder in text:
+            text = text.replace(placeholder, mapping[placeholder])
+    return text
+
+
+def find_base64_placeholders(text: str) -> List[str]:
+    return re.findall(r"\\[\\[BASE64_IMAGE_\\d+\\]\\]", text)
 
 
 def estimate_tokens(text: str) -> int:
@@ -344,6 +375,7 @@ def build_apply_prompt(fingerprint: Dict[str, Any], input_md: str, input_meas: D
         "rules": [
             "Preserve meaning strictly; do not add new content.",
             "Preserve code blocks, links, and quoted material unless necessary for style and explicitly allowed.",
+            "Preserve any [[BASE64_IMAGE_N]] placeholders exactly; do not remove or alter them.",
             "Follow controls.priority_order if present; otherwise prioritize persona > rhetoric > paragraph > sentence > lexical > punctuation > orthography.",
             "Avoid lexicon.avoid_phrases with severity 'hard' and avoid_words with severity 'hard' if present.",
             "Use preferred phrases sparingly (respect max_per_1000w if present)."
@@ -414,6 +446,9 @@ def main() -> int:
     vprint("Loading fingerprint and input...")
     fingerprint = json.loads(args.fingerprint.read_text(encoding="utf-8"))
     input_md = args.inp.read_text(encoding="utf-8")
+    input_md, base64_map = strip_base64_images(input_md)
+    if base64_map:
+        vprint(f"Stripped {len(base64_map)} base64 image embeds from prompt.")
 
     all_deviations: List[Any] = []
     outputs: List[str] = []
@@ -439,6 +474,17 @@ def main() -> int:
             print("LLM did not return final_markdown.", file=sys.stderr)
             print(raw)
             return 3
+        missing = [p for p in find_base64_placeholders(input_md) if p not in final_md]
+        if missing:
+            for p in missing:
+                all_deviations.append({
+                    "rule_or_field": "base64_image",
+                    "reason": "Image placeholder missing from output; re-embedded at end of document.",
+                    "placeholder": p
+                })
+            footer = "\n".join(f"![]({base64_map[p]})" for p in missing if p in base64_map)
+            final_md = final_md.rstrip() + "\n\n" + footer
+        final_md = restore_base64_images(final_md, base64_map, find_base64_placeholders(final_md))
         outputs.append(final_md)
         all_deviations.extend(out_obj.get("deviations", []) or [])
     else:
@@ -460,6 +506,19 @@ def main() -> int:
                 print("LLM did not return final_markdown.", file=sys.stderr)
                 print(raw)
                 return 3
+            missing = [p for p in find_base64_placeholders(chunk) if p not in final_md]
+            if missing:
+                for p in missing:
+                    all_deviations.append({
+                        "rule_or_field": "base64_image",
+                        "reason": "Image placeholder missing from output; re-embedded at end of chunk.",
+                        "placeholder": p,
+                        "chunk_index": idx,
+                        "chunk_total": len(chunks)
+                    })
+                footer = "\n".join(f"![]({base64_map[p]})" for p in missing if p in base64_map)
+                final_md = final_md.rstrip() + "\n\n" + footer
+            final_md = restore_base64_images(final_md, base64_map, find_base64_placeholders(final_md))
             outputs.append(final_md)
             deviations = out_obj.get("deviations", []) or []
             for d in deviations:

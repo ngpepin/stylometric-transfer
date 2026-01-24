@@ -103,6 +103,7 @@ In research terms, this system implements:
   - Meaning preservation
   - Structural fidelity
   - Deviation reporting
+- Strips embedded BASE64 images before sending prompts to the LLM and re-embeds them in output
 - OpenAI‑compatible (works with OpenAI, Azure OpenAI, vLLM, etc.)
 - Interpretable, editable, versionable style models
 
@@ -236,6 +237,8 @@ Or use the wrapper script:
 ```
 
 Pass `-c/--config` to use a non-default config path. Use `-v/--verbose` for progress logging. `-f/--fingerprint` adds `.json` if no extension is provided. Long inputs are automatically chunked based on `max_prompt_tokens` (override with `--max-prompt-tokens`).
+
+Embedded BASE64 images are stripped from prompts to avoid token blowups and re-inserted into the rewritten output.
 
 Outputs:
 

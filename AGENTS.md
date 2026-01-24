@@ -50,6 +50,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Extract archive
     - Read text files
     - Compute stylometric measurements locally
+    - Strip embedded BASE64 images from prompts
     - Select representative excerpts
     - Call LLM to synthesise fingerprint JSON
     - Repair invalid JSON if necessary
@@ -62,6 +63,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Output: rewritten Markdown + deviations report
   - Responsibilities:
     - Measure input text
+    - Strip embedded BASE64 images before prompt and re-insert after rewrite
     - Call LLM with fingerprint + measurements
     - Enforce preservation of meaning
     - Return rewritten text and deviations

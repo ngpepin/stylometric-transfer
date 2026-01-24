@@ -58,6 +58,7 @@ TEXT_EXTS = {
 }
 DOCX_EXTS = {".docx"}
 
+BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\s]+", re.IGNORECASE)
 DEFAULT_MAX_FILES = 2000
 DEFAULT_MAX_BYTES_PER_FILE = 2_000_000  # 2 MB per file
 DEFAULT_MAX_TOTAL_CHARS_FOR_LLM = 180_000  # excerpt cap; we send stats + representative excerpts
@@ -125,6 +126,10 @@ def normalize_text(s: str) -> str:
     return s.strip()
 
 
+def strip_base64_images(text: str) -> str:
+    return BASE64_IMAGE_RE.sub("[[BASE64_IMAGE]]", text)
+
+
 def iter_corpus_texts(root: Path, max_files: int, max_bytes_per_file: int) -> List[Tuple[str, str]]:
     """
     Returns list of (relative_path, text).
@@ -146,6 +151,8 @@ def iter_corpus_texts(root: Path, max_files: int, max_bytes_per_file: int) -> Li
                 continue
         except Exception:
             continue
+
+        txt = strip_base64_images(txt)
 
         # Skip tiny/empty
         if len(txt) < 200:
