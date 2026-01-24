@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Licensed under the PolyForm Noncommercial License 1.0.0.
+# Copyright (c) 2026 Nicolas Pepin (npepin@umiquity.com).
+# See LICENSE.md for full license text and terms.
 """
 apply_fingerprint.py
 
@@ -29,6 +32,12 @@ import requests
 
 
 # ---- same lightweight stats as fingerprint script ----
+# Script overview:
+# - Measure the input Markdown (lightweight, explainable stats)
+# - Build a prompt using an externalized template (prompts.json)
+# - Call an OpenAI-compatible LLM to rewrite while preserving meaning
+# - Handle oversized prompts by chunking the Markdown
+# - Strip base64 images before prompting, then reinsert after rewriting
 
 WORD_RE = re.compile(r"[A-Za-z0-9]+(?:'[A-Za-z0-9]+)?")
 SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[])")
@@ -37,11 +46,13 @@ BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
 
 def load_prompts() -> Dict[str, Any]:
+    # Load externalized prompt templates located alongside this script.
     if not PROMPTS_PATH.exists():
         raise FileNotFoundError(f"prompts.json not found at {PROMPTS_PATH}")
     return json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))
 
 def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
+    # Traverse a nested dict safely and fail fast if a key is missing.
     cur: Any = prompts
     for key in path:
         if not isinstance(cur, dict) or key not in cur:
@@ -50,9 +61,11 @@ def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
     return cur
 
 def words(text: str) -> List[str]:
+    # Tokenize into simple word-like units for lightweight stats.
     return WORD_RE.findall(text)
 
 def split_sentences(text: str) -> List[str]:
+    # Naive sentence splitter to keep stats interpretable and dependency-free.
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         return []
@@ -60,10 +73,12 @@ def split_sentences(text: str) -> List[str]:
     return [s.strip() for s in sents if s.strip()]
 
 def split_paragraphs(text: str) -> List[str]:
+    # Paragraphs separated by blank lines.
     paras = PARA_SPLIT_RE.split(text.strip())
     return [p.strip() for p in paras if p.strip()]
 
 def histogram(values: List[int], bins: List[tuple[int, int | None]]) -> List[float]:
+    # Convert a list of values into a probability histogram over bins.
     if not values:
         return [0.0] * len(bins)
     counts = [0] * len(bins)
@@ -77,6 +92,7 @@ def histogram(values: List[int], bins: List[tuple[int, int | None]]) -> List[flo
 
 
 def strip_base64_images(text: str) -> tuple[str, Dict[str, str]]:
+    # Replace base64 images with placeholders to avoid prompt token blowups.
     mapping: Dict[str, str] = {}
     counter = 0
 
@@ -92,6 +108,7 @@ def strip_base64_images(text: str) -> tuple[str, Dict[str, str]]:
 
 
 def restore_base64_images(text: str, mapping: Dict[str, str], placeholders: List[str] | None = None) -> str:
+    # Reinsert the original base64 image strings where placeholders appear.
     if not mapping:
         return text
     if not placeholders:
@@ -103,6 +120,7 @@ def restore_base64_images(text: str, mapping: Dict[str, str], placeholders: List
 
 
 def find_base64_placeholders(text: str) -> List[str]:
+    # Helper to detect placeholders in rewritten output.
     return re.findall(r"\[\[BASE64_IMAGE_\d+\]\]", text)
 
 
@@ -112,6 +130,7 @@ def estimate_tokens(text: str) -> int:
 
 
 def estimate_tokens_for_messages(messages: List[Dict[str, str]]) -> int:
+    # Add a small per-message overhead to approximate chat tokenization.
     total = 0
     for msg in messages:
         total += estimate_tokens(msg.get("content", ""))
@@ -120,6 +139,7 @@ def estimate_tokens_for_messages(messages: List[Dict[str, str]]) -> int:
 
 
 def split_markdown_blocks(markdown: str) -> List[str]:
+    # Split Markdown into text and code blocks while preserving fences.
     blocks: List[str] = []
     buf: List[str] = []
     in_code = False
@@ -157,6 +177,7 @@ def split_markdown_blocks(markdown: str) -> List[str]:
 
 
 def is_code_block(block: str) -> bool:
+    # Identify fenced code blocks so we can chunk them safely.
     lines = block.splitlines()
     if not lines:
         return False
@@ -168,10 +189,12 @@ def is_code_block(block: str) -> bool:
 
 
 def split_oversize_block(block: str, build_messages_fn, max_prompt_tokens: int) -> List[str]:
+    # Recursively split blocks that exceed token limits, respecting code fences.
     if estimate_tokens_for_messages(build_messages_fn(block)) <= max_prompt_tokens:
         return [block]
 
     if is_code_block(block):
+        # Preserve fences while splitting code content line-by-line.
         lines = block.splitlines()
         if len(lines) <= 2:
             return [block]
@@ -192,6 +215,7 @@ def split_oversize_block(block: str, build_messages_fn, max_prompt_tokens: int) 
         return chunks
 
     mid = len(block) // 2
+    # Prefer splitting on a newline; fall back to a hard split if needed.
     split_idx = block.rfind("\n", 0, mid)
     if split_idx == -1:
         split_idx = block.find("\n", mid)
@@ -208,6 +232,7 @@ def split_oversize_block(block: str, build_messages_fn, max_prompt_tokens: int) 
 
 
 def chunk_markdown(markdown: str, build_messages_fn, max_prompt_tokens: int) -> List[str]:
+    # Greedily group blocks into chunks that fit the prompt budget.
     blocks = split_markdown_blocks(markdown)
     chunks: List[str] = []
     current: List[str] = []
@@ -234,6 +259,7 @@ def chunk_markdown(markdown: str, build_messages_fn, max_prompt_tokens: int) -> 
     return [c for c in chunks if c.strip()]
 
 def approx_rate_per_1000_words(count: int, total_words: int) -> float:
+    # Normalize counts for cross-document comparability.
     if total_words <= 0:
         return 0.0
     return (count / total_words) * 1000.0
@@ -309,19 +335,23 @@ def detect_english_spelling_variant(text: str) -> Dict[str, Any]:
     }
 
 def compute_measurements(text: str) -> Dict[str, Any]:
+    # Gather lightweight, explainable measurements for the input chunk.
     w = words(text)
     total_words = len(w)
 
+    # Sentence length distribution (words per sentence).
     sent_lens = [len(words(s)) for s in split_sentences(text)]
     sent_bins = [(0,9),(10,17),(18,25),(26,40),(41,None)]
     sent_hist = histogram(sent_lens, sent_bins)
 
+    # Paragraph length distribution (sentences per paragraph).
     paras = split_paragraphs(text)
     para_lens = [len(split_sentences(p)) for p in paras]
     para_bins = [(1,1),(2,3),(4,5),(6,8),(9,None)]
     para_hist = histogram(para_lens, para_bins)
     one_sentence_rate = sum(1 for n in para_lens if n == 1) / max(1, len(para_lens))
 
+    # Simple punctuation counts.
     punct = {
         "commas": text.count(","),
         "semicolons": text.count(";"),
@@ -366,6 +396,7 @@ def compute_measurements(text: str) -> Dict[str, Any]:
 # ---- OpenAI-compatible client ----
 
 class LLMConfig:
+    # Minimal OpenAI-compatible configuration container.
     def __init__(
         self,
         api_key: str,
@@ -387,6 +418,7 @@ class LLMConfig:
         self.max_prompt_tokens = max_prompt_tokens
 
 def load_config(path: Path) -> LLMConfig:
+    # Load the API config JSON and apply defaults.
     data = json.loads(path.read_text(encoding="utf-8"))
     max_tokens = int(data.get("max_tokens", 6000))
     return LLMConfig(
@@ -401,6 +433,7 @@ def load_config(path: Path) -> LLMConfig:
     )
 
 def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
+    # POST to a /v1/chat/completions-compatible endpoint.
     url = f"{cfg.base_url}/chat/completions"
     headers = {
         "Authorization": f"Bearer {cfg.api_key}",
@@ -420,6 +453,7 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
     return data["choices"][0]["message"]["content"]
 
 def parse_json_strict(s: str) -> Dict[str, Any]:
+    # Strip code fences if present and parse strictly as JSON.
     s = s.strip()
     if s.startswith("```"):
         s = re.sub(r"^```(?:json)?\s*", "", s)
@@ -427,6 +461,7 @@ def parse_json_strict(s: str) -> Dict[str, Any]:
     return json.loads(s)
 
 def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any]) -> Dict[str, Any]:
+    # Ask the LLM to repair malformed JSON while preserving content.
     system = get_prompt_value(prompts, "repair_json", "system")
     task = get_prompt_value(prompts, "repair_json", "task")
     messages = [
@@ -449,6 +484,7 @@ def build_apply_prompt(
     cfg: LLMConfig,
     prompts: Dict[str, Any]
 ) -> List[Dict[str, str]]:
+    # Fill the apply prompt template with runtime data.
     system = get_prompt_value(prompts, "apply", "system")
     user_template = get_prompt_value(prompts, "apply", "user")
     if not isinstance(user_template, dict):
@@ -495,6 +531,7 @@ def main() -> int:
         args.fingerprint = args.fingerprint.with_suffix(".json")
 
     if args.config is None:
+        # Resolve config: prefer current working directory, then script directory.
         cwd_cfg = Path.cwd() / "config.llm.json"
         script_cfg = Path(__file__).resolve().parent / "config.llm.json"
         args.config = cwd_cfg if cwd_cfg.exists() else script_cfg
@@ -508,6 +545,7 @@ def main() -> int:
     cfg = load_config(args.config)
     prompts = load_prompts()
     if args.max_prompt_tokens is not None:
+        # Allow CLI override for chunking threshold.
         cfg.max_prompt_tokens = args.max_prompt_tokens
 
     if not args.fingerprint.exists():
@@ -520,6 +558,7 @@ def main() -> int:
     vprint("Loading fingerprint and input...")
     fingerprint = json.loads(args.fingerprint.read_text(encoding="utf-8"))
     input_md = args.inp.read_text(encoding="utf-8")
+    # Strip base64 images to keep prompts within token limits.
     input_md, base64_map = strip_base64_images(input_md)
     if base64_map:
         vprint(f"Stripped {len(base64_map)} base64 image embed(s) from prompt.")
@@ -528,6 +567,7 @@ def main() -> int:
     outputs: List[str] = []
 
     def build_messages_for_chunk(md_chunk: str) -> List[Dict[str, str]]:
+        # Build prompts per chunk using local measurements.
         input_meas = compute_measurements(md_chunk)
         return build_apply_prompt(fingerprint, md_chunk, input_meas, cfg, prompts)
 
@@ -548,6 +588,7 @@ def main() -> int:
             print("LLM did not return final_markdown.", file=sys.stderr)
             print(raw)
             return 3
+        # Ensure any base64 placeholders survive and reinsert originals.
         missing = [p for p in find_base64_placeholders(input_md) if p not in final_md]
         if missing:
             for p in missing:
@@ -580,6 +621,7 @@ def main() -> int:
                 print("LLM did not return final_markdown.", file=sys.stderr)
                 print(raw)
                 return 3
+            # Reinsert any missing base64 placeholders at the end of the chunk.
             missing = [p for p in find_base64_placeholders(chunk) if p not in final_md]
             if missing:
                 for p in missing:
@@ -604,6 +646,7 @@ def main() -> int:
                 else:
                     all_deviations.append({"chunk_index": idx, "chunk_total": len(chunks), "detail": d})
 
+    # Stitch chunks back together, preserving the original order.
     final_md = "\n\n".join(s.strip() for s in outputs if s.strip()).strip()
     out_path = args.out or args.inp.with_suffix(args.inp.suffix + ".styled.md")
     vprint(f"Writing output: {out_path}")

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Licensed under the PolyForm Noncommercial License 1.0.0.
+# Copyright (c) 2026 Nicolas Pepin (npepin@umiquity.com).
+# See LICENSE.md for full license text and terms.
 """
 fingerprint_style.py
 
@@ -51,6 +54,13 @@ try:
 except Exception:
     Document = None  # optional
 
+# Script overview:
+# - Extract a corpus archive into a temp directory
+# - Read text-like files and normalize content
+# - Compute lightweight, interpretable stylometric measurements
+# - Select representative excerpts
+# - Build a prompt from prompts.json and call an OpenAI-compatible LLM
+# - Repair malformed JSON if needed and write the final fingerprint
 
 TEXT_EXTS = {
     ".txt", ".md", ".markdown", ".rst", ".rtf",
@@ -66,11 +76,13 @@ DEFAULT_MAX_TOTAL_CHARS_FOR_LLM = 180_000  # excerpt cap; we send stats + repres
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
 
 def load_prompts() -> Dict[str, Any]:
+    # Load externalized prompt templates located alongside this script.
     if not PROMPTS_PATH.exists():
         raise FileNotFoundError(f"prompts.json not found at {PROMPTS_PATH}")
     return json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))
 
 def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
+    # Traverse a nested dict safely and fail fast if a key is missing.
     cur: Any = prompts
     for key in path:
         if not isinstance(cur, dict) or key not in cur:
@@ -84,6 +96,7 @@ def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
 # ----------------------------
 
 def extract_archive(archive_path: Path, dest_dir: Path) -> None:
+    # Support zip and common tar variants; raise on unknown formats.
     name = archive_path.name.lower()
     if name.endswith(".zip"):
         with zipfile.ZipFile(archive_path, "r") as zf:
@@ -105,6 +118,7 @@ def extract_archive(archive_path: Path, dest_dir: Path) -> None:
 # ----------------------------
 
 def read_docx(path: Path) -> str:
+    # Use python-docx if installed; otherwise fail with a clear message.
     if Document is None:
         raise RuntimeError("python-docx not available; cannot read .docx")
     doc = Document(str(path))
@@ -116,6 +130,7 @@ def read_docx(path: Path) -> str:
 
 
 def read_text_file(path: Path, max_bytes: int) -> str:
+    # Read raw bytes, cap size, and decode with a few common encodings.
     # Try utf-8 first, fallback latin-1
     raw = path.read_bytes()
     if len(raw) > max_bytes:
@@ -132,6 +147,7 @@ def read_text_file(path: Path, max_bytes: int) -> str:
 FRONTMATTER_RE = re.compile(r"(?s)\A---\s*\n.*?\n---\s*\n")
 
 def normalize_text(s: str) -> str:
+    # Strip frontmatter and normalize line breaks for consistent measurement.
     # Remove common YAML frontmatter (typical in markdown/blog)
     s = re.sub(FRONTMATTER_RE, "", s)
     # Normalize newlines
@@ -142,6 +158,7 @@ def normalize_text(s: str) -> str:
 
 
 def strip_base64_images(text: str) -> str:
+    # Replace embedded base64 images with a placeholder to reduce token load.
     return BASE64_IMAGE_RE.sub("[[BASE64_IMAGE]]", text)
 
 
@@ -151,6 +168,7 @@ def iter_corpus_texts(root: Path, max_files: int, max_bytes_per_file: int) -> Li
     """
     items: List[Tuple[str, str]] = []
     count = 0
+    # Walk the extracted tree and collect readable text-like files.
     for p in root.rglob("*"):
         if p.is_dir():
             continue
@@ -179,6 +197,7 @@ def iter_corpus_texts(root: Path, max_files: int, max_bytes_per_file: int) -> Li
 
 
 def extract_title(text: str) -> Optional[str]:
+    # Try to detect a title from HTML or Markdown headings.
     # Try HTML <title>...</title>
     m = re.search(r"(?is)<title[^>]*>(.*?)</title>", text)
     if m:
@@ -222,6 +241,7 @@ def extract_title(text: str) -> Optional[str]:
 
 
 def build_corpus_documents(files_and_texts: List[Tuple[str, str]]) -> List[Dict[str, Any]]:
+    # Build per-document metadata records for the fingerprint.
     documents: List[Dict[str, Any]] = []
     for rel_path, text in files_and_texts:
         words_list = words(text)
@@ -255,6 +275,7 @@ SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[])")
 PARA_SPLIT_RE = re.compile(r"\n\s*\n+")
 
 def words(text: str) -> List[str]:
+    # Lightweight tokenizer for measurement only (not linguistically perfect).
     return WORD_RE.findall(text)
 
 def split_sentences(text: str) -> List[str]:
@@ -267,6 +288,7 @@ def split_sentences(text: str) -> List[str]:
     return [s.strip() for s in sents if s.strip()]
 
 def split_paragraphs(text: str) -> List[str]:
+    # Paragraphs separated by blank lines.
     paras = PARA_SPLIT_RE.split(text.strip())
     return [p.strip() for p in paras if p.strip()]
 
@@ -278,6 +300,7 @@ def histogram(values: List[int], bins: List[Tuple[int, Optional[int]]]) -> List[
     bins: list of (lo, hi) inclusive, hi=None for open-ended.
     Returns proportions summing to 1.0 (or all zeros if empty).
     """
+    # Convert values into normalized proportions over the requested bins.
     if not values:
         return [0.0] * len(bins)
     counts = [0] * len(bins)
@@ -298,6 +321,7 @@ def estimate_tokens(text: str) -> int:
 
 
 def estimate_tokens_for_messages(messages: List[Dict[str, str]]) -> int:
+    # Add a small per-message overhead to approximate chat tokenization.
     total = 0
     for msg in messages:
         total += estimate_tokens(msg.get("content", ""))
@@ -305,6 +329,7 @@ def estimate_tokens_for_messages(messages: List[Dict[str, str]]) -> int:
     return total + 2
 
 def approx_rate_per_1000_words(count: int, total_words: int) -> float:
+    # Normalize counts so they are comparable across corpora.
     if total_words <= 0:
         return 0.0
     return (count / total_words) * 1000.0
@@ -380,6 +405,7 @@ def detect_english_spelling_variant(text: str) -> Dict[str, Any]:
     }
 
 def compute_measurements(texts: List[str]) -> Dict[str, Any]:
+    # Compute corpus-wide measurements for stylistic grounding.
     combined = "\n\n".join(texts)
     w = words(combined)
     total_words = len(w)
@@ -512,7 +538,7 @@ def pick_representative_excerpts(files_and_texts: List[Tuple[str, str]], max_tot
     excerpts: List[Dict[str, str]] = []
     used = 0
 
-    # Prefer mid-sized pieces and variety
+    # Prefer mid-sized pieces and variety while keeping a total budget.
     sorted_items = sorted(files_and_texts, key=lambda x: abs(len(x[1]) - 6000))
     for rel, txt in sorted_items:
         if used >= max_total_chars:
@@ -534,6 +560,7 @@ def pick_representative_excerpts(files_and_texts: List[Tuple[str, str]], max_tot
 
 @dataclasses.dataclass
 class LLMConfig:
+    # Minimal OpenAI-compatible configuration container.
     api_key: str
     base_url: str
     model: str
@@ -544,6 +571,7 @@ class LLMConfig:
     max_prompt_tokens: int = 100000
 
 def load_config(path: Path) -> LLMConfig:
+    # Load API configuration and apply defaults.
     data = json.loads(path.read_text(encoding="utf-8"))
     max_tokens = int(data.get("max_tokens", 6000))
     return LLMConfig(
@@ -558,6 +586,7 @@ def load_config(path: Path) -> LLMConfig:
     )
 
 def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
+    # POST to a /v1/chat/completions-compatible endpoint.
     url = f"{cfg.base_url}/chat/completions"
     headers = {
         "Authorization": f"Bearer {cfg.api_key}",
@@ -596,6 +625,7 @@ def build_fingerprint_prompt(
     cfg: LLMConfig,
     prompts: Dict[str, Any]
 ) -> List[Dict[str, str]]:
+    # Fill the fingerprint prompt template with runtime data.
     schema = fingerprint_schema_template(prompts)
 
     system = get_prompt_value(prompts, "fingerprint", "system")
@@ -626,6 +656,7 @@ def build_merge_prompt(
     cfg: LLMConfig,
     prompts: Dict[str, Any]
 ) -> List[Dict[str, str]]:
+    # Merge two partial fingerprints using the LLM with a strict JSON-only prompt.
     schema = fingerprint_schema_template(prompts)
     system = get_prompt_value(prompts, "merge", "system")
     user_template = get_prompt_value(prompts, "merge", "user")
@@ -649,6 +680,7 @@ def chunk_excerpts(
     max_prompt_tokens: int,
     prompts: Dict[str, Any]
 ) -> List[List[Dict[str, str]]]:
+    # Split excerpts into prompt-sized batches if the prompt is too large.
     base_messages = build_fingerprint_prompt(measurements, [], cfg, prompts)
     base_tokens = estimate_tokens_for_messages(base_messages)
     if base_tokens >= max_prompt_tokens:
@@ -673,6 +705,7 @@ def chunk_excerpts(
 
 
 def parse_json_strict(s: str) -> Dict[str, Any]:
+    # Strip code fences if present and parse strictly as JSON.
     s = s.strip()
     # Some models wrap in ```json ... ```; strip that if present.
     if s.startswith("```"):
@@ -681,6 +714,7 @@ def parse_json_strict(s: str) -> Dict[str, Any]:
     return json.loads(s)
 
 def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any]) -> Dict[str, Any]:
+    # Ask the LLM to repair malformed JSON while preserving content.
     system = get_prompt_value(prompts, "repair_json", "system")
     task = get_prompt_value(prompts, "repair_json", "task")
     messages = [
@@ -741,6 +775,7 @@ def main() -> int:
         args.out = args.out.with_suffix(".json")
 
     if args.config is None:
+        # Resolve config: prefer current working directory, then script directory.
         cwd_cfg = Path.cwd() / "config.llm.json"
         script_cfg = Path(__file__).resolve().parent / "config.llm.json"
         args.config = cwd_cfg if cwd_cfg.exists() else script_cfg
@@ -755,6 +790,7 @@ def main() -> int:
     cfg = load_config(args.config)
     prompts = load_prompts()
     if args.max_prompt_tokens is not None:
+        # Allow CLI override for chunking threshold.
         cfg.max_prompt_tokens = args.max_prompt_tokens
 
     if not args.archive.exists():

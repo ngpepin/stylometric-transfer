@@ -293,6 +293,14 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
 end procedure
 ```
 
+---
+
+## License Notice
+
+Licensed under the PolyForm Noncommercial License 1.0.0.  
+Copyright (c) 2026 Nicolas Pepin (npepin@umiquity.com).  
+See `LICENSE.md` for full license text and terms.
+
 ### A.2 Rewrite (Fingerprint + Draft → Styled Draft)
 
 **Inputs:** fingerprint $\mathcal{F}$, input Markdown $x$, LLM $\mathcal{R}_\theta$  
