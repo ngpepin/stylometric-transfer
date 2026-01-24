@@ -9,6 +9,10 @@
 
 We present **Stylometric-Transfer**, a practical method for (i) **stylometric profiling** of an author's writing corpus into an explicit, interpretable JSON artifact (a *style fingerprint*) and (ii) **meaning-preserving style transfer** that rewrites new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement--e.g., punctuation rates and sentence-length distributions--with LLM-mediated synthesis into human-editable constraints (ranges, histograms, lexicon rules, rhetorical templates). We formalize the fingerprint as a constraint set and provide a constraint-satisfaction decoding view for LLM rewriting, together with compliance scoring based on distributional divergences. This hybrid design offers an auditable alternative to purely latent "style embeddings" while remaining consistent with established stylometry and text style transfer literature.
 
+<div class="page-footer">
+  <span class="footer-left">(c) 2006 Nicolas Pepin</span>
+</div>
+
 ---
 
 ## 1. Introduction
