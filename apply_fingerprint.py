@@ -549,8 +549,13 @@ def main() -> int:
         cfg.max_prompt_tokens = args.max_prompt_tokens
 
     if not args.fingerprint.exists():
-        print(f"Fingerprint not found: {args.fingerprint}", file=sys.stderr)
-        return 2
+        # Fall back to the script directory if fingerprint isn't in CWD.
+        script_fp = Path(__file__).resolve().parent / args.fingerprint.name
+        if script_fp.exists():
+            args.fingerprint = script_fp
+        else:
+            print(f"Fingerprint not found: {args.fingerprint}", file=sys.stderr)
+            return 2
     if not args.inp.exists():
         print(f"Input markdown not found: {args.inp}", file=sys.stderr)
         return 2
