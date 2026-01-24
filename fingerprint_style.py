@@ -26,6 +26,7 @@ Notes:
 from __future__ import annotations
 
 import argparse
+import copy
 import collections
 import dataclasses
 import io
@@ -62,6 +63,20 @@ BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\
 DEFAULT_MAX_FILES = 2000
 DEFAULT_MAX_BYTES_PER_FILE = 2_000_000  # 2 MB per file
 DEFAULT_MAX_TOTAL_CHARS_FOR_LLM = 180_000  # excerpt cap; we send stats + representative excerpts
+PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
+
+def load_prompts() -> Dict[str, Any]:
+    if not PROMPTS_PATH.exists():
+        raise FileNotFoundError(f"prompts.json not found at {PROMPTS_PATH}")
+    return json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))
+
+def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
+    cur: Any = prompts
+    for key in path:
+        if not isinstance(cur, dict) or key not in cur:
+            raise KeyError(f"Missing prompts key: {'.'.join(path)}")
+        cur = cur[key]
+    return cur
 
 
 # ----------------------------
@@ -294,6 +309,76 @@ def approx_rate_per_1000_words(count: int, total_words: int) -> float:
         return 0.0
     return (count / total_words) * 1000.0
 
+def detect_english_spelling_variant(text: str) -> Dict[str, Any]:
+    # Heuristic: count common US vs Canadian/British spellings.
+    pairs = [
+        ("color", "colour"),
+        ("favor", "favour"),
+        ("honor", "honour"),
+        ("labor", "labour"),
+        ("neighbor", "neighbour"),
+        ("center", "centre"),
+        ("theater", "theatre"),
+        ("fiber", "fibre"),
+        ("liter", "litre"),
+        ("meter", "metre"),
+        ("check", "cheque"),
+        ("defense", "defence"),
+        ("offense", "offence"),
+        ("license", "licence"),
+        ("practice", "practise"),
+        ("program", "programme"),
+    ]
+    counts_us = 0
+    counts_ca = 0
+    examples_us: List[str] = []
+    examples_ca: List[str] = []
+    lowered = text.lower()
+    for us, ca in pairs:
+        us_hits = len(re.findall(rf"\b{re.escape(us)}\b", lowered))
+        ca_hits = len(re.findall(rf"\b{re.escape(ca)}\b", lowered))
+        if us_hits:
+            counts_us += us_hits
+            if us not in examples_us:
+                examples_us.append(us)
+        if ca_hits:
+            counts_ca += ca_hits
+            if ca not in examples_ca:
+                examples_ca.append(ca)
+
+    total = counts_us + counts_ca
+    if total < 3:
+        return {
+            "language": "en",
+            "variant": "unknown",
+            "confidence": "low",
+            "us_hits": counts_us,
+            "canadian_hits": counts_ca,
+            "examples": {"us": examples_us[:5], "canadian": examples_ca[:5]},
+            "note": "Insufficient evidence to determine spelling variant."
+        }
+
+    if counts_us > counts_ca:
+        variant = "us"
+    elif counts_ca > counts_us:
+        variant = "canadian"
+    else:
+        variant = "unknown"
+
+    confidence = "medium"
+    if total >= 8 and abs(counts_us - counts_ca) >= 4:
+        confidence = "high"
+
+    return {
+        "language": "en",
+        "variant": variant,
+        "confidence": confidence,
+        "us_hits": counts_us,
+        "canadian_hits": counts_ca,
+        "examples": {"us": examples_us[:5], "canadian": examples_ca[:5]},
+        "note": "Heuristic based on common US vs Canadian spellings."
+    }
+
 def compute_measurements(texts: List[str]) -> Dict[str, Any]:
     combined = "\n\n".join(texts)
     w = words(combined)
@@ -408,7 +493,8 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
         },
         "orthography_signals": {
             "contractions_rate": contraction_rate,
-            "oxford_comma_signal": oxford_signal
+            "oxford_comma_signal": oxford_signal,
+            "spelling_variant": detect_english_spelling_variant(combined)
         },
         "common_phrases": {
             "bigrams_top": [{"phrase": p, "count": c} for p, c in big],
@@ -498,81 +584,28 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
 # Prompting
 # ----------------------------
 
-def fingerprint_schema_template() -> Dict[str, Any]:
-    """
-    A pragmatic schema to keep output consistent. You can expand it.
-    """
-    return {
-        "schema_version": "1.0.0",
-        "profile_id": "string",
-        "metadata": {
-            "author": {"name": "string", "is_self": True},
-            "corpus": {
-                "document_count": "int",
-                "documents": [
-                    {
-                        "path": "string",
-                        "title": "string|null",
-                        "description": "string|null",
-                        "language": "en|null",
-                        "locale": "en-CA|null",
-                        "genres": ["essay", "memoir", "technical", "fiction", "email", "notes", "other"],
-                        "time_range": {"start": "YYYY-MM-DD|null", "end": "YYYY-MM-DD|null"},
-                        "size": {"words_est": "int", "pages_est": "int|null"}
-                    }
-                ],
-                "size": {"words_est": "int", "pages_est": "int|null"},
-                "sampling": {"method": "full|stratified|random|manual", "notes": "string"}
-            },
-            "extraction": {
-                "model": "string",
-                "date": "YYYY-MM-DD",
-                "methods": ["llm_summary", "statistical_counts", "hybrid"],
-                "confidence": "low|medium|high",
-                "limitations": ["string"]
-            }
-        },
-        "measurements": {"note": "include the computed measurement bundle here verbatim"},
-        "targets": {"note": "style constraints/targets (orthography/punctuation/sentence/paragraph/lexical/semantics/rhetoric/persona)"},
-        "lexicon": {"note": "preferred/avoid words/phrases and synonym preferences"},
-        "templates": {"note": "syntactic patterns, paragraph moves, rhetorical moves"},
-        "controls": {"note": "priority_order, strictness, rewrite_policy"},
-        "validators": {"note": "scoring weights and checks"},
-        "derived_instructions": {
-            "system_style": "string",
-            "rewrite_prompt": "string",
-            "generation_prompt": "string"
-        }
-    }
+def fingerprint_schema_template(prompts: Dict[str, Any]) -> Dict[str, Any]:
+    schema = get_prompt_value(prompts, "fingerprint", "schema_hint")
+    if not isinstance(schema, dict):
+        raise TypeError("prompts.fingerprint.schema_hint must be an object")
+    return copy.deepcopy(schema)
 
-def build_fingerprint_prompt(measurements: Dict[str, Any], excerpts: List[Dict[str, str]], cfg: LLMConfig) -> List[Dict[str, str]]:
-    schema = fingerprint_schema_template()
+def build_fingerprint_prompt(
+    measurements: Dict[str, Any],
+    excerpts: List[Dict[str, str]],
+    cfg: LLMConfig,
+    prompts: Dict[str, Any]
+) -> List[Dict[str, str]]:
+    schema = fingerprint_schema_template(prompts)
 
-    system = (
-        "You are a style profiler and JSON generator.\n"
-        "You MUST output valid JSON only (no markdown, no extra commentary).\n"
-        "Do not include trailing commas. Use double quotes for all strings.\n"
-        "If uncertain, use null and record a limitation.\n"
-        "Prefer distributions over single averages.\n"
-        "Avoid inventing stylistic claims not supported by provided measurements/excerpts.\n"
-    )
-
-    user = {
-        "task": "Construct a comprehensive STYLE FINGERPRINT JSON for the author from the provided measurements and excerpts.",
-        "output_requirements": [
-            "Output MUST be valid JSON only.",
-            "Must include keys: schema_version, profile_id, metadata, measurements, targets, lexicon, templates, controls, validators, derived_instructions.",
-            "metadata.extraction.model should be set to the model name provided.",
-            "metadata.corpus.document_count should reflect the number of documents, and metadata.corpus.documents must be an array of per-document entries.",
-            "Embed the provided measurements verbatim under measurements.",
-            "Use controlled vocabulary values where possible (low|medium|high, rare|sometimes|often, etc.).",
-            "Include numeric targets/ranges based on measurements (reasonable ranges reflecting variability).",
-            "Include derived_instructions.system_style as concise bullet rules, and derived_instructions.rewrite_prompt / generation_prompt as templates."
-        ],
-        "schema_hint": schema,
-        "measurements": measurements,
-        "excerpts": excerpts
-    }
+    system = get_prompt_value(prompts, "fingerprint", "system")
+    user_template = get_prompt_value(prompts, "fingerprint", "user")
+    if not isinstance(user_template, dict):
+        raise TypeError("prompts.fingerprint.user must be an object")
+    user = copy.deepcopy(user_template)
+    user["schema_hint"] = schema
+    user["measurements"] = measurements
+    user["excerpts"] = excerpts
 
     return [
         {"role": "system", "content": system},
@@ -590,28 +623,19 @@ def build_merge_prompt(
     fingerprint_a: Dict[str, Any],
     fingerprint_b: Dict[str, Any],
     measurements: Dict[str, Any],
-    cfg: LLMConfig
+    cfg: LLMConfig,
+    prompts: Dict[str, Any]
 ) -> List[Dict[str, str]]:
-    schema = fingerprint_schema_template()
-    system = (
-        "You are a JSON merger for style fingerprints.\n"
-        "You MUST output valid JSON only (no markdown, no extra commentary).\n"
-        "Preserve meaning and reconcile conflicts by favoring evidence in measurements.\n"
-        "If uncertain, use null and record a limitation.\n"
-    )
-    user = {
-        "task": "Merge the two partial fingerprints into a single coherent STYLE FINGERPRINT JSON.",
-        "output_requirements": [
-            "Output MUST be valid JSON only.",
-            "Must include keys: schema_version, profile_id, metadata, measurements, targets, lexicon, templates, controls, validators, derived_instructions.",
-            "Embed the provided measurements verbatim under measurements.",
-            "Reconcile conflicts, prefer measurements over excerpt inferences, and keep wording consistent."
-        ],
-        "schema_hint": schema,
-        "measurements": measurements,
-        "fingerprint_a": fingerprint_a,
-        "fingerprint_b": fingerprint_b
-    }
+    schema = fingerprint_schema_template(prompts)
+    system = get_prompt_value(prompts, "merge", "system")
+    user_template = get_prompt_value(prompts, "merge", "user")
+    if not isinstance(user_template, dict):
+        raise TypeError("prompts.merge.user must be an object")
+    user = copy.deepcopy(user_template)
+    user["schema_hint"] = schema
+    user["measurements"] = measurements
+    user["fingerprint_a"] = fingerprint_a
+    user["fingerprint_b"] = fingerprint_b
     return [
         {"role": "system", "content": system},
         {"role": "user", "content": json.dumps(user, ensure_ascii=False)}
@@ -622,9 +646,10 @@ def chunk_excerpts(
     excerpts: List[Dict[str, str]],
     measurements: Dict[str, Any],
     cfg: LLMConfig,
-    max_prompt_tokens: int
+    max_prompt_tokens: int,
+    prompts: Dict[str, Any]
 ) -> List[List[Dict[str, str]]]:
-    base_messages = build_fingerprint_prompt(measurements, [], cfg)
+    base_messages = build_fingerprint_prompt(measurements, [], cfg, prompts)
     base_tokens = estimate_tokens_for_messages(base_messages)
     if base_tokens >= max_prompt_tokens:
         return [excerpts[:1]] if excerpts else [[]]
@@ -655,11 +680,13 @@ def parse_json_strict(s: str) -> Dict[str, Any]:
         s = re.sub(r"\s*```$", "", s)
     return json.loads(s)
 
-def repair_json_with_llm(cfg: LLMConfig, bad_output: str) -> Dict[str, Any]:
+def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any]) -> Dict[str, Any]:
+    system = get_prompt_value(prompts, "repair_json", "system")
+    task = get_prompt_value(prompts, "repair_json", "task")
     messages = [
-        {"role": "system", "content": "You are a JSON repair tool. Output valid JSON only."},
+        {"role": "system", "content": system},
         {"role": "user", "content": json.dumps({
-            "task": "Repair the following to be valid JSON. Preserve all fields and content as much as possible.",
+            "task": task,
             "bad_output": bad_output[:20000]
         })}
     ]
@@ -726,6 +753,7 @@ def main() -> int:
     vprint(f"Output path: {args.out}")
 
     cfg = load_config(args.config)
+    prompts = load_prompts()
     if args.max_prompt_tokens is not None:
         cfg.max_prompt_tokens = args.max_prompt_tokens
 
@@ -752,7 +780,7 @@ def main() -> int:
         excerpts = pick_representative_excerpts(files_and_texts, max_total_chars=args.excerpt_char_budget)
 
         vprint("Calling LLM to synthesize fingerprint...")
-        messages = build_fingerprint_prompt(measurements, excerpts, cfg)
+        messages = build_fingerprint_prompt(measurements, excerpts, cfg, prompts)
         prompt_tokens = estimate_tokens_for_messages(messages)
         if prompt_tokens <= cfg.max_prompt_tokens:
             raw = chat_completions(cfg, messages)
@@ -760,21 +788,21 @@ def main() -> int:
                 fingerprint = parse_json_strict(raw)
             except Exception:
                 vprint("Invalid JSON returned; attempting repair...")
-                fingerprint = repair_json_with_llm(cfg, raw)
+                fingerprint = repair_json_with_llm(cfg, raw, prompts)
         else:
             vprint(f"Prompt too large ({prompt_tokens} tokens); chunking excerpts...")
-            batches = chunk_excerpts(excerpts, measurements, cfg, cfg.max_prompt_tokens)
+            batches = chunk_excerpts(excerpts, measurements, cfg, cfg.max_prompt_tokens, prompts)
             vprint(f"Chunked into {len(batches)} excerpt batches.")
             partials: List[Dict[str, Any]] = []
             for idx, batch in enumerate(batches, start=1):
                 vprint(f"Synthesizing partial fingerprint {idx}/{len(batches)}...")
-                batch_messages = build_fingerprint_prompt(measurements, batch, cfg)
+                batch_messages = build_fingerprint_prompt(measurements, batch, cfg, prompts)
                 raw = chat_completions(cfg, batch_messages)
                 try:
                     partial = parse_json_strict(raw)
                 except Exception:
                     vprint("Invalid JSON returned; attempting repair...")
-                    partial = repair_json_with_llm(cfg, raw)
+                    partial = repair_json_with_llm(cfg, raw, prompts)
                 partials.append(partial)
 
             fingerprint = partials[0]
@@ -784,14 +812,15 @@ def main() -> int:
                     slim_fingerprint_for_merge(fingerprint),
                     slim_fingerprint_for_merge(partial),
                     measurements,
-                    cfg
+                    cfg,
+                    prompts
                 )
                 raw = chat_completions(cfg, merge_messages)
                 try:
                     fingerprint = parse_json_strict(raw)
                 except Exception:
                     vprint("Invalid JSON returned; attempting repair...")
-                    fingerprint = repair_json_with_llm(cfg, raw)
+                    fingerprint = repair_json_with_llm(cfg, raw, prompts)
 
         # Ensure essential fields
         fingerprint.setdefault("schema_version", "1.0.0")

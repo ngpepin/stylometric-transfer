@@ -1,0 +1,154 @@
+{
+  "repair_json": {
+    "system": "You are a JSON repair tool. Output valid JSON only.",
+    "task": "Repair the following to be valid JSON. Preserve all fields and content as much as possible."
+  },
+  "fingerprint": {
+    "system": "You are a style profiler and JSON generator.\nYou MUST output valid JSON only (no markdown, no extra commentary).\nDo not include trailing commas. Use double quotes for all strings.\nIf uncertain, use null and record a limitation.\nPrefer distributions over single averages.\nAvoid inventing stylistic claims not supported by provided measurements/excerpts.\n",
+    "user": {
+      "task": "Construct a comprehensive STYLE FINGERPRINT JSON for the author from the provided measurements and excerpts.",
+      "output_requirements": [
+        "Output MUST be valid JSON only.",
+        "Must include keys: schema_version, profile_id, metadata, measurements, targets, lexicon, templates, controls, validators, derived_instructions.",
+        "metadata.extraction.model should be set to the model name provided.",
+        "metadata.corpus.document_count should reflect the number of documents, and metadata.corpus.documents must be an array of per-document entries.",
+        "Embed the provided measurements verbatim under measurements.",
+        "Use controlled vocabulary values where possible (low|medium|high, rare|sometimes|often, etc.).",
+        "Include numeric targets/ranges based on measurements (reasonable ranges reflecting variability).",
+        "Include derived_instructions.system_style as concise bullet rules, and derived_instructions.rewrite_prompt / generation_prompt as templates."
+      ]
+    },
+    "schema_hint": {
+      "schema_version": "1.0.0",
+      "profile_id": "string",
+      "metadata": {
+        "author": {
+          "name": "string",
+          "is_self": true
+        },
+        "corpus": {
+          "document_count": "int",
+          "documents": [
+            {
+              "path": "string",
+              "title": "string|null",
+              "description": "string|null",
+              "language": "en|null",
+              "locale": "en-CA|null",
+              "genres": [
+                "essay",
+                "memoir",
+                "technical",
+                "fiction",
+                "email",
+                "notes",
+                "other"
+              ],
+              "time_range": {
+                "start": "YYYY-MM-DD|null",
+                "end": "YYYY-MM-DD|null"
+              },
+              "size": {
+                "words_est": "int",
+                "pages_est": "int|null"
+              }
+            }
+          ],
+          "size": {
+            "words_est": "int",
+            "pages_est": "int|null"
+          },
+          "sampling": {
+            "method": "full|stratified|random|manual",
+            "notes": "string"
+          }
+        },
+        "extraction": {
+          "model": "string",
+          "date": "YYYY-MM-DD",
+          "methods": [
+            "llm_summary",
+            "statistical_counts",
+            "hybrid"
+          ],
+          "confidence": "low|medium|high",
+          "limitations": [
+            "string"
+          ]
+        }
+      },
+      "measurements": {
+        "note": "include the computed measurement bundle here verbatim"
+      },
+      "targets": {
+        "note": "style constraints/targets (orthography/punctuation/sentence/paragraph/lexical/semantics/rhetoric/persona)",
+        "persona": {
+          "pronoun_preferences": {
+            "default_set": "she/her|he/him|they/them|other",
+            "allowed_sets": ["string"],
+            "avoid_sets": ["string"],
+            "strictness": "soft|hard",
+            "notes": "string"
+          }
+        }
+      },
+      "lexicon": {
+        "note": "preferred/avoid words/phrases and synonym preferences"
+      },
+      "templates": {
+        "note": "syntactic patterns, paragraph moves, rhetorical moves"
+      },
+      "controls": {
+        "note": "priority_order, strictness, rewrite_policy"
+      },
+      "validators": {
+        "note": "scoring weights and checks"
+      },
+      "derived_instructions": {
+        "system_style": "string",
+        "rewrite_prompt": "string",
+        "generation_prompt": "string"
+      }
+    }
+  },
+  "merge": {
+    "system": "You are a JSON merger for style fingerprints.\nYou MUST output valid JSON only (no markdown, no extra commentary).\nPreserve meaning and reconcile conflicts by favoring evidence in measurements.\nIf uncertain, use null and record a limitation.\n",
+    "user": {
+      "task": "Merge the two partial fingerprints into a single coherent STYLE FINGERPRINT JSON.",
+      "output_requirements": [
+        "Output MUST be valid JSON only.",
+        "Must include keys: schema_version, profile_id, metadata, measurements, targets, lexicon, templates, controls, validators, derived_instructions.",
+        "Embed the provided measurements verbatim under measurements.",
+        "Reconcile conflicts, prefer measurements over excerpt inferences, and keep wording consistent."
+      ]
+    }
+  },
+  "apply": {
+    "system": "You are a style-transfer rewriting engine.\nYou MUST output valid JSON only.\nPreserve meaning strictly. Do not add new facts, claims, or examples.\nKeep Markdown structure valid.\nIf a conflict occurs, prioritize clarity and preservation of meaning, and record the deviation.\n",
+    "user": {
+      "task": "Rewrite INPUT_MARKDOWN to match STYLE_FINGERPRINT_JSON.",
+      "output_format": {
+        "final_markdown": "string",
+        "deviations": [
+          {
+            "rule_or_field": "json.pointer",
+            "reason": "string"
+          }
+        ],
+        "self_check": {
+          "notes": [
+            "string"
+          ]
+        }
+      },
+      "rules": [
+        "Preserve meaning strictly; do not add new content.",
+        "Preserve code blocks, links, and quoted material unless necessary for style and explicitly allowed.",
+        "Preserve any [[BASE64_IMAGE_N]] placeholders exactly; do not remove or alter them.",
+        "Follow controls.priority_order if present; otherwise prioritize persona > rhetoric > paragraph > sentence > lexical > punctuation > orthography.",
+        "Avoid lexicon.avoid_phrases with severity 'hard' and avoid_words with severity 'hard' if present.",
+        "Use preferred phrases sparingly (respect max_per_1000w if present)."
+      ]
+    }
+  }
+}

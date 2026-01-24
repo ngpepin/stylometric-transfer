@@ -74,6 +74,10 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Bash wrappers around the Python entry points
   - Pass all CLI args through unchanged
 
+- `prompts.json`
+  - Externalized prompt templates used by both Python entry points
+  - Located next to the Python scripts; loaded at runtime
+
 - `config.llm.json`
   - Stores API configuration
   - OpenAI‑compatible
@@ -222,8 +226,13 @@ Current measurements include:
 - One‑sentence paragraph rate
 - Punctuation rates per 1000 words
 - Contraction rate
+- US vs Canadian spelling heuristic (English-only)
 - Dash / ellipsis counts
 - Frequent bigrams / trigrams
+
+Schema note:
+- `measurements.orthography_signals.spelling_variant` records the spelling heuristic output
+- `targets.persona.pronoun_preferences` records preferred pronoun sets (if provided)
 
 Guidelines:
 
@@ -309,6 +318,9 @@ Recommended additions:
   - No added sentences unless allowed
 
 - JSON validity tests
+
+Current smoke test:
+- `tests/run_smoke.sh` — end-to-end pipeline using small fixtures (requires valid `config.llm.json`)
 
 ---
 

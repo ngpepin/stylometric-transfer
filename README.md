@@ -13,6 +13,7 @@ For more information, see `Article-Teaching-Machines-to-Write-Like-You.md` amd `
 This repository provides:
 - `fingerprint_style.py` — extract a **style fingerprint (stylometric profile)** from an archive of writing
 - `apply_fingerprint.py` — rewrite Markdown to match that fingerprint
+- `prompts.json` — externalized prompt templates used by both scripts (edit here to adjust behavior)
 - `scripts/` — bash wrappers for invoking the Python entry points
 
 Unlike fine‑tuning or opaque embeddings, this system uses an **explicit, versionable JSON style model** that you can inspect, edit, audit, and reuse.
@@ -43,6 +44,7 @@ If you want to use this project commercially, please contact the author to discu
   - [1. Build a Style Fingerprint](#1-build-a-style-fingerprint)
   - [2. Apply a Fingerprint](#2-apply-a-fingerprint)
 - [Output Files](#output-files)
+- [Testing](#testing)
 - [Style Model Schema](#style-model-schema)
 - [Ethics & Intended Use](#ethics--intended-use)
 - [Roadmap](#roadmap)
@@ -97,6 +99,7 @@ In research terms, this system implements:
   - Paragraph structure
   - Punctuation rates
   - Contraction and dash usage
+  - US vs Canadian spelling heuristic (English-only)
   - Common n‑grams
 - Produces a **comprehensive JSON style profile**
 - Rewrites Markdown with:
@@ -173,6 +176,7 @@ Notes:
 - `base_url` should be the API root (no `/chat/completions`)
 - Any OpenAI‑compatible endpoint can be used
 - Lower temperature is recommended for consistency
+- Prompt templates are stored in `prompts.json` next to the Python scripts and are loaded at runtime
 
 ---
 
@@ -256,8 +260,8 @@ Contains:
 - `metadata` — corpus and extraction info  
   - `metadata.corpus.document_count` — number of corpus documents  
 - `metadata.corpus.documents` — per-document metadata (path, title when available, size, language/locale, genres, time range)  
-- `measurements` — raw statistical signals  
-- `targets` — stylistic constraints and distributions  
+- `measurements` — raw statistical signals (includes `orthography_signals.spelling_variant` for US vs Canadian spelling)  
+- `targets` — stylistic constraints and distributions (including optional persona pronoun preferences)  
 - `lexicon` — preferred / avoided words and phrases  
 - `templates` — syntactic and rhetorical patterns  
 - `controls` — strictness and priority ordering  
@@ -272,6 +276,20 @@ This file is:
 
 ---
 
+## Testing
+
+Lightweight smoke tests live in `tests/` and exercise the full pipeline using small fixtures. These tests call the LLM and require a valid `config.llm.json`.
+
+Run the smoke test:
+
+```bash
+./tests/run_smoke.sh
+```
+
+Artifacts are written to `tests/_artifacts/` (gitignored).
+
+---
+
 ## Style Model Schema
 
 The schema models multiple layers:
@@ -283,7 +301,7 @@ The schema models multiple layers:
 - Lexical preferences  
 - Semantic tendencies  
 - Rhetorical moves  
-- Persona & stance  
+- Persona & stance (including pronoun preferences)  
 
 It supports:
 - Target values with tolerance ranges  

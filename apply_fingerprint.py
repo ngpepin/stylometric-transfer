@@ -22,6 +22,7 @@ import json
 import re
 import sys
 from pathlib import Path
+import copy
 from typing import Any, Dict, List
 
 import requests
@@ -33,6 +34,20 @@ WORD_RE = re.compile(r"[A-Za-z0-9]+(?:'[A-Za-z0-9]+)?")
 SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[])")
 PARA_SPLIT_RE = re.compile(r"\n\s*\n+")
 BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\s]+", re.IGNORECASE)
+PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
+
+def load_prompts() -> Dict[str, Any]:
+    if not PROMPTS_PATH.exists():
+        raise FileNotFoundError(f"prompts.json not found at {PROMPTS_PATH}")
+    return json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))
+
+def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
+    cur: Any = prompts
+    for key in path:
+        if not isinstance(cur, dict) or key not in cur:
+            raise KeyError(f"Missing prompts key: {'.'.join(path)}")
+        cur = cur[key]
+    return cur
 
 def words(text: str) -> List[str]:
     return WORD_RE.findall(text)
@@ -223,6 +238,76 @@ def approx_rate_per_1000_words(count: int, total_words: int) -> float:
         return 0.0
     return (count / total_words) * 1000.0
 
+def detect_english_spelling_variant(text: str) -> Dict[str, Any]:
+    # Heuristic: count common US vs Canadian/British spellings.
+    pairs = [
+        ("color", "colour"),
+        ("favor", "favour"),
+        ("honor", "honour"),
+        ("labor", "labour"),
+        ("neighbor", "neighbour"),
+        ("center", "centre"),
+        ("theater", "theatre"),
+        ("fiber", "fibre"),
+        ("liter", "litre"),
+        ("meter", "metre"),
+        ("check", "cheque"),
+        ("defense", "defence"),
+        ("offense", "offence"),
+        ("license", "licence"),
+        ("practice", "practise"),
+        ("program", "programme"),
+    ]
+    counts_us = 0
+    counts_ca = 0
+    examples_us: List[str] = []
+    examples_ca: List[str] = []
+    lowered = text.lower()
+    for us, ca in pairs:
+        us_hits = len(re.findall(rf"\b{re.escape(us)}\b", lowered))
+        ca_hits = len(re.findall(rf"\b{re.escape(ca)}\b", lowered))
+        if us_hits:
+            counts_us += us_hits
+            if us not in examples_us:
+                examples_us.append(us)
+        if ca_hits:
+            counts_ca += ca_hits
+            if ca not in examples_ca:
+                examples_ca.append(ca)
+
+    total = counts_us + counts_ca
+    if total < 3:
+        return {
+            "language": "en",
+            "variant": "unknown",
+            "confidence": "low",
+            "us_hits": counts_us,
+            "canadian_hits": counts_ca,
+            "examples": {"us": examples_us[:5], "canadian": examples_ca[:5]},
+            "note": "Insufficient evidence to determine spelling variant."
+        }
+
+    if counts_us > counts_ca:
+        variant = "us"
+    elif counts_ca > counts_us:
+        variant = "canadian"
+    else:
+        variant = "unknown"
+
+    confidence = "medium"
+    if total >= 8 and abs(counts_us - counts_ca) >= 4:
+        confidence = "high"
+
+    return {
+        "language": "en",
+        "variant": variant,
+        "confidence": confidence,
+        "us_hits": counts_us,
+        "canadian_hits": counts_ca,
+        "examples": {"us": examples_us[:5], "canadian": examples_ca[:5]},
+        "note": "Heuristic based on common US vs Canadian spellings."
+    }
+
 def compute_measurements(text: str) -> Dict[str, Any]:
     w = words(text)
     total_words = len(w)
@@ -271,6 +356,9 @@ def compute_measurements(text: str) -> Dict[str, Any]:
         "punctuation": {
             "counts": punct,
             "rates_per_1000w": {k: approx_rate_per_1000_words(v, total_words) for k, v in punct.items()}
+        },
+        "orthography_signals": {
+            "spelling_variant": detect_english_spelling_variant(text)
         }
     }
 
@@ -338,11 +426,13 @@ def parse_json_strict(s: str) -> Dict[str, Any]:
         s = re.sub(r"\s*```$", "", s)
     return json.loads(s)
 
-def repair_json_with_llm(cfg: LLMConfig, bad_output: str) -> Dict[str, Any]:
+def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any]) -> Dict[str, Any]:
+    system = get_prompt_value(prompts, "repair_json", "system")
+    task = get_prompt_value(prompts, "repair_json", "task")
     messages = [
-        {"role": "system", "content": "You are a JSON repair tool. Output valid JSON only."},
+        {"role": "system", "content": system},
         {"role": "user", "content": json.dumps({
-            "task": "Repair the following to be valid JSON. Preserve all fields and content as much as possible.",
+            "task": task,
             "bad_output": bad_output[:20000]
         })}
     ]
@@ -352,38 +442,21 @@ def repair_json_with_llm(cfg: LLMConfig, bad_output: str) -> Dict[str, Any]:
 
 # ---- Prompting: apply fingerprint ----
 
-def build_apply_prompt(fingerprint: Dict[str, Any], input_md: str, input_meas: Dict[str, Any], cfg: LLMConfig) -> List[Dict[str, str]]:
-    system = (
-        "You are a style-transfer rewriting engine.\n"
-        "You MUST output valid JSON only.\n"
-        "Preserve meaning strictly. Do not add new facts, claims, or examples.\n"
-        "Keep Markdown structure valid.\n"
-        "If a conflict occurs, prioritize clarity and preservation of meaning, and record the deviation.\n"
-    )
-
-    user = {
-        "task": "Rewrite INPUT_MARKDOWN to match STYLE_FINGERPRINT_JSON.",
-        "output_format": {
-            "final_markdown": "string",
-            "deviations": [
-                {"rule_or_field": "json.pointer", "reason": "string"}
-            ],
-            "self_check": {
-                "notes": ["string"]
-            }
-        },
-        "rules": [
-            "Preserve meaning strictly; do not add new content.",
-            "Preserve code blocks, links, and quoted material unless necessary for style and explicitly allowed.",
-            "Preserve any [[BASE64_IMAGE_N]] placeholders exactly; do not remove or alter them.",
-            "Follow controls.priority_order if present; otherwise prioritize persona > rhetoric > paragraph > sentence > lexical > punctuation > orthography.",
-            "Avoid lexicon.avoid_phrases with severity 'hard' and avoid_words with severity 'hard' if present.",
-            "Use preferred phrases sparingly (respect max_per_1000w if present)."
-        ],
-        "style_fingerprint_json": fingerprint,
-        "input_measurements": input_meas,
-        "input_markdown": input_md
-    }
+def build_apply_prompt(
+    fingerprint: Dict[str, Any],
+    input_md: str,
+    input_meas: Dict[str, Any],
+    cfg: LLMConfig,
+    prompts: Dict[str, Any]
+) -> List[Dict[str, str]]:
+    system = get_prompt_value(prompts, "apply", "system")
+    user_template = get_prompt_value(prompts, "apply", "user")
+    if not isinstance(user_template, dict):
+        raise TypeError("prompts.apply.user must be an object")
+    user = copy.deepcopy(user_template)
+    user["style_fingerprint_json"] = fingerprint
+    user["input_measurements"] = input_meas
+    user["input_markdown"] = input_md
 
     return [
         {"role": "system", "content": system},
@@ -433,6 +506,7 @@ def main() -> int:
     vprint(f"Using config: {args.config}")
 
     cfg = load_config(args.config)
+    prompts = load_prompts()
     if args.max_prompt_tokens is not None:
         cfg.max_prompt_tokens = args.max_prompt_tokens
 
@@ -455,7 +529,7 @@ def main() -> int:
 
     def build_messages_for_chunk(md_chunk: str) -> List[Dict[str, str]]:
         input_meas = compute_measurements(md_chunk)
-        return build_apply_prompt(fingerprint, md_chunk, input_meas, cfg)
+        return build_apply_prompt(fingerprint, md_chunk, input_meas, cfg, prompts)
 
     initial_messages = build_messages_for_chunk(input_md)
     initial_tokens = estimate_tokens_for_messages(initial_messages)
@@ -467,7 +541,7 @@ def main() -> int:
             out_obj = parse_json_strict(raw)
         except Exception:
             vprint("Invalid JSON returned; attempting repair...")
-            out_obj = repair_json_with_llm(cfg, raw)
+            out_obj = repair_json_with_llm(cfg, raw, prompts)
 
         final_md = out_obj.get("final_markdown")
         if not isinstance(final_md, str) or not final_md.strip():
@@ -499,7 +573,7 @@ def main() -> int:
                 out_obj = parse_json_strict(raw)
             except Exception:
                 vprint("Invalid JSON returned; attempting repair...")
-                out_obj = repair_json_with_llm(cfg, raw)
+                out_obj = repair_json_with_llm(cfg, raw, prompts)
 
             final_md = out_obj.get("final_markdown")
             if not isinstance(final_md, str) or not final_md.strip():

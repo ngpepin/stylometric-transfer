@@ -1344,6 +1344,15 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
             "quotes_double_ratio": { "type": "number" }
           }
         },
+        "orthography_signals": {
+          "type": "object",
+          "description": "Optional orthography and spelling heuristics",
+          "properties": {
+            "contractions_rate": { "type": "number" },
+            "oxford_comma_signal": { "type": "number" },
+            "spelling_variant": { "$ref": "#/definitions/spelling_variant" }
+          }
+        },
         "structure": {
           "type": "object",
           "properties": {
@@ -1398,6 +1407,13 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
           "properties": {
             "contractions_rate": { "$ref": "#/definitions/range" },
             "uppercase_sentence_rate": { "$ref": "#/definitions/range" }
+          }
+        },
+        "persona": {
+          "type": "object",
+          "description": "Persona and stance constraints",
+          "properties": {
+            "pronoun_preferences": { "$ref": "#/definitions/pronoun_preferences" }
           }
         }
       }
@@ -1544,6 +1560,36 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
           "description": "Probability mass per bin",
           "items": { "type": "number", "minimum": 0, "maximum": 1 }
         }
+      }
+    },
+    "spelling_variant": {
+      "type": "object",
+      "description": "Heuristic detection of US vs Canadian spelling in English text",
+      "properties": {
+        "language": { "type": "string" },
+        "variant": { "type": "string", "enum": ["us", "canadian", "unknown"] },
+        "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+        "us_hits": { "type": "integer", "minimum": 0 },
+        "canadian_hits": { "type": "integer", "minimum": 0 },
+        "examples": {
+          "type": "object",
+          "properties": {
+            "us": { "type": "array", "items": { "type": "string" } },
+            "canadian": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "note": { "type": "string" }
+      }
+    },
+    "pronoun_preferences": {
+      "type": "object",
+      "description": "Preferred pronoun sets when writing in English",
+      "properties": {
+        "default_set": { "type": "string" },
+        "allowed_sets": { "type": "array", "items": { "type": "string" } },
+        "avoid_sets": { "type": "array", "items": { "type": "string" } },
+        "strictness": { "type": "string", "enum": ["soft", "hard"] },
+        "notes": { "type": "string" }
       }
     }
   }
