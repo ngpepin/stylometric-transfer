@@ -134,7 +134,7 @@ $$\ell_j(v,[a,b]) = \big(\max(0,a-v)\big)^2 + \big(\max(0,v-b)\big)^2.$$
 
 **Histogram penalty** using KL divergence:
 
-$$\ell_j(\mathbf{h},\mathbf{h}^*) = D_{KL}(\mathbf{h}^*\|\mathbf{h}) = \sum_{b=1}^B h^*_b \log \frac{h^*_b}{\max(\epsilon,h_b)}.$$
+$$\ell_j(\mathbf{h},\mathbf{h}^{*}) = D_{KL}(\mathbf{h}^{*}\|\mathbf{h}) = \sum_{b=1}^B h_b^{*} \log \frac{h_b^{*}}{\max(\epsilon,h_b)}.$$
 
 (For ordinal bins, Wasserstein distance $W_1$ is often preferable; the implementation may adopt either.)
 
