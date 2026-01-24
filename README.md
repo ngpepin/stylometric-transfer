@@ -160,6 +160,7 @@ Create `config.llm.json` in the project root (used by default):
   "base_url": "https://api.openai.com/v1",
   "model": "gpt-4.1-mini",
   "max_tokens": 6000,
+  "max_prompt_tokens": 6000,
   "temperature": 0.2,
   "timeout_seconds": 120
 }
@@ -167,6 +168,7 @@ Create `config.llm.json` in the project root (used by default):
 
 Notes:
 - Default lookup for `config.llm.json`: current working directory first, then the directory containing the Python scripts
+- `max_prompt_tokens` controls chunking for large inputs (defaults to `max_tokens`; override per run with `--max-prompt-tokens`)
 - `base_url` should be the API root (no `/chat/completions`)
 - Any OpenAI‑compatible endpoint can be used
 - Lower temperature is recommended for consistency
@@ -205,6 +207,8 @@ Or use the wrapper script:
 
 Pass `-c/--config` to use a non-default config path. If `--profile-id` or `--author-name` are omitted, they default to the output filename without the `.json` extension (e.g., `my_fingerprint`). Use `-v/--verbose` for progress logging.
 
+Large corpora are chunked automatically based on `max_prompt_tokens` (override with `--max-prompt-tokens`).
+
 This will:
 - Extract the archive
 - Measure stylistic statistics
@@ -231,7 +235,7 @@ Or use the wrapper script:
   -i draft.md
 ```
 
-Pass `-c/--config` to use a non-default config path. Use `-v/--verbose` for progress logging. `-f/--fingerprint` adds `.json` if no extension is provided.
+Pass `-c/--config` to use a non-default config path. Use `-v/--verbose` for progress logging. `-f/--fingerprint` adds `.json` if no extension is provided. Long inputs are automatically chunked based on `max_prompt_tokens` (override with `--max-prompt-tokens`).
 
 Outputs:
 

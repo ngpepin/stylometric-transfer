@@ -54,6 +54,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Call LLM to synthesise fingerprint JSON
     - Repair invalid JSON if necessary
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-a` (archive), `-o` (out), `-v` (verbose)
+  - Extra: `--max-prompt-tokens` overrides chunking threshold
   - Defaults: if `--profile-id` or `--author-name` are omitted, both default to the output filename without the `.json` extension
 
 - `apply_fingerprint.py`
@@ -65,6 +66,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Enforce preservation of meaning
     - Return rewritten text and deviations
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
+  - Extra: `--max-prompt-tokens` overrides chunking threshold
 
 - `scripts/fingerprint_style.sh` and `scripts/apply_fingerprint.sh`
   - Bash wrappers around the Python entry points
@@ -73,6 +75,7 @@ Avoid ambiguous terms like “clone” in public documentation.
 - `config.llm.json`
   - Stores API configuration
   - OpenAI‑compatible
+  - `max_prompt_tokens` controls chunking for large prompts (defaults to `max_tokens`)
 
 ### Data Flow
 

@@ -59,6 +59,134 @@ def histogram(values: List[int], bins: List[tuple[int, int | None]]) -> List[flo
     total = sum(counts)
     return [c / total for c in counts] if total else [0.0] * len(bins)
 
+
+def estimate_tokens(text: str) -> int:
+    # Rough heuristic: ~4 characters per token.
+    return max(1, (len(text) + 3) // 4)
+
+
+def estimate_tokens_for_messages(messages: List[Dict[str, str]]) -> int:
+    total = 0
+    for msg in messages:
+        total += estimate_tokens(msg.get("content", ""))
+        total += 4  # per-message overhead
+    return total + 2
+
+
+def split_markdown_blocks(markdown: str) -> List[str]:
+    blocks: List[str] = []
+    buf: List[str] = []
+    in_code = False
+    for line in markdown.splitlines():
+        fence = line.strip()
+        if fence.startswith("```") or fence.startswith("~~~"):
+            if in_code:
+                buf.append(line)
+                blocks.append("\n".join(buf).strip("\n"))
+                buf = []
+                in_code = False
+            else:
+                if buf:
+                    blocks.append("\n".join(buf).strip("\n"))
+                    buf = []
+                in_code = True
+                buf.append(line)
+            continue
+
+        if in_code:
+            buf.append(line)
+            continue
+
+        if not line.strip():
+            if buf:
+                blocks.append("\n".join(buf).strip("\n"))
+                buf = []
+            continue
+
+        buf.append(line)
+
+    if buf:
+        blocks.append("\n".join(buf).strip("\n"))
+    return blocks
+
+
+def is_code_block(block: str) -> bool:
+    lines = block.splitlines()
+    if not lines:
+        return False
+    first = lines[0].strip()
+    last = lines[-1].strip()
+    if (first.startswith("```") or first.startswith("~~~")) and (last.startswith("```") or last.startswith("~~~")):
+        return True
+    return False
+
+
+def split_oversize_block(block: str, build_messages_fn, max_prompt_tokens: int) -> List[str]:
+    if estimate_tokens_for_messages(build_messages_fn(block)) <= max_prompt_tokens:
+        return [block]
+
+    if is_code_block(block):
+        lines = block.splitlines()
+        if len(lines) <= 2:
+            return [block]
+        opener = lines[0]
+        fence = opener.strip()[:3]
+        content = lines[1:-1] if lines[-1].strip().startswith(fence) else lines[1:]
+        chunks: List[str] = []
+        current: List[str] = []
+        for line in content:
+            current.append(line)
+            candidate = "\n".join([opener] + current + [fence])
+            if estimate_tokens_for_messages(build_messages_fn(candidate)) > max_prompt_tokens and len(current) > 1:
+                current.pop()
+                chunks.append("\n".join([opener] + current + [fence]))
+                current = [line]
+        if current:
+            chunks.append("\n".join([opener] + current + [fence]))
+        return chunks
+
+    mid = len(block) // 2
+    split_idx = block.rfind("\n", 0, mid)
+    if split_idx == -1:
+        split_idx = block.find("\n", mid)
+    if split_idx == -1:
+        split_idx = mid
+    left = block[:split_idx].strip()
+    right = block[split_idx:].strip()
+    chunks: List[str] = []
+    if left:
+        chunks.extend(split_oversize_block(left, build_messages_fn, max_prompt_tokens))
+    if right:
+        chunks.extend(split_oversize_block(right, build_messages_fn, max_prompt_tokens))
+    return chunks
+
+
+def chunk_markdown(markdown: str, build_messages_fn, max_prompt_tokens: int) -> List[str]:
+    blocks = split_markdown_blocks(markdown)
+    chunks: List[str] = []
+    current: List[str] = []
+
+    def join_blocks(parts: List[str]) -> str:
+        return "\n\n".join(p for p in parts if p.strip())
+
+    for block in blocks:
+        if not block.strip():
+            continue
+        for sub_block in split_oversize_block(block, build_messages_fn, max_prompt_tokens):
+            if not current:
+                current = [sub_block]
+                continue
+            candidate = join_blocks(current + [sub_block])
+            if estimate_tokens_for_messages(build_messages_fn(candidate)) <= max_prompt_tokens:
+                current.append(sub_block)
+            else:
+                chunks.append(join_blocks(current))
+                current = [sub_block]
+
+    if current:
+        chunks.append(join_blocks(current))
+    return [c for c in chunks if c.strip()]
+
 def approx_rate_per_1000_words(count: int, total_words: int) -> float:
     if total_words <= 0:
         return 0.0
@@ -119,7 +247,17 @@ def compute_measurements(text: str) -> Dict[str, Any]:
 # ---- OpenAI-compatible client ----
 
 class LLMConfig:
-    def __init__(self, api_key: str, base_url: str, model: str, max_tokens: int, temperature: float, timeout_seconds: int, extra_headers: Dict[str, str]):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str,
+        model: str,
+        max_tokens: int,
+        temperature: float,
+        timeout_seconds: int,
+        extra_headers: Dict[str, str],
+        max_prompt_tokens: int
+    ):
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -127,17 +265,20 @@ class LLMConfig:
         self.temperature = temperature
         self.timeout_seconds = timeout_seconds
         self.extra_headers = extra_headers
+        self.max_prompt_tokens = max_prompt_tokens
 
 def load_config(path: Path) -> LLMConfig:
     data = json.loads(path.read_text(encoding="utf-8"))
+    max_tokens = int(data.get("max_tokens", 6000))
     return LLMConfig(
         api_key=data["api_key"],
         base_url=data["base_url"],
         model=data["model"],
-        max_tokens=int(data.get("max_tokens", 6000)),
+        max_tokens=max_tokens,
         temperature=float(data.get("temperature", 0.2)),
         timeout_seconds=int(data.get("timeout_seconds", 120)),
-        extra_headers=dict(data.get("extra_headers", {}))
+        extra_headers=dict(data.get("extra_headers", {})),
+        max_prompt_tokens=int(data.get("max_prompt_tokens", max_tokens))
     )
 
 def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
@@ -237,6 +378,12 @@ def main() -> int:
     ap.add_argument("-i", "--in", dest="inp", required=True, type=Path, help="Input markdown file to rewrite")
     ap.add_argument("-o", "--out", type=Path, default=None, help="Output markdown path (default: <input>.styled.md)")
     ap.add_argument("-v", "--verbose", action="store_true", help="Enable progress logging")
+    ap.add_argument(
+        "--max-prompt-tokens",
+        type=int,
+        default=None,
+        help="Maximum prompt tokens before chunking (default: config max_prompt_tokens)"
+    )
     args = ap.parse_args()
 
     if args.fingerprint.suffix == "":
@@ -254,6 +401,8 @@ def main() -> int:
     vprint(f"Using config: {args.config}")
 
     cfg = load_config(args.config)
+    if args.max_prompt_tokens is not None:
+        cfg.max_prompt_tokens = args.max_prompt_tokens
 
     if not args.fingerprint.exists():
         print(f"Fingerprint not found: {args.fingerprint}", file=sys.stderr)
@@ -265,36 +414,73 @@ def main() -> int:
     vprint("Loading fingerprint and input...")
     fingerprint = json.loads(args.fingerprint.read_text(encoding="utf-8"))
     input_md = args.inp.read_text(encoding="utf-8")
-    vprint("Computing input measurements...")
-    input_meas = compute_measurements(input_md)
 
-    vprint("Calling LLM to apply fingerprint...")
-    messages = build_apply_prompt(fingerprint, input_md, input_meas, cfg)
-    raw = chat_completions(cfg, messages)
+    all_deviations: List[Any] = []
+    outputs: List[str] = []
 
-    try:
-        out_obj = parse_json_strict(raw)
-    except Exception:
-        vprint("Invalid JSON returned; attempting repair...")
-        out_obj = repair_json_with_llm(cfg, raw)
+    def build_messages_for_chunk(md_chunk: str) -> List[Dict[str, str]]:
+        input_meas = compute_measurements(md_chunk)
+        return build_apply_prompt(fingerprint, md_chunk, input_meas, cfg)
 
-    final_md = out_obj.get("final_markdown")
-    if not isinstance(final_md, str) or not final_md.strip():
-        print("LLM did not return final_markdown.", file=sys.stderr)
-        # As fallback, write raw response for inspection
-        print(raw)
-        return 3
+    initial_messages = build_messages_for_chunk(input_md)
+    initial_tokens = estimate_tokens_for_messages(initial_messages)
+    if initial_tokens <= cfg.max_prompt_tokens:
+        vprint("Calling LLM to apply fingerprint...")
+        raw = chat_completions(cfg, initial_messages)
 
+        try:
+            out_obj = parse_json_strict(raw)
+        except Exception:
+            vprint("Invalid JSON returned; attempting repair...")
+            out_obj = repair_json_with_llm(cfg, raw)
+
+        final_md = out_obj.get("final_markdown")
+        if not isinstance(final_md, str) or not final_md.strip():
+            print("LLM did not return final_markdown.", file=sys.stderr)
+            print(raw)
+            return 3
+        outputs.append(final_md)
+        all_deviations.extend(out_obj.get("deviations", []) or [])
+    else:
+        vprint(f"Prompt too large ({initial_tokens} tokens); chunking input...")
+        chunks = chunk_markdown(input_md, build_messages_for_chunk, cfg.max_prompt_tokens)
+        vprint(f"Chunked into {len(chunks)} parts.")
+        for idx, chunk in enumerate(chunks, start=1):
+            vprint(f"Rewriting chunk {idx}/{len(chunks)}...")
+            messages = build_messages_for_chunk(chunk)
+            raw = chat_completions(cfg, messages)
+            try:
+                out_obj = parse_json_strict(raw)
+            except Exception:
+                vprint("Invalid JSON returned; attempting repair...")
+                out_obj = repair_json_with_llm(cfg, raw)
+
+            final_md = out_obj.get("final_markdown")
+            if not isinstance(final_md, str) or not final_md.strip():
+                print("LLM did not return final_markdown.", file=sys.stderr)
+                print(raw)
+                return 3
+            outputs.append(final_md)
+            deviations = out_obj.get("deviations", []) or []
+            for d in deviations:
+                if isinstance(d, dict):
+                    d = dict(d)
+                    d.setdefault("chunk_index", idx)
+                    d.setdefault("chunk_total", len(chunks))
+                    all_deviations.append(d)
+                else:
+                    all_deviations.append({"chunk_index": idx, "chunk_total": len(chunks), "detail": d})
+
+    final_md = "\n\n".join(s.strip() for s in outputs if s.strip()).strip()
     out_path = args.out or args.inp.with_suffix(args.inp.suffix + ".styled.md")
     vprint(f"Writing output: {out_path}")
     out_path.write_text(final_md, encoding="utf-8")
     print(f"Wrote rewritten markdown to: {out_path}")
 
     # Optionally also write deviations report
-    deviations = out_obj.get("deviations", [])
-    if deviations:
+    if all_deviations:
         rep = out_path.with_suffix(out_path.suffix + ".deviations.json")
-        rep.write_text(json.dumps(deviations, ensure_ascii=False, indent=2), encoding="utf-8")
+        rep.write_text(json.dumps(all_deviations, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"Wrote deviations report to: {rep}")
     vprint("Done.")
 

@@ -269,6 +269,19 @@ def histogram(values: List[int], bins: List[Tuple[int, Optional[int]]]) -> List[
         return [0.0] * len(bins)
     return [c / total for c in counts]
 
+
+def estimate_tokens(text: str) -> int:
+    # Rough heuristic: ~4 characters per token.
+    return max(1, (len(text) + 3) // 4)
+
+
+def estimate_tokens_for_messages(messages: List[Dict[str, str]]) -> int:
+    total = 0
+    for msg in messages:
+        total += estimate_tokens(msg.get("content", ""))
+        total += 4
+    return total + 2
+
 def approx_rate_per_1000_words(count: int, total_words: int) -> float:
     if total_words <= 0:
         return 0.0
@@ -435,17 +448,20 @@ class LLMConfig:
     temperature: float = 0.2
     timeout_seconds: int = 120
     extra_headers: Dict[str, str] = dataclasses.field(default_factory=dict)
+    max_prompt_tokens: int = 100000
 
 def load_config(path: Path) -> LLMConfig:
     data = json.loads(path.read_text(encoding="utf-8"))
+    max_tokens = int(data.get("max_tokens", 6000))
     return LLMConfig(
         api_key=data["api_key"],
         base_url=data["base_url"].rstrip("/"),
         model=data["model"],
-        max_tokens=int(data.get("max_tokens", 6000)),
+        max_tokens=max_tokens,
         temperature=float(data.get("temperature", 0.2)),
         timeout_seconds=int(data.get("timeout_seconds", 120)),
         extra_headers=dict(data.get("extra_headers", {})),
+        max_prompt_tokens=int(data.get("max_prompt_tokens", max_tokens)),
     )
 
 def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
@@ -557,6 +573,73 @@ def build_fingerprint_prompt(measurements: Dict[str, Any], excerpts: List[Dict[s
     ]
 
 
+def slim_fingerprint_for_merge(fingerprint: Dict[str, Any]) -> Dict[str, Any]:
+    slim = dict(fingerprint)
+    slim.pop("measurements", None)
+    return slim
+
+
+def build_merge_prompt(
+    fingerprint_a: Dict[str, Any],
+    fingerprint_b: Dict[str, Any],
+    measurements: Dict[str, Any],
+    cfg: LLMConfig
+) -> List[Dict[str, str]]:
+    schema = fingerprint_schema_template()
+    system = (
+        "You are a JSON merger for style fingerprints.\n"
+        "You MUST output valid JSON only (no markdown, no extra commentary).\n"
+        "Preserve meaning and reconcile conflicts by favoring evidence in measurements.\n"
+        "If uncertain, use null and record a limitation.\n"
+    )
+    user = {
+        "task": "Merge the two partial fingerprints into a single coherent STYLE FINGERPRINT JSON.",
+        "output_requirements": [
+            "Output MUST be valid JSON only.",
+            "Must include keys: schema_version, profile_id, metadata, measurements, targets, lexicon, templates, controls, validators, derived_instructions.",
+            "Embed the provided measurements verbatim under measurements.",
+            "Reconcile conflicts, prefer measurements over excerpt inferences, and keep wording consistent."
+        ],
+        "schema_hint": schema,
+        "measurements": measurements,
+        "fingerprint_a": fingerprint_a,
+        "fingerprint_b": fingerprint_b
+    }
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": json.dumps(user, ensure_ascii=False)}
+    ]
+
+
+def chunk_excerpts(
+    excerpts: List[Dict[str, str]],
+    measurements: Dict[str, Any],
+    cfg: LLMConfig,
+    max_prompt_tokens: int
+) -> List[List[Dict[str, str]]]:
+    base_messages = build_fingerprint_prompt(measurements, [], cfg)
+    base_tokens = estimate_tokens_for_messages(base_messages)
+    if base_tokens >= max_prompt_tokens:
+        return [excerpts[:1]] if excerpts else [[]]
+    batches: List[List[Dict[str, str]]] = []
+    current: List[Dict[str, str]] = []
+    current_tokens = base_tokens
+
+    for ex in excerpts:
+        ex_tokens = estimate_tokens(json.dumps(ex, ensure_ascii=False))
+        if current and (current_tokens + ex_tokens) > max_prompt_tokens:
+            batches.append(current)
+            current = [ex]
+            current_tokens = base_tokens + ex_tokens
+        else:
+            current.append(ex)
+            current_tokens += ex_tokens
+
+    if current:
+        batches.append(current)
+    return batches
+
+
 def parse_json_strict(s: str) -> Dict[str, Any]:
     s = s.strip()
     # Some models wrap in ```json ... ```; strip that if present.
@@ -600,6 +683,12 @@ def main() -> int:
     )
     ap.add_argument("-v", "--verbose", action="store_true", help="Enable progress logging")
     ap.add_argument(
+        "--max-prompt-tokens",
+        type=int,
+        default=None,
+        help="Maximum prompt tokens before chunking (default: config max_prompt_tokens)"
+    )
+    ap.add_argument(
         "--profile-id",
         default=None,
         help="Profile ID to set in output JSON (default: output filename without .json)"
@@ -630,6 +719,8 @@ def main() -> int:
     vprint(f"Output path: {args.out}")
 
     cfg = load_config(args.config)
+    if args.max_prompt_tokens is not None:
+        cfg.max_prompt_tokens = args.max_prompt_tokens
 
     if not args.archive.exists():
         print(f"Archive not found: {args.archive}", file=sys.stderr)
@@ -655,13 +746,45 @@ def main() -> int:
 
         vprint("Calling LLM to synthesize fingerprint...")
         messages = build_fingerprint_prompt(measurements, excerpts, cfg)
-        raw = chat_completions(cfg, messages)
+        prompt_tokens = estimate_tokens_for_messages(messages)
+        if prompt_tokens <= cfg.max_prompt_tokens:
+            raw = chat_completions(cfg, messages)
+            try:
+                fingerprint = parse_json_strict(raw)
+            except Exception:
+                vprint("Invalid JSON returned; attempting repair...")
+                fingerprint = repair_json_with_llm(cfg, raw)
+        else:
+            vprint(f"Prompt too large ({prompt_tokens} tokens); chunking excerpts...")
+            batches = chunk_excerpts(excerpts, measurements, cfg, cfg.max_prompt_tokens)
+            vprint(f"Chunked into {len(batches)} excerpt batches.")
+            partials: List[Dict[str, Any]] = []
+            for idx, batch in enumerate(batches, start=1):
+                vprint(f"Synthesizing partial fingerprint {idx}/{len(batches)}...")
+                batch_messages = build_fingerprint_prompt(measurements, batch, cfg)
+                raw = chat_completions(cfg, batch_messages)
+                try:
+                    partial = parse_json_strict(raw)
+                except Exception:
+                    vprint("Invalid JSON returned; attempting repair...")
+                    partial = repair_json_with_llm(cfg, raw)
+                partials.append(partial)
 
-        try:
-            fingerprint = parse_json_strict(raw)
-        except Exception:
-            vprint("Invalid JSON returned; attempting repair...")
-            fingerprint = repair_json_with_llm(cfg, raw)
+            fingerprint = partials[0]
+            for idx, partial in enumerate(partials[1:], start=2):
+                vprint(f"Merging partial fingerprint {idx}/{len(partials)}...")
+                merge_messages = build_merge_prompt(
+                    slim_fingerprint_for_merge(fingerprint),
+                    slim_fingerprint_for_merge(partial),
+                    measurements,
+                    cfg
+                )
+                raw = chat_completions(cfg, merge_messages)
+                try:
+                    fingerprint = parse_json_strict(raw)
+                except Exception:
+                    vprint("Invalid JSON returned; attempting repair...")
+                    fingerprint = repair_json_with_llm(cfg, raw)
 
         # Ensure essential fields
         fingerprint.setdefault("schema_version", "1.0.0")
