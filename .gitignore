@@ -1,5 +1,3 @@
 config.llm.json
 test/
 __pycache__
-__pycache__/fingerprint_style.cpython-310.pyc
-__pycache__/apply_fingerprint.cpython-310.pyc
