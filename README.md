@@ -17,6 +17,7 @@ This repository provides:
 - `scripts/` — bash wrappers for invoking the Python entry points
 
 Unlike fine‑tuning or opaque embeddings, this system uses an **explicit, versionable JSON style model** that you can inspect, edit, audit, and reuse.
+It also provides a **humanization-aware conflict‑resolution layer** that integrates humanizer guidelines directly into the rewrite step without violating the fingerprint’s style constraints.
 
 ---
 ## License

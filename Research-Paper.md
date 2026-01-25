@@ -7,10 +7,10 @@
 
 ## Abstract
 
-We present **Stylometric-Transfer**, a practical method for (i) **stylometric profiling** of an author's writing corpus into an explicit, interpretable JSON artifact (a *style fingerprint*) and (ii) **meaning-preserving style transfer** that rewrites new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement--e.g., punctuation rates and sentence-length distributions--with LLM-mediated synthesis into human-editable constraints (ranges, histograms, lexicon rules, rhetorical templates). We formalize the fingerprint as a constraint set and provide a constraint-satisfaction decoding view for LLM rewriting, together with compliance scoring based on distributional divergences. This hybrid design offers an auditable alternative to purely latent "style embeddings" while remaining consistent with established stylometry and text style transfer literature.
+We present **Stylometric-Transfer**, a practical method for (i) **stylometric profiling** of an author's writing corpus into an explicit, interpretable JSON artifact (a *style fingerprint*) and (ii) **meaning-preserving style transfer** that rewrites new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement--e.g., punctuation rates and sentence-length distributions--with LLM-mediated synthesis into human-editable constraints (ranges, histograms, lexicon rules, rhetorical templates). We formalize the fingerprint as a constraint set and provide a constraint-satisfaction decoding view for LLM rewriting, together with compliance scoring based on distributional divergences. A novel contribution is the unification of stylometric transfer and humanization in a single framework by formalizing and quantifying a conflict-resolution layer that filters humanization guidelines against fingerprint constraints. This hybrid design offers an auditable alternative to purely latent "style embeddings" while remaining consistent with established stylometry and text style transfer literature.
 
 <div class="page-footer">
-  <span class="footer-left">(c) 2006 Nicolas Pepin</span>
+  <span class="footer-left">(c) 2026 Nicolas Pepin</span>
 </div>
 
 ---
@@ -21,7 +21,7 @@ We present **Stylometric-Transfer**, a practical method for (i) **stylometric pr
 
 Separately, **text style transfer (TST)** aims to transform text so stylistic properties match a target style while preserving style-independent content. A recurring challenge is separating "content" from "style" without parallel data, motivating methods such as cross-alignment approaches and ongoing evaluation/ethical discussions. ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com))
 
-This paper motivates a hybrid approach: represent style explicitly as a **stylometric style fingerprint** (JSON) and use an LLM as a constrained rewriter guided by (a) the fingerprint and (b) locally measured statistics of both the author corpus and the candidate text.
+This paper motivates a hybrid approach: represent style explicitly as a **stylometric style fingerprint** (JSON) and use an LLM as a constrained rewriter guided by (a) the fingerprint and (b) locally measured statistics of both the author corpus and the candidate text. **We further show how humanization guidelines can be integrated without violating voice constraints by defining a conflict-resolution layer that deterministically filters guideline rules when they contradict fingerprint signals or the input’s stylistic scaffolding.**
 
 ---
 
@@ -35,6 +35,10 @@ Stylometric authorship attribution typically uses robust, interpretable features
 
 Non-parallel TST methods such as **cross-alignment** demonstrate the feasibility of changing certain stylistic attributes without parallel sentence pairs. ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com))  
 Recent surveys highlight broad application scenarios alongside open challenges in evaluation and ethical risk (e.g., misuse for impersonation), supporting explicit safeguards and transparency in TST pipelines. ([arxiv.org](https://arxiv.org/abs/2407.16737?utm_source=chatgpt.com))
+
+### 2.3 Humanization-Aware Stylometric Transfer
+
+Most style-transfer pipelines treat "humanization" as a separate editing pass. Stylometric-Transfer integrates humanization directly into constraint-guided rewriting by formalizing a **conflict-resolution layer**: humanization guidelines are applied only when they do not violate fingerprint-derived constraints or the input's structural scaffold (e.g., heading case, inline-header lists). This yields a single, auditable framework that balances stylistic fidelity with de-AI artifacts, rather than layering post-hoc edits that can drift away from the author's voice.
 
 ---
 
