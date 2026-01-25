@@ -8,7 +8,7 @@ Or, in plain language: Get an LLM to apply your writing style to any text input.
 
 It really works but comments welcome ;)!
 
-For more information, see `Article-Teaching-Machines-to-Write-Like-You.md` amd `Research-Paper.md`. 
+For more information, see `Article-Teaching-Machines-to-Write-Like-You.md` and `Research-Paper.md`.
 
 This repository provides:
 - `fingerprint_style.py` — extract a **style fingerprint (stylometric profile)** from an archive of writing
@@ -106,6 +106,7 @@ In research terms, this system implements:
   - Meaning preservation
   - Structural fidelity
   - Deviation reporting
+- Filters out blockquotes, reference sections, footnotes, and citation markers from style measurements and excerpts, and preserves them verbatim during rewrite
 - Strips embedded BASE64 images before sending prompts to the LLM and re-embeds them in output
 - OpenAI‑compatible (works with OpenAI, Azure OpenAI, vLLM, etc.)
 - Interpretable, editable, versionable style models
@@ -216,7 +217,7 @@ Large corpora are chunked automatically based on `max_prompt_tokens` (override w
 
 This will:
 - Extract the archive
-- Measure stylistic statistics
+- Measure stylistic statistics (excluding blockquotes, reference sections, footnotes, and inline citations)
 - Send measurements + excerpts to the LLM
 - Produce `my_fingerprint.json`
 
@@ -243,6 +244,7 @@ Or use the wrapper script:
 Pass `-c/--config` to use a non-default config path. Use `-v/--verbose` for progress logging. `-f/--fingerprint` adds `.json` if no extension is provided. Long inputs are automatically chunked based on `max_prompt_tokens` (override with `--max-prompt-tokens`).
 
 Embedded BASE64 images are stripped from prompts to avoid token blowups and re-inserted into the rewritten output.
+Blockquotes, reference sections, footnotes, and inline citations are preserved verbatim and excluded from style transfer.
 
 Outputs:
 

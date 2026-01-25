@@ -57,6 +57,7 @@ except Exception:
 # Script overview:
 # - Extract a corpus archive into a temp directory
 # - Read text-like files and normalize content
+# - Filter blockquotes, references, footnotes, and inline citations from style analysis
 # - Compute lightweight, interpretable stylometric measurements
 # - Select representative excerpts
 # - Build a prompt from prompts.json and call an OpenAI-compatible LLM
@@ -70,6 +71,7 @@ TEXT_EXTS = {
 DOCX_EXTS = {".docx"}
 
 BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\s]+", re.IGNORECASE)
+BASE64_PLACEHOLDER_RE = re.compile(r"\[\[BASE64_IMAGE(?:_\d+)?\]\]")
 DEFAULT_MAX_FILES = 2000
 DEFAULT_MAX_BYTES_PER_FILE = 2_000_000  # 2 MB per file
 DEFAULT_MAX_TOTAL_CHARS_FOR_LLM = 180_000  # excerpt cap; we send stats + representative excerpts
@@ -162,6 +164,153 @@ def strip_base64_images(text: str) -> str:
     return BASE64_IMAGE_RE.sub("[[BASE64_IMAGE]]", text)
 
 
+REFERENCE_HEADINGS = {
+    "references",
+    "bibliography",
+    "works cited",
+    "citations",
+    "sources",
+    "endnotes",
+    "footnotes",
+    "notes"
+}
+ATX_HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.+?)\s*$")
+SETEXT_H1_RE = re.compile(r"^\s*=+\s*$")
+SETEXT_H2_RE = re.compile(r"^\s*-+\s*$")
+BLOCKQUOTE_LINE_RE = re.compile(r"^\s*>")
+FOOTNOTE_DEF_RE = re.compile(r"^\s*\[\^[^\]]+\]:")
+
+INLINE_FOOTNOTE_RE = re.compile(r"\[\^[^\]]+\]")
+INLINE_NUMERIC_CITE_RE = re.compile(r"\[(?:\d+|[IVX]+)(?:\s*[-–,;]\s*(?:\d+|[IVX]+))*\]")
+PAREN_GROUP_RE = re.compile(r"\([^()]{1,80}\)")
+
+
+def normalize_heading_text(text: str) -> str:
+    text = re.sub(r"[^a-z0-9\s]", "", text.lower())
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def get_heading_at(lines: List[str], idx: int) -> Optional[Tuple[int, str, int]]:
+    # Return (level, heading_text, span_lines) if a heading starts at idx.
+    line = lines[idx]
+    m = ATX_HEADING_RE.match(line)
+    if m:
+        level = len(m.group(1))
+        return (level, m.group(2).strip(), 1)
+    if idx + 1 < len(lines):
+        underline = lines[idx + 1]
+        if SETEXT_H1_RE.match(underline):
+            return (1, line.strip(), 2)
+        if SETEXT_H2_RE.match(underline):
+            return (2, line.strip(), 2)
+    return None
+
+
+def is_reference_heading(text: str) -> bool:
+    return normalize_heading_text(text) in REFERENCE_HEADINGS
+
+
+def find_reference_sections(lines: List[str]) -> List[Tuple[int, int]]:
+    # Return list of (start_idx, end_idx) line ranges for reference-like sections.
+    sections: List[Tuple[int, int]] = []
+    i = 0
+    while i < len(lines):
+        h = get_heading_at(lines, i)
+        if not h:
+            i += 1
+            continue
+        level, heading_text, span = h
+        if is_reference_heading(heading_text):
+            start = i
+            i += span
+            end = len(lines)
+            j = i
+            while j < len(lines):
+                next_h = get_heading_at(lines, j)
+                if next_h and next_h[0] <= level:
+                    end = j
+                    break
+                j += 1
+            sections.append((start, end))
+            i = end
+            continue
+        i += span
+    return sections
+
+
+def strip_non_voice_sections(text: str) -> str:
+    # Remove blockquotes, reference sections, and footnote definitions.
+    text = re.sub(r"(?is)<blockquote[^>]*>.*?</blockquote>", "\n", text)
+    lines = text.splitlines()
+    ref_sections = find_reference_sections(lines)
+    ref_iter = iter(ref_sections)
+    current_ref = next(ref_iter, None)
+    out_lines: List[str] = []
+    i = 0
+    while i < len(lines):
+        if current_ref and i == current_ref[0]:
+            i = current_ref[1]
+            current_ref = next(ref_iter, None)
+            continue
+        line = lines[i]
+        if BLOCKQUOTE_LINE_RE.match(line):
+            i += 1
+            continue
+        if FOOTNOTE_DEF_RE.match(line):
+            i += 1
+            while i < len(lines) and (lines[i].startswith("    ") or lines[i].startswith("\t")):
+                i += 1
+            continue
+        out_lines.append(line)
+        i += 1
+    cleaned = "\n".join(out_lines)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
+def is_parenthetical_citation(inner: str) -> bool:
+    if not re.search(r"\b(19|20)\d{2}[a-z]?\b", inner):
+        return False
+    if re.search(r"\bet\s+al\.?\b", inner, re.IGNORECASE):
+        return True
+    if re.search(r"\b(cf\.|see|see also)\b", inner, re.IGNORECASE):
+        return True
+    if "," in inner or ";" in inner:
+        return True
+    m = re.search(r"\b([A-Z][A-Za-z'’.-]+)\s+(19|20)\d{2}[a-z]?\b", inner)
+    if m:
+        month = m.group(1).lower()
+        if month not in {
+            "january", "february", "march", "april", "may", "june",
+            "july", "august", "september", "october", "november", "december"
+        }:
+            return True
+    return False
+
+
+def strip_inline_citations(text: str) -> str:
+    # Remove inline citation markers while keeping surrounding prose.
+    text = INLINE_FOOTNOTE_RE.sub("", text)
+    text = INLINE_NUMERIC_CITE_RE.sub("", text)
+
+    def repl(match: re.Match[str]) -> str:
+        inner = match.group(0)[1:-1]
+        return "" if is_parenthetical_citation(inner) else match.group(0)
+
+    text = PAREN_GROUP_RE.sub(repl, text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r" *\n *", "\n", text)
+    return text.strip()
+
+
+def filter_author_voice_text(text: str) -> str:
+    # Remove non-author voice segments and inline citations for measurements/excerpts.
+    text = strip_non_voice_sections(text)
+    text = BASE64_PLACEHOLDER_RE.sub("", text)
+    text = strip_inline_citations(text)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
 def iter_corpus_texts(root: Path, max_files: int, max_bytes_per_file: int) -> List[Tuple[str, str]]:
     """
     Returns list of (relative_path, text).
@@ -186,6 +335,7 @@ def iter_corpus_texts(root: Path, max_files: int, max_bytes_per_file: int) -> Li
             continue
 
         txt = strip_base64_images(txt)
+        txt = filter_author_voice_text(txt)
 
         # Skip tiny/empty
         if len(txt) < 200:

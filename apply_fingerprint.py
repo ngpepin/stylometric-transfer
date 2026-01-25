@@ -38,12 +38,36 @@ import requests
 # - Call an OpenAI-compatible LLM to rewrite while preserving meaning
 # - Handle oversized prompts by chunking the Markdown
 # - Strip base64 images before prompting, then reinsert after rewriting
+# - Preserve non-voice blocks (blockquotes, references, footnotes, citations) verbatim
 
 WORD_RE = re.compile(r"[A-Za-z0-9]+(?:'[A-Za-z0-9]+)?")
 SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[])")
 PARA_SPLIT_RE = re.compile(r"\n\s*\n+")
 BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\s]+", re.IGNORECASE)
+BASE64_PLACEHOLDER_RE = re.compile(r"\[\[BASE64_IMAGE_\d+\]\]")
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
+
+REFERENCE_HEADINGS = {
+    "references",
+    "bibliography",
+    "works cited",
+    "citations",
+    "sources",
+    "endnotes",
+    "footnotes",
+    "notes"
+}
+ATX_HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.+?)\s*$")
+SETEXT_H1_RE = re.compile(r"^\s*=+\s*$")
+SETEXT_H2_RE = re.compile(r"^\s*-+\s*$")
+BLOCKQUOTE_LINE_RE = re.compile(r"^\s*>")
+FOOTNOTE_DEF_RE = re.compile(r"^\s*\[\^[^\]]+\]:")
+
+INLINE_FOOTNOTE_RE = re.compile(r"\[\^[^\]]+\]")
+INLINE_NUMERIC_CITE_RE = re.compile(r"\[(?:\d+|[IVX]+)(?:\s*[-–,;]\s*(?:\d+|[IVX]+))*\]")
+PAREN_GROUP_RE = re.compile(r"\([^()]{1,80}\)")
+FROZEN_BLOCK_RE = re.compile(r"\[\[FROZEN_BLOCK_\d+\]\]")
+CITATION_PLACEHOLDER_RE = re.compile(r"\[\[CITATION_\d+\]\]")
 
 def load_prompts() -> Dict[str, Any]:
     # Load externalized prompt templates located alongside this script.
@@ -122,6 +146,223 @@ def restore_base64_images(text: str, mapping: Dict[str, str], placeholders: List
 def find_base64_placeholders(text: str) -> List[str]:
     # Helper to detect placeholders in rewritten output.
     return re.findall(r"\[\[BASE64_IMAGE_\d+\]\]", text)
+
+
+def normalize_heading_text(text: str) -> str:
+    text = re.sub(r"[^a-z0-9\s]", "", text.lower())
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def get_heading_at(lines: List[str], idx: int) -> tuple[int, str, int] | None:
+    # Return (level, heading_text, span_lines) if a heading starts at idx.
+    line = lines[idx]
+    m = ATX_HEADING_RE.match(line)
+    if m:
+        return (len(m.group(1)), m.group(2).strip(), 1)
+    if idx + 1 < len(lines):
+        underline = lines[idx + 1]
+        if SETEXT_H1_RE.match(underline):
+            return (1, line.strip(), 2)
+        if SETEXT_H2_RE.match(underline):
+            return (2, line.strip(), 2)
+    return None
+
+
+def is_reference_heading(text: str) -> bool:
+    return normalize_heading_text(text) in REFERENCE_HEADINGS
+
+
+def find_reference_sections(lines: List[str]) -> List[tuple[int, int]]:
+    # Return list of (start_idx, end_idx) line ranges for reference-like sections.
+    sections: List[tuple[int, int]] = []
+    i = 0
+    while i < len(lines):
+        h = get_heading_at(lines, i)
+        if not h:
+            i += 1
+            continue
+        level, heading_text, span = h
+        if is_reference_heading(heading_text):
+            start = i
+            i += span
+            end = len(lines)
+            j = i
+            while j < len(lines):
+                next_h = get_heading_at(lines, j)
+                if next_h and next_h[0] <= level:
+                    end = j
+                    break
+                j += 1
+            sections.append((start, end))
+            i = end
+            continue
+        i += span
+    return sections
+
+
+def strip_non_voice_sections(text: str) -> str:
+    # Remove blockquotes, reference sections, and footnote definitions.
+    text = re.sub(r"(?is)<blockquote[^>]*>.*?</blockquote>", "\n", text)
+    lines = text.splitlines()
+    ref_sections = find_reference_sections(lines)
+    ref_iter = iter(ref_sections)
+    current_ref = next(ref_iter, None)
+    out_lines: List[str] = []
+    i = 0
+    while i < len(lines):
+        if current_ref and i == current_ref[0]:
+            i = current_ref[1]
+            current_ref = next(ref_iter, None)
+            continue
+        line = lines[i]
+        if BLOCKQUOTE_LINE_RE.match(line):
+            i += 1
+            continue
+        if FOOTNOTE_DEF_RE.match(line):
+            i += 1
+            while i < len(lines) and (lines[i].startswith("    ") or lines[i].startswith("\t")):
+                i += 1
+            continue
+        out_lines.append(line)
+        i += 1
+    cleaned = "\n".join(out_lines)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
+def is_parenthetical_citation(inner: str) -> bool:
+    if not re.search(r"\b(19|20)\d{2}[a-z]?\b", inner):
+        return False
+    if re.search(r"\bet\s+al\.?\b", inner, re.IGNORECASE):
+        return True
+    if re.search(r"\b(cf\.|see|see also)\b", inner, re.IGNORECASE):
+        return True
+    if "," in inner or ";" in inner:
+        return True
+    m = re.search(r"\b([A-Z][A-Za-z'’.-]+)\s+(19|20)\d{2}[a-z]?\b", inner)
+    if m:
+        month = m.group(1).lower()
+        if month not in {
+            "january", "february", "march", "april", "may", "june",
+            "july", "august", "september", "october", "november", "december"
+        }:
+            return True
+    return False
+
+
+def strip_inline_citations(text: str) -> str:
+    # Remove inline citation markers while keeping surrounding prose.
+    text = INLINE_FOOTNOTE_RE.sub("", text)
+    text = INLINE_NUMERIC_CITE_RE.sub("", text)
+
+    def repl(match: re.Match[str]) -> str:
+        inner = match.group(0)[1:-1]
+        return "" if is_parenthetical_citation(inner) else match.group(0)
+
+    text = PAREN_GROUP_RE.sub(repl, text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r" *\n *", "\n", text)
+    return text.strip()
+
+
+def filter_author_voice_text(text: str) -> str:
+    # Remove non-author voice segments and inline citations for measurements.
+    text = strip_non_voice_sections(text)
+    text = BASE64_PLACEHOLDER_RE.sub("", text)
+    text = strip_inline_citations(text)
+    text = FROZEN_BLOCK_RE.sub("", text)
+    text = CITATION_PLACEHOLDER_RE.sub("", text)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
+def mask_non_voice_blocks(markdown: str) -> tuple[str, Dict[str, str]]:
+    # Replace non-voice blocks with placeholders to preserve them verbatim.
+    mapping: Dict[str, str] = {}
+    counter = 0
+
+    def make_placeholder(block: str) -> str:
+        nonlocal counter
+        placeholder = f"[[FROZEN_BLOCK_{counter}]]"
+        mapping[placeholder] = block
+        counter += 1
+        return placeholder
+
+    def repl_html(match: re.Match[str]) -> str:
+        return make_placeholder(match.group(0))
+
+    text = re.sub(r"(?is)<blockquote[^>]*>.*?</blockquote>", repl_html, markdown)
+    lines = text.splitlines()
+    out_lines: List[str] = []
+    ref_sections = find_reference_sections(lines)
+    ref_iter = iter(ref_sections)
+    current_ref = next(ref_iter, None)
+    i = 0
+    while i < len(lines):
+        if current_ref and i == current_ref[0]:
+            block = "\n".join(lines[current_ref[0]:current_ref[1]])
+            out_lines.append(make_placeholder(block))
+            i = current_ref[1]
+            current_ref = next(ref_iter, None)
+            continue
+        line = lines[i]
+        if BLOCKQUOTE_LINE_RE.match(line):
+            start = i
+            i += 1
+            while i < len(lines) and BLOCKQUOTE_LINE_RE.match(lines[i]):
+                i += 1
+            block = "\n".join(lines[start:i])
+            out_lines.append(make_placeholder(block))
+            continue
+        if FOOTNOTE_DEF_RE.match(line):
+            start = i
+            i += 1
+            while i < len(lines) and (lines[i].startswith("    ") or lines[i].startswith("\t")):
+                i += 1
+            block = "\n".join(lines[start:i])
+            out_lines.append(make_placeholder(block))
+            continue
+        out_lines.append(line)
+        i += 1
+    return ("\n".join(out_lines), mapping)
+
+
+def mask_inline_citations(text: str) -> tuple[str, Dict[str, str]]:
+    # Replace inline citations with placeholders to preserve them verbatim.
+    mapping: Dict[str, str] = {}
+    counter = 0
+
+    def make_placeholder(match_text: str) -> str:
+        nonlocal counter
+        placeholder = f"[[CITATION_{counter}]]"
+        mapping[placeholder] = match_text
+        counter += 1
+        return placeholder
+
+    def repl_simple(match: re.Match[str]) -> str:
+        return make_placeholder(match.group(0))
+
+    text = INLINE_FOOTNOTE_RE.sub(repl_simple, text)
+    text = INLINE_NUMERIC_CITE_RE.sub(repl_simple, text)
+
+    def repl_paren(match: re.Match[str]) -> str:
+        inner = match.group(0)[1:-1]
+        return make_placeholder(match.group(0)) if is_parenthetical_citation(inner) else match.group(0)
+
+    text = PAREN_GROUP_RE.sub(repl_paren, text)
+    return text, mapping
+
+
+def restore_placeholders(text: str, mapping: Dict[str, str]) -> str:
+    if not mapping:
+        return text
+    for placeholder, original in mapping.items():
+        if placeholder in text:
+            text = text.replace(placeholder, original)
+    return text
+
+
+def find_placeholders(text: str, pattern: re.Pattern[str]) -> List[str]:
+    return pattern.findall(text)
 
 
 def estimate_tokens(text: str) -> int:
@@ -567,13 +808,16 @@ def main() -> int:
     input_md, base64_map = strip_base64_images(input_md)
     if base64_map:
         vprint(f"Stripped {len(base64_map)} base64 image embed(s) from prompt.")
+    # Mask non-voice blocks and inline citations so they are preserved verbatim.
+    input_md, frozen_blocks = mask_non_voice_blocks(input_md)
+    input_md, citation_map = mask_inline_citations(input_md)
 
     all_deviations: List[Any] = []
     outputs: List[str] = []
 
     def build_messages_for_chunk(md_chunk: str) -> List[Dict[str, str]]:
         # Build prompts per chunk using local measurements.
-        input_meas = compute_measurements(md_chunk)
+        input_meas = compute_measurements(filter_author_voice_text(md_chunk))
         return build_apply_prompt(fingerprint, md_chunk, input_meas, cfg, prompts)
 
     initial_messages = build_messages_for_chunk(input_md)
@@ -593,6 +837,27 @@ def main() -> int:
             print("LLM did not return final_markdown.", file=sys.stderr)
             print(raw)
             return 3
+        # Ensure any frozen blocks and citation placeholders survive.
+        missing_frozen = [p for p in find_placeholders(input_md, FROZEN_BLOCK_RE) if p not in final_md]
+        if missing_frozen:
+            for p in missing_frozen:
+                all_deviations.append({
+                    "rule_or_field": "frozen_block",
+                    "reason": "Non-voice block placeholder missing from output; re-embedded at end of document.",
+                    "placeholder": p
+                })
+            final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_frozen)
+
+        missing_cites = [p for p in find_placeholders(input_md, CITATION_PLACEHOLDER_RE) if p not in final_md]
+        if missing_cites:
+            for p in missing_cites:
+                all_deviations.append({
+                    "rule_or_field": "citation",
+                    "reason": "Citation placeholder missing from output; re-embedded at end of document.",
+                    "placeholder": p
+                })
+            final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_cites)
+
         # Ensure any base64 placeholders survive and reinsert originals.
         missing = [p for p in find_base64_placeholders(input_md) if p not in final_md]
         if missing:
@@ -604,6 +869,8 @@ def main() -> int:
                 })
             footer = "\n".join(f"![]({base64_map[p]})" for p in missing if p in base64_map)
             final_md = final_md.rstrip() + "\n\n" + footer
+        final_md = restore_placeholders(final_md, frozen_blocks)
+        final_md = restore_placeholders(final_md, citation_map)
         final_md = restore_base64_images(final_md, base64_map, find_base64_placeholders(final_md))
         outputs.append(final_md)
         all_deviations.extend(out_obj.get("deviations", []) or [])
@@ -626,6 +893,30 @@ def main() -> int:
                 print("LLM did not return final_markdown.", file=sys.stderr)
                 print(raw)
                 return 3
+            # Ensure any frozen blocks and citation placeholders survive.
+            missing_frozen = [p for p in find_placeholders(chunk, FROZEN_BLOCK_RE) if p not in final_md]
+            if missing_frozen:
+                for p in missing_frozen:
+                    all_deviations.append({
+                        "rule_or_field": "frozen_block",
+                        "reason": "Non-voice block placeholder missing from output; re-embedded at end of chunk.",
+                        "placeholder": p,
+                        "chunk_index": idx,
+                        "chunk_total": len(chunks)
+                    })
+                final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_frozen)
+
+            missing_cites = [p for p in find_placeholders(chunk, CITATION_PLACEHOLDER_RE) if p not in final_md]
+            if missing_cites:
+                for p in missing_cites:
+                    all_deviations.append({
+                        "rule_or_field": "citation",
+                        "reason": "Citation placeholder missing from output; re-embedded at end of chunk.",
+                        "placeholder": p,
+                        "chunk_index": idx,
+                        "chunk_total": len(chunks)
+                    })
+                final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_cites)
             # Reinsert any missing base64 placeholders at the end of the chunk.
             missing = [p for p in find_base64_placeholders(chunk) if p not in final_md]
             if missing:
@@ -639,6 +930,8 @@ def main() -> int:
                     })
                 footer = "\n".join(f"![]({base64_map[p]})" for p in missing if p in base64_map)
                 final_md = final_md.rstrip() + "\n\n" + footer
+            final_md = restore_placeholders(final_md, frozen_blocks)
+            final_md = restore_placeholders(final_md, citation_map)
             final_md = restore_base64_images(final_md, base64_map, find_base64_placeholders(final_md))
             outputs.append(final_md)
             deviations = out_obj.get("deviations", []) or []

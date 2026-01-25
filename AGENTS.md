@@ -50,6 +50,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Extract archive
     - Read text files
     - Compute stylometric measurements locally
+    - Filter out blockquotes, reference sections, footnotes, and inline citation markers from style analysis
     - Strip embedded BASE64 images from prompts
     - Select representative excerpts
     - Call LLM to synthesise fingerprint JSON
@@ -63,6 +64,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Output: rewritten Markdown + deviations report
   - Responsibilities:
     - Measure input text
+    - Preserve blockquotes, reference sections, footnotes, and inline citations verbatim (excluded from style transfer)
     - Strip embedded BASE64 images before prompt and re-insert after rewrite
     - Call LLM with fingerprint + measurements
     - Enforce preservation of meaning
@@ -86,8 +88,8 @@ Avoid ambiguous terms like “clone” in public documentation.
 ### Data Flow
 
 ```
-Corpus → Local stats → LLM synthesis → Fingerprint JSON
-Fingerprint + Draft → Local stats → LLM rewrite → Styled Markdown
+Corpus → Voice-filtered local stats → LLM synthesis → Fingerprint JSON
+Fingerprint + Draft → Voice-filtered local stats → LLM rewrite → Styled Markdown
 ```
 
 ---
@@ -156,9 +158,10 @@ Note: `metadata.corpus` includes `document_count` and `documents` (per-document 
 ### 6.1 Fingerprint Construction
 
 Process:
-1. Compute local measurements
-2. Select representative excerpts
-3. Send both to LLM with:
+1. Filter out non‑author voice content (blockquotes, references/footnotes, inline citations)
+2. Compute local measurements
+3. Select representative excerpts
+4. Send both to LLM with:
    - Schema hint
    - JSON‑only requirement
    - Controlled vocabulary instructions
@@ -172,7 +175,7 @@ LLM must:
 
 Prompt must:
 - Include full fingerprint JSON
-- Include local measurements of input
+- Include local measurements of input (computed on author‑voice text only)
 - Enforce:
   - Preservation of meaning
   - Markdown validity
@@ -239,6 +242,7 @@ Guidelines:
 - Prefer approximate signals over fragile exact metrics
 - Avoid heavy NLP pipelines unless optional
 - Do NOT require spaCy / transformers by default
+- Exclude non‑author voice regions (blockquotes, references/footnotes, inline citations) from measurements and excerpts
 
 Future additions allowed:
 - POS tag distributions (optional)

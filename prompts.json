@@ -144,6 +144,7 @@
       "rules": [
         "Preserve meaning strictly; do not add new content.",
         "Preserve code blocks, links, and quoted material unless necessary for style and explicitly allowed.",
+        "Preserve any [[FROZEN_BLOCK_N]] and [[CITATION_N]] placeholders exactly; do not remove or alter them.",
         "Preserve any [[BASE64_IMAGE_N]] placeholders exactly; do not remove or alter them.",
         "Follow controls.priority_order if present; otherwise prioritize persona > rhetoric > paragraph > sentence > lexical > punctuation > orthography.",
         "Avoid lexicon.avoid_phrases with severity 'hard' and avoid_words with severity 'hard' if present.",
