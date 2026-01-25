@@ -101,11 +101,14 @@ In research terms, this system implements:
   - Contraction and dash usage
   - US vs Canadian spelling heuristic (English-only)
   - Common n‑grams
+  - Function‑word profile and stance signals (hedging/boosting/pronouns)
+  - Sentence‑opener and transition templates (top patterns)
 - Produces a **comprehensive JSON style profile**
 - Rewrites Markdown with:
   - Meaning preservation
   - Structural fidelity
   - Deviation reporting
+  - Optional style‑compliance retry with delta feedback
 - Filters out blockquotes, reference sections, footnotes, and citation markers from style measurements and excerpts, and preserves them verbatim during rewrite
 - Strips embedded BASE64 images before sending prompts to the LLM and re-embeds them in output
 - OpenAI‑compatible (works with OpenAI, Azure OpenAI, vLLM, etc.)
@@ -173,11 +176,46 @@ Create `config.llm.json` in the project root (used by default):
 
 Notes:
 - Default lookup for `config.llm.json`: current working directory first, then the directory containing the Python scripts
+- `config.tunables.json` can override humanizer conflict thresholds (same search path as config.llm.json)
 - `max_prompt_tokens` controls chunking for large inputs (defaults to `max_tokens`; override per run with `--max-prompt-tokens`)
 - `base_url` should be the API root (no `/chat/completions`)
 - Any OpenAI‑compatible endpoint can be used
 - Lower temperature is recommended for consistency
-- Prompt templates are stored in `prompts.json` next to the Python scripts and are loaded at runtime
+- Prompt templates are stored in `prompts.json` next to the Python scripts and are loaded at runtime (includes the `validate_phrases` template used for common‑phrase validation)
+- Optional `lexicon_hints.json` (in repo root or next to the scripts) can provide preferred/avoided phrases for fingerprinting
+
+### Tunables: `config.tunables.json`
+
+`apply_fingerprint.py` uses `config.tunables.json` to decide which humanizer guidelines conflict with the fingerprint or the input Markdown style. Any rule that conflicts is dropped before prompting.
+
+Example (defaults shown):
+
+```json
+{
+  "humanizer_conflicts": {
+    "em_dash_keep_rate": 0.5,
+    "hedge_keep_rate": 1.0,
+    "first_person_keep_rate": 0.5,
+    "contractions_avoid_threshold": 2.0,
+    "contractions_use_threshold": 0.5,
+    "heading_title_case_keep_rate": 0.6,
+    "boldface_keep_per_1000w": 3.0,
+    "inline_header_list_keep_rate": 0.2
+  }
+}
+```
+
+**What each tunable does**
+- `em_dash_keep_rate` (per 1000 words): if the fingerprint’s em‑dash rate is **at or above** this value, the “avoid em dashes” guideline is treated as conflicting and removed.
+- `hedge_keep_rate` (per 1000 words): if the fingerprint’s hedging rate is **at or above** this value, “avoid hedging” guidance is dropped.
+- `first_person_keep_rate` (per 1000 words): if the fingerprint’s first‑person rate is **below** this value (or pronoun preferences avoid first‑person), “use I/first‑person” guidance is dropped.
+- `contractions_avoid_threshold` (per 1000 words): if the fingerprint’s contraction rate is **at or above** this value, any “avoid contractions” guideline is dropped.
+- `contractions_use_threshold` (per 1000 words): if the fingerprint’s contraction rate is **below** this value, any “use contractions” guideline is dropped.
+- `heading_title_case_keep_rate` (0–1): if the input Markdown’s headings are **mostly Title Case** (ratio at/above this value), the “avoid Title Case” guideline is dropped.
+- `boldface_keep_per_1000w` (per 1000 words): if the input uses boldface **at or above** this density, “avoid boldface” guidance is dropped.
+- `inline_header_list_keep_rate` (0–1): if the input uses inline‑header list style (e.g., `- **Label:** text`) **at or above** this ratio, the “avoid inline‑header lists” guideline is dropped.
+
+All thresholds are conservative defaults. Lowering a threshold makes a conflict more likely (i.e., more rules dropped). Raising a threshold makes the humanizer rules more permissive.
 
 ---
 
@@ -212,6 +250,7 @@ Or use the wrapper script:
 ```
 
 Pass `-c/--config` to use a non-default config path. If `--profile-id` or `--author-name` are omitted, they default to the output filename without the `.json` extension (e.g., `my_fingerprint`). Use `-v/--verbose` for progress logging.
+Common phrases are validated by default with an extra LLM pass to filter OCR glitches and citation fragments. Disable this via `--no-phrase-validation`.
 
 Large corpora are chunked automatically based on `max_prompt_tokens` (override with `--max-prompt-tokens`).
 
@@ -242,6 +281,8 @@ Or use the wrapper script:
 ```
 
 Pass `-c/--config` to use a non-default config path. Use `-v/--verbose` for progress logging. `-f/--fingerprint` adds `.json` if no extension is provided. Long inputs are automatically chunked based on `max_prompt_tokens` (override with `--max-prompt-tokens`).
+Style compliance is scored locally; if the score is below the threshold, the system retries once by default with a delta report (disable with `--no-style-retry`, adjust with `--style-retry-threshold` or `--max-style-retries`).
+If `general-guidelines.md` is present in the repo root or next to the scripts, its humanization rules (adapted from softaworks/agent-toolkit by @leonardocouy) are parsed and any deterministically conflicting guidance (based on fingerprint signals like em‑dash rate, hedging, or first‑person use) is dropped before prompting. Disable via `--no-humanizer-guidelines`.
 
 Embedded BASE64 images are stripped from prompts to avoid token blowups and re-inserted into the rewritten output.
 Blockquotes, reference sections, footnotes, and inline citations are preserved verbatim and excluded from style transfer.
@@ -289,6 +330,12 @@ Run the smoke test:
 ```
 
 Artifacts are written to `tests/_artifacts/` (gitignored).
+
+The v1.1.0 regression suite (no API calls) lives in `tests/test_v1_1_0_regression.py` and is automatically executed by `run_smoke.sh`. You can also run it directly:
+
+```bash
+./tests/run_v1_1_0_regression.sh
+```
 
 ---
 

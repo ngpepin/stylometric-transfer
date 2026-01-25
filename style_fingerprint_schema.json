@@ -16,18 +16,15 @@
     "validators",
     "derived_instructions"
   ],
-
   "properties": {
     "schema_version": {
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
     },
-
     "profile_id": {
       "type": "string",
       "description": "Unique identifier for this fingerprint"
     },
-
     "metadata": {
       "type": "object",
       "required": ["author", "corpus", "extraction"],
@@ -108,115 +105,112 @@
         }
       }
     },
-
     "measurements": {
       "type": "object",
       "description": "Raw stylometric measurements extracted from corpus",
-      "required": [
-        "sentence_length_histogram",
-        "paragraph_length_histogram",
-        "punctuation_rates",
-        "orthography",
-        "structure"
-      ],
-
+      "additionalProperties": true,
       "properties": {
-        "sentence_length_histogram": { "$ref": "#/definitions/histogram" },
-        "paragraph_length_histogram": { "$ref": "#/definitions/histogram" },
-
-        "punctuation_rates": {
+        "totals": {
           "type": "object",
-          "description": "Per-1000-word punctuation densities",
           "properties": {
-            "comma": { "type": "number" },
-            "semicolon": { "type": "number" },
-            "colon": { "type": "number" },
-            "dash": { "type": "number" },
-            "ellipsis": { "type": "number" },
-            "exclamation": { "type": "number" },
-            "question": { "type": "number" }
+            "documents_used": { "type": "integer", "minimum": 0 },
+            "total_words_est": { "type": "integer", "minimum": 0 },
+            "total_sentences_est": { "type": "integer", "minimum": 0 },
+            "total_paragraphs_est": { "type": "integer", "minimum": 0 }
           }
         },
-
-        "orthography": {
+        "sentence": {
           "type": "object",
           "properties": {
-            "contractions_rate": { "type": "number" },
-            "uppercase_sentence_rate": { "type": "number" },
-            "quotes_double_ratio": { "type": "number" }
+            "length_words": {
+              "type": "object",
+              "properties": {
+                "mean": { "type": "number" },
+                "stdev": { "type": "number" },
+                "histogram_bins": { "type": "array", "items": { "type": "string" } },
+                "histogram_p": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 } }
+              }
+            }
+          }
+        },
+        "paragraph": {
+          "type": "object",
+          "properties": {
+            "length_sentences_histogram_bins": { "type": "array", "items": { "type": "string" } },
+            "length_sentences_histogram_p": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 } },
+            "one_sentence_paragraph_rate": { "type": "number" }
+          }
+        },
+        "punctuation": {
+          "type": "object",
+          "properties": {
+            "counts": { "type": "object", "additionalProperties": { "type": "number" } },
+            "rates_per_1000w": { "type": "object", "additionalProperties": { "type": "number" } },
+            "comma_density_per_100w": { "type": "number" }
           }
         },
         "orthography_signals": {
           "type": "object",
-          "description": "Optional orthography and spelling heuristics",
+          "description": "Orthography and spelling heuristics",
           "properties": {
             "contractions_rate": { "type": "number" },
             "oxford_comma_signal": { "type": "number" },
             "spelling_variant": { "$ref": "#/definitions/spelling_variant" }
           }
         },
-
-        "structure": {
+        "function_words": {
           "type": "object",
           "properties": {
-            "one_sentence_paragraph_rate": { "type": "number" },
-            "avg_sentences_per_paragraph": { "type": "number" }
+            "rates_per_1000w": { "type": "object", "additionalProperties": { "type": "number" } },
+            "top": { "type": "array", "items": { "$ref": "#/definitions/word_count" } }
+          }
+        },
+        "stance_signals": {
+          "type": "object",
+          "properties": {
+            "hedge_rate": { "type": "number" },
+            "booster_rate": { "type": "number" },
+            "directive_rate": { "type": "number" },
+            "first_person_rate": { "type": "number" },
+            "second_person_rate": { "type": "number" },
+            "third_person_rate": { "type": "number" }
+          }
+        },
+        "templates_signals": {
+          "type": "object",
+          "properties": {
+            "sentence_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
+            "transition_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } }
+          }
+        },
+        "common_phrases": {
+          "type": "object",
+          "properties": {
+            "bigrams_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
+            "trigrams_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } }
+          }
+        },
+        "common_phrases_validation": {
+          "type": "object",
+          "properties": {
+            "validated": {
+              "type": "object",
+              "properties": {
+                "bigrams_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
+                "trigrams_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } }
+              }
+            },
+            "dropped": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
+            "notes": { "type": "array", "items": { "type": "string" } }
           }
         }
       }
     },
-
     "targets": {
       "type": "object",
       "description": "Target ranges and distributions for rewriting",
-      "required": ["sentence", "paragraph", "punctuation", "orthography"],
-
+      "additionalProperties": true,
       "properties": {
-        "sentence": {
-          "type": "object",
-          "properties": {
-            "length_words": {
-              "type": "object",
-              "required": ["distribution", "tolerance"],
-              "properties": {
-                "distribution": { "$ref": "#/definitions/histogram" },
-                "tolerance": { "type": "number", "default": 0.08 }
-              }
-            }
-          }
-        },
-
-        "paragraph": {
-          "type": "object",
-          "properties": {
-            "length_sentences": {
-              "type": "object",
-              "required": ["distribution", "tolerance"],
-              "properties": {
-                "distribution": { "$ref": "#/definitions/histogram" },
-                "tolerance": { "type": "number", "default": 0.10 }
-              }
-            }
-          }
-        },
-
-        "punctuation": {
-          "type": "object",
-          "properties": {
-            "comma_density_per_100w": { "$ref": "#/definitions/range" },
-            "semicolon_density_per_100w": { "$ref": "#/definitions/range" },
-            "dash_density_per_100w": { "$ref": "#/definitions/range" },
-            "ellipsis_density_per_100w": { "$ref": "#/definitions/range" }
-          }
-        },
-
-        "orthography": {
-          "type": "object",
-          "properties": {
-            "contractions_rate": { "$ref": "#/definitions/range" },
-            "uppercase_sentence_rate": { "$ref": "#/definitions/range" }
-          }
-        },
         "persona": {
           "type": "object",
           "description": "Persona and stance constraints",
@@ -226,135 +220,61 @@
         }
       }
     },
-
     "lexicon": {
       "type": "object",
-      "required": ["avoid_words", "avoid_phrases", "preferred_phrases"],
+      "additionalProperties": true,
       "properties": {
-        "avoid_words": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "avoid_phrases": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "preferred_phrases": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
+        "preferred_words": { "type": "array", "items": { "type": "string" } },
+        "preferred_phrases": { "type": "array", "items": { "type": "string" } },
+        "avoid_words": { "type": "array", "items": { "type": "string" } },
+        "avoid_phrases": { "type": "array", "items": { "type": "string" } },
+        "synonym_preferences": { "type": "object", "additionalProperties": { "type": "string" } },
+        "notes": { "type": "string" }
       }
     },
-
     "templates": {
       "type": "object",
       "description": "Rhetorical and syntactic templates",
+      "additionalProperties": true,
       "properties": {
-        "sentence_openers": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "paragraph_openers": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "preferred_transitions": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
+        "sentence_openers": { "type": "array", "items": { "type": "string" } },
+        "paragraph_openers": { "type": "array", "items": { "type": "string" } },
+        "preferred_transitions": { "type": "array", "items": { "type": "string" } },
+        "syntactic_patterns": { "type": "array", "items": { "type": "string" } },
+        "paragraph_moves": { "type": "array", "items": { "type": "string" } },
+        "rhetorical_moves": { "type": "array", "items": { "type": "string" } }
       }
     },
-
     "controls": {
       "type": "object",
-      "required": ["priority_order", "strictness", "rewrite_policy"],
+      "additionalProperties": true,
       "properties": {
-        "priority_order": {
-          "type": "array",
-          "description": "Constraint families in decreasing priority",
-          "items": {
-            "enum": [
-              "meaning_preservation",
-              "lexicon",
-              "sentence_rhythm",
-              "paragraph_structure",
-              "punctuation",
-              "orthography",
-              "templates"
-            ]
-          }
-        },
-
-        "strictness": {
-          "type": "object",
-          "properties": {
-            "hard_constraints": {
-              "type": "array",
-              "items": { "type": "string" }
-            },
-            "soft_constraints": {
-              "type": "array",
-              "items": { "type": "string" }
-            }
-          }
-        },
-
-        "rewrite_policy": {
-          "type": "object",
-          "properties": {
-            "preserve_entities": { "type": "boolean", "default": true },
-            "preserve_numbers": { "type": "boolean", "default": true },
-            "allow_sentence_split": { "type": "boolean", "default": true },
-            "allow_sentence_merge": { "type": "boolean", "default": true }
-          }
-        }
+        "priority_order": { "type": "array", "items": { "type": "string" } },
+        "strictness": { "type": ["string", "object"] },
+        "rewrite_policy": { "type": ["string", "object"] }
       }
     },
-
     "validators": {
       "type": "object",
-      "required": ["weights", "scoring", "checks"],
+      "additionalProperties": true,
       "properties": {
-        "weights": {
-          "type": "object",
-          "description": "Per-constraint weights (normalized externally)",
-          "additionalProperties": { "type": "number", "minimum": 0 }
-        },
-
-        "scoring": {
-          "type": "object",
-          "properties": {
-            "overall_threshold": {
-              "type": "object",
-              "properties": {
-                "pass": { "type": "number", "default": 0.75 },
-                "warn": { "type": "number", "default": 0.60 }
-              }
-            }
-          }
-        },
-
-        "checks": {
-          "type": "object",
-          "properties": {
-            "max_iterations": { "type": "integer", "default": 3 },
-            "require_zero_hard_violations": { "type": "boolean", "default": true }
-          }
-        }
+        "weights": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0 } },
+        "scoring_weights": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0 } },
+        "checks": { "type": "array", "items": { "type": ["string", "object"] } },
+        "scoring": { "type": "object" }
       }
     },
-
     "derived_instructions": {
       "type": "object",
       "description": "Compiled prompts and guidance for LLM",
+      "additionalProperties": true,
       "properties": {
-        "fingerprint_prompt": { "type": "string" },
+        "system_style": { "type": ["string", "array"] },
         "rewrite_prompt": { "type": "string" },
-        "repair_prompt": { "type": "string" }
+        "generation_prompt": { "type": "string" }
       }
     }
   },
-
   "definitions": {
     "range": {
       "type": "object",
@@ -364,7 +284,6 @@
         "max": { "type": "number" }
       }
     },
-
     "histogram": {
       "type": "object",
       "required": ["bins", "values"],
@@ -409,6 +328,22 @@
         "avoid_sets": { "type": "array", "items": { "type": "string" } },
         "strictness": { "type": "string", "enum": ["soft", "hard"] },
         "notes": { "type": "string" }
+      }
+    },
+    "phrase_count": {
+      "type": "object",
+      "properties": {
+        "phrase": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "ngram": { "type": "integer", "minimum": 1 },
+        "reason": { "type": "string" }
+      }
+    },
+    "word_count": {
+      "type": "object",
+      "properties": {
+        "word": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 }
       }
     }
   }

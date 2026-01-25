@@ -4,7 +4,7 @@
     "task": "Repair the following to be valid JSON. Preserve all fields and content as much as possible."
   },
   "fingerprint": {
-    "system": "You are a style profiler and JSON generator.\nYou MUST output valid JSON only (no markdown, no extra commentary).\nDo not include trailing commas. Use double quotes for all strings.\nIf uncertain, use null and record a limitation.\nPrefer distributions over single averages.\nAvoid inventing stylistic claims not supported by provided measurements/excerpts.\n",
+    "system": "You are a style profiler and JSON generator.\nYou MUST output valid JSON only (no markdown, no extra commentary).\nDo not include trailing commas. Use double quotes for all strings.\nIf uncertain, use null and record a limitation.\nPrefer distributions over single averages.\nAvoid inventing stylistic claims not supported by provided measurements/excerpts.\nIf measurements.common_phrases_validation exists, treat validated phrases as the reliable list and ignore dropped items.\nUse stance_signals, function_words, and templates_signals to make persona/lexicon/template targets explicit.\nIf lexicon_hints are provided, incorporate them as strong preferences/avoidances.\n",
     "user": {
       "task": "Construct a comprehensive STYLE FINGERPRINT JSON for the author from the provided measurements and excerpts.",
       "output_requirements": [
@@ -13,6 +13,9 @@
         "metadata.extraction.model should be set to the model name provided.",
         "metadata.corpus.document_count should reflect the number of documents, and metadata.corpus.documents must be an array of per-document entries.",
         "Embed the provided measurements verbatim under measurements.",
+        "Use stance_signals and function_words to set explicit persona/stance targets and pronoun preferences where appropriate.",
+        "Use templates_signals (sentence_openers, transition_openers) to seed templates and rhetorical moves.",
+        "If lexicon_hints are present, reflect them in lexicon.prefer/avoid with appropriate severity.",
         "Use controlled vocabulary values where possible (low|medium|high, rare|sometimes|often, etc.).",
         "Include numeric targets/ranges based on measurements (reasonable ranges reflecting variability).",
         "Include derived_instructions.system_style as concise bullet rules, and derived_instructions.rewrite_prompt / generation_prompt as templates."
@@ -111,6 +114,26 @@
       }
     }
   },
+  "validate_phrases": {
+    "system": "You are a validation tool that filters OCR glitches, citation fragments, and non-words from common phrases. Output valid JSON only.",
+    "user": {
+      "task": "For each phrase, decide whether it is a real lexical phrase likely to reflect author style. Drop OCR artifacts, citation/footnote fragments, and abbreviations split into letters.",
+      "output_format": {
+        "decisions": [
+          {
+            "phrase": "string",
+            "ngram": "int",
+            "count": "int",
+            "decision": "keep|drop",
+            "reason": "string"
+          }
+        ],
+        "notes": [
+          "string"
+        ]
+      }
+    }
+  },
   "merge": {
     "system": "You are a JSON merger for style fingerprints.\nYou MUST output valid JSON only (no markdown, no extra commentary).\nPreserve meaning and reconcile conflicts by favoring evidence in measurements.\nIf uncertain, use null and record a limitation.\n",
     "user": {
@@ -124,9 +147,11 @@
     }
   },
   "apply": {
-    "system": "You are a style-transfer rewriting engine.\nYou MUST output valid JSON only.\nPreserve meaning strictly. Do not add new facts, claims, or examples.\nKeep Markdown structure valid.\nIf a conflict occurs, prioritize clarity and preservation of meaning, and record the deviation.\n",
+    "system": "You are a style-transfer rewriting engine.\nYou MUST output valid JSON only.\nPreserve meaning strictly. Do not add new facts, claims, or examples.\nKeep Markdown structure valid.\nIf a conflict occurs, prioritize the style fingerprint and preservation of meaning, and record the deviation.\nIf humanizer_guidelines are provided, apply only those consistent with the fingerprint.\n",
     "user": {
       "task": "Rewrite INPUT_MARKDOWN to match STYLE_FINGERPRINT_JSON.",
+      "style_feedback": null,
+      "humanizer_guidelines": [],
       "output_format": {
         "final_markdown": "string",
         "deviations": [
@@ -146,6 +171,7 @@
         "Preserve code blocks, links, and quoted material unless necessary for style and explicitly allowed.",
         "Preserve any [[FROZEN_BLOCK_N]] and [[CITATION_N]] placeholders exactly; do not remove or alter them.",
         "Preserve any [[BASE64_IMAGE_N]] placeholders exactly; do not remove or alter them.",
+        "If style_feedback is provided, prioritize correcting the listed deltas while preserving meaning.",
         "Follow controls.priority_order if present; otherwise prioritize persona > rhetoric > paragraph > sentence > lexical > punctuation > orthography.",
         "Avoid lexicon.avoid_phrases with severity 'hard' and avoid_words with severity 'hard' if present.",
         "Use preferred phrases sparingly (respect max_per_1000w if present)."

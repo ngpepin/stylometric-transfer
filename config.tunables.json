@@ -1,0 +1,12 @@
+{
+  "humanizer_conflicts": {
+    "em_dash_keep_rate": 0.5,
+    "hedge_keep_rate": 1.0,
+    "first_person_keep_rate": 0.5,
+    "contractions_avoid_threshold": 2.0,
+    "contractions_use_threshold": 0.5,
+    "heading_title_case_keep_rate": 0.6,
+    "boldface_keep_per_1000w": 3.0,
+    "inline_header_list_keep_rate": 0.2
+  }
+}

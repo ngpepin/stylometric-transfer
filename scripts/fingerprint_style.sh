@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Nicolas Pepin (npepin@umiquity.com).
 # See LICENSE.md for full license text and terms.
 # Wrapper script for fingerprint_style.py.
-# - Passes all CLI arguments through unchanged.
+# - Passes all CLI arguments through unchanged (including --no-phrase-validation).
 # - Keeps invocation consistent across environments.
 # - Resolves the repo root relative to this script.
 set -euo pipefail

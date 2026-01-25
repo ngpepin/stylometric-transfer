@@ -269,16 +269,26 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
     texts ← []
     for f in files:
         t ← read_and_normalize(f)
+        t ← normalize_ocr(t)  # ligatures, hyphenated line breaks
+        t ← strip_base64_images(t)
+        t ← filter_non_voice(t)  # blockquotes, references, footnotes, inline citations
         if length(t) ≥ MIN_LEN:
             texts.append(t)
 
     M ← compute_measurements(texts)
-        # includes: sentence histogram, paragraph histogram,
-        # punctuation rates, contractions, dashes, n-grams
+        # includes: sentence/paragraph histograms, punctuation rates,
+        # contractions/oxford comma, function words, stance signals,
+        # sentence-openers/templates, n-grams
 
-    E ← pick_representative_excerpts(files, char_budget=B)
+    if phrase_validation_enabled:
+        V ← validate_common_phrases(M.common_phrases, llm=C)
+        M.common_phrases_validation ← V
 
-    prompt ← build_fingerprint_prompt(schema=S, measurements=M, excerpts=E, model=C.model)
+    E ← pick_representative_excerpts(files, char_budget=B, voice_scoring=on)
+    L ← load_lexicon_hints(optional)
+
+    prompt ← build_fingerprint_prompt(schema=S, measurements=M, excerpts=E,
+                                      lexicon_hints=L, model=C.model)
     raw ← call_llm_chat_completions(prompt, C)
 
     if is_valid_json(raw):
@@ -313,18 +323,33 @@ See `LICENSE.md` for full license text and terms.
 ```text
 procedure APPLY_FINGERPRINT(fingerprint F, markdown_path in, output_path out, llm_config C):
     x ← read_text(in)
-    Mx ← compute_measurements(x)
+    x ← strip_base64_images(x)
+    x ← mask_non_voice_blocks(x)  # blockquotes, references, footnotes
+    x ← mask_inline_citations(x)
+    Mx ← compute_measurements(filter_non_voice(x))
+    H ← load_humanizer_guidelines(optional)
+    H ← filter_conflicting(H, F.measurements, F.targets)
 
-    prompt ← build_rewrite_prompt(fingerprint=F, input_measurements=Mx, input_text=x)
-    raw ← call_llm_chat_completions(prompt, C)
+    style_feedback ← null
+    for r in 0..R:
+        prompt ← build_rewrite_prompt(fingerprint=F, input_measurements=Mx,
+                                      input_text=x, style_feedback=style_feedback,
+                                      humanizer_guidelines=H)
+        raw ← call_llm_chat_completions(prompt, C)
 
-    if is_valid_json(raw):
-        obj ← parse_json(raw)
-    else:
-        obj ← parse_json(call_llm_chat_completions(build_json_repair_prompt(raw), C))
+        if is_valid_json(raw):
+            obj ← parse_json(raw)
+        else:
+            obj ← parse_json(call_llm_chat_completions(build_json_repair_prompt(raw), C))
 
-    y ← obj.final_markdown
-    deviations ← obj.deviations
+        y ← obj.final_markdown
+        y ← restore_placeholders(y)  # non-voice blocks, citations, base64
+        audit ← style_compliance(F.measurements, y)
+        if audit.score ≥ τ or r == R:
+            break
+        style_feedback ← audit.deltas
+
+    deviations ← obj.deviations ∪ {style_compliance: audit}
 
     write_text(out, y)
     if deviations not empty:
@@ -341,10 +366,10 @@ procedure REWRITE_WITH_ITERATIVE_REPAIR(fingerprint F, input x, llm_config C, ma
     y ← call_llm_rewrite(F, x, C)
 
     for t in 1..T:
-        audit ← evaluate_constraints(F, y)
-        if audit.score ≥ F.validators.overall_threshold.pass AND audit.hard_violations == 0:
+        audit ← style_compliance(F.measurements, y)
+        if audit.score ≥ τ and audit.hard_violations == 0:
             break
-        y ← call_llm_repair(F, x, y, audit, C)
+        y ← call_llm_repair(F, x, y, audit.deltas, C)
 
     return y
 end procedure
@@ -437,19 +462,13 @@ Mapped JSON paths:
 
 #### (2) Histogram Constraints (sentence / paragraph)
 
-Primary metric: **Wasserstein-1 distance**
+Primary metric: **L1 histogram distance**
 
-$$W_1(\mathbf{h}^*, \mathbf{h}) =
-\sum_{b=1}^{B-1} \left| \sum_{k=1}^b (h_k - h_k^*) \right|$$
-
-Secondary diagnostic: KL divergence
-
-$$D_{KL}(\mathbf{h}^* \| \mathbf{h}) =
-\sum_b h_b^* \log \frac{h_b^*}{\max(\epsilon,h_b)}$$
+$$d_h(\mathbf{h}^*, \mathbf{h}) = \\frac{1}{2} \sum_{b=1}^{B} |h_b - h_b^*|$$
 
 Score:
 
-$$s_h = \exp(-\alpha_h W_1)$$
+$$s_h = 1 - \min(1, d_h)$$
 
 Mapped JSON:
 - `/targets/sentence/length_words/distribution`
@@ -474,11 +493,31 @@ Mapped JSON:
 
 ---
 
+#### (4) Function‑Word and Stance Signals
+
+For each rate signal (e.g., `hedge_rate`, `first_person_rate`), define relative deviation:
+
+$$d_s(v, v^*) = \\frac{|v - v^*|}{\\max(|v^*|, 1)}$$
+
+Score:
+
+$$s_s = 1 - \min(1, d_s)$$
+
+Mapped JSON:
+- `/measurements/function_words`
+- `/measurements/stance_signals`
+
+---
+
 ### C.2 Aggregated Compliance Score
 
 Let weights $w_j$ come from `validators.weights` with $\sum_j w_j = 1$.
 
 $$S(y;\mathcal{F}) = \sum_{j=1}^J w_j s_j(y)$$
+
+If weights are not provided, use the unweighted mean:
+
+$$S(y;\mathcal{F}) = \\frac{1}{J} \sum_{j=1}^J s_j(y)$$
 
 Acceptance levels:
 
@@ -1325,69 +1364,27 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
     "measurements": {
       "type": "object",
       "description": "Raw stylometric measurements extracted from corpus",
-      "required": [
-        "sentence_length_histogram",
-        "paragraph_length_histogram",
-        "punctuation_rates",
-        "orthography",
-        "structure"
-      ],
+      "additionalProperties": true,
       "properties": {
-        "sentence_length_histogram": { "$ref": "#/definitions/histogram" },
-        "paragraph_length_histogram": { "$ref": "#/definitions/histogram" },
-        "punctuation_rates": {
+        "totals": {
           "type": "object",
-          "description": "Per-1000-word punctuation densities",
           "properties": {
-            "comma": { "type": "number" },
-            "semicolon": { "type": "number" },
-            "colon": { "type": "number" },
-            "dash": { "type": "number" },
-            "ellipsis": { "type": "number" },
-            "exclamation": { "type": "number" },
-            "question": { "type": "number" }
+            "documents_used": { "type": "integer", "minimum": 0 },
+            "total_words_est": { "type": "integer", "minimum": 0 },
+            "total_sentences_est": { "type": "integer", "minimum": 0 },
+            "total_paragraphs_est": { "type": "integer", "minimum": 0 }
           }
         },
-        "orthography": {
-          "type": "object",
-          "properties": {
-            "contractions_rate": { "type": "number" },
-            "uppercase_sentence_rate": { "type": "number" },
-            "quotes_double_ratio": { "type": "number" }
-          }
-        },
-        "orthography_signals": {
-          "type": "object",
-          "description": "Optional orthography and spelling heuristics",
-          "properties": {
-            "contractions_rate": { "type": "number" },
-            "oxford_comma_signal": { "type": "number" },
-            "spelling_variant": { "$ref": "#/definitions/spelling_variant" }
-          }
-        },
-        "structure": {
-          "type": "object",
-          "properties": {
-            "one_sentence_paragraph_rate": { "type": "number" },
-            "avg_sentences_per_paragraph": { "type": "number" }
-          }
-        }
-      }
-    },
-    "targets": {
-      "type": "object",
-      "description": "Target ranges and distributions for rewriting",
-      "required": ["sentence", "paragraph", "punctuation", "orthography"],
-      "properties": {
         "sentence": {
           "type": "object",
           "properties": {
             "length_words": {
               "type": "object",
-              "required": ["distribution", "tolerance"],
               "properties": {
-                "distribution": { "$ref": "#/definitions/histogram" },
-                "tolerance": { "type": "number", "default": 0.08 }
+                "mean": { "type": "number" },
+                "stdev": { "type": "number" },
+                "histogram_bins": { "type": "array", "items": { "type": "string" } },
+                "histogram_p": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 } }
               }
             }
           }
@@ -1395,32 +1392,81 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
         "paragraph": {
           "type": "object",
           "properties": {
-            "length_sentences": {
-              "type": "object",
-              "required": ["distribution", "tolerance"],
-              "properties": {
-                "distribution": { "$ref": "#/definitions/histogram" },
-                "tolerance": { "type": "number", "default": 0.10 }
-              }
-            }
+            "length_sentences_histogram_bins": { "type": "array", "items": { "type": "string" } },
+            "length_sentences_histogram_p": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 } },
+            "one_sentence_paragraph_rate": { "type": "number" }
           }
         },
         "punctuation": {
           "type": "object",
           "properties": {
-            "comma_density_per_100w": { "$ref": "#/definitions/range" },
-            "semicolon_density_per_100w": { "$ref": "#/definitions/range" },
-            "dash_density_per_100w": { "$ref": "#/definitions/range" },
-            "ellipsis_density_per_100w": { "$ref": "#/definitions/range" }
+            "counts": { "type": "object", "additionalProperties": { "type": "number" } },
+            "rates_per_1000w": { "type": "object", "additionalProperties": { "type": "number" } },
+            "comma_density_per_100w": { "type": "number" }
           }
         },
-        "orthography": {
+        "orthography_signals": {
+          "type": "object",
+          "description": "Orthography and spelling heuristics",
+          "properties": {
+            "contractions_rate": { "type": "number" },
+            "oxford_comma_signal": { "type": "number" },
+            "spelling_variant": { "$ref": "#/definitions/spelling_variant" }
+          }
+        },
+        "function_words": {
           "type": "object",
           "properties": {
-            "contractions_rate": { "$ref": "#/definitions/range" },
-            "uppercase_sentence_rate": { "$ref": "#/definitions/range" }
+            "rates_per_1000w": { "type": "object", "additionalProperties": { "type": "number" } },
+            "top": { "type": "array", "items": { "$ref": "#/definitions/word_count" } }
           }
         },
+        "stance_signals": {
+          "type": "object",
+          "properties": {
+            "hedge_rate": { "type": "number" },
+            "booster_rate": { "type": "number" },
+            "directive_rate": { "type": "number" },
+            "first_person_rate": { "type": "number" },
+            "second_person_rate": { "type": "number" },
+            "third_person_rate": { "type": "number" }
+          }
+        },
+        "templates_signals": {
+          "type": "object",
+          "properties": {
+            "sentence_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
+            "transition_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } }
+          }
+        },
+        "common_phrases": {
+          "type": "object",
+          "properties": {
+            "bigrams_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
+            "trigrams_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } }
+          }
+        },
+        "common_phrases_validation": {
+          "type": "object",
+          "properties": {
+            "validated": {
+              "type": "object",
+              "properties": {
+                "bigrams_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
+                "trigrams_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } }
+              }
+            },
+            "dropped": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
+            "notes": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "targets": {
+      "type": "object",
+      "description": "Target ranges and distributions for rewriting",
+      "additionalProperties": true,
+      "properties": {
         "persona": {
           "type": "object",
           "description": "Persona and stance constraints",
@@ -1432,120 +1478,56 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
     },
     "lexicon": {
       "type": "object",
-      "required": ["avoid_words", "avoid_phrases", "preferred_phrases"],
+      "additionalProperties": true,
       "properties": {
-        "avoid_words": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "avoid_phrases": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "preferred_phrases": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
+        "preferred_words": { "type": "array", "items": { "type": "string" } },
+        "preferred_phrases": { "type": "array", "items": { "type": "string" } },
+        "avoid_words": { "type": "array", "items": { "type": "string" } },
+        "avoid_phrases": { "type": "array", "items": { "type": "string" } },
+        "synonym_preferences": { "type": "object", "additionalProperties": { "type": "string" } },
+        "notes": { "type": "string" }
       }
     },
     "templates": {
       "type": "object",
       "description": "Rhetorical and syntactic templates",
+      "additionalProperties": true,
       "properties": {
-        "sentence_openers": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "paragraph_openers": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "preferred_transitions": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
+        "sentence_openers": { "type": "array", "items": { "type": "string" } },
+        "paragraph_openers": { "type": "array", "items": { "type": "string" } },
+        "preferred_transitions": { "type": "array", "items": { "type": "string" } },
+        "syntactic_patterns": { "type": "array", "items": { "type": "string" } },
+        "paragraph_moves": { "type": "array", "items": { "type": "string" } },
+        "rhetorical_moves": { "type": "array", "items": { "type": "string" } }
       }
     },
     "controls": {
       "type": "object",
-      "required": ["priority_order", "strictness", "rewrite_policy"],
+      "additionalProperties": true,
       "properties": {
-        "priority_order": {
-          "type": "array",
-          "description": "Constraint families in decreasing priority",
-          "items": {
-            "enum": [
-              "meaning_preservation",
-              "lexicon",
-              "sentence_rhythm",
-              "paragraph_structure",
-              "punctuation",
-              "orthography",
-              "templates"
-            ]
-          }
-        },
-        "strictness": {
-          "type": "object",
-          "properties": {
-            "hard_constraints": {
-              "type": "array",
-              "items": { "type": "string" }
-            },
-            "soft_constraints": {
-              "type": "array",
-              "items": { "type": "string" }
-            }
-          }
-        },
-        "rewrite_policy": {
-          "type": "object",
-          "properties": {
-            "preserve_entities": { "type": "boolean", "default": true },
-            "preserve_numbers": { "type": "boolean", "default": true },
-            "allow_sentence_split": { "type": "boolean", "default": true },
-            "allow_sentence_merge": { "type": "boolean", "default": true }
-          }
-        }
+        "priority_order": { "type": "array", "items": { "type": "string" } },
+        "strictness": { "type": ["string", "object"] },
+        "rewrite_policy": { "type": ["string", "object"] }
       }
     },
     "validators": {
       "type": "object",
-      "required": ["weights", "scoring", "checks"],
+      "additionalProperties": true,
       "properties": {
-        "weights": {
-          "type": "object",
-          "description": "Per-constraint weights (normalized externally)",
-          "additionalProperties": { "type": "number", "minimum": 0 }
-        },
-        "scoring": {
-          "type": "object",
-          "properties": {
-            "overall_threshold": {
-              "type": "object",
-              "properties": {
-                "pass": { "type": "number", "default": 0.75 },
-                "warn": { "type": "number", "default": 0.60 }
-              }
-            }
-          }
-        },
-        "checks": {
-          "type": "object",
-          "properties": {
-            "max_iterations": { "type": "integer", "default": 3 },
-            "require_zero_hard_violations": { "type": "boolean", "default": true }
-          }
-        }
+        "weights": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0 } },
+        "scoring_weights": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0 } },
+        "checks": { "type": "array", "items": { "type": ["string", "object"] } },
+        "scoring": { "type": "object" }
       }
     },
     "derived_instructions": {
       "type": "object",
       "description": "Compiled prompts and guidance for LLM",
+      "additionalProperties": true,
       "properties": {
-        "fingerprint_prompt": { "type": "string" },
+        "system_style": { "type": ["string", "array"] },
         "rewrite_prompt": { "type": "string" },
-        "repair_prompt": { "type": "string" }
+        "generation_prompt": { "type": "string" }
       }
     }
   },
@@ -1603,7 +1585,69 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
         "strictness": { "type": "string", "enum": ["soft", "hard"] },
         "notes": { "type": "string" }
       }
+    },
+    "phrase_count": {
+      "type": "object",
+      "properties": {
+        "phrase": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "ngram": { "type": "integer", "minimum": 1 },
+        "reason": { "type": "string" }
+      }
+    },
+    "word_count": {
+      "type": "object",
+      "properties": {
+        "word": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 }
+      }
     }
   }
 }
 ```
+
+---
+
+## Appendix H. Tunables schema (config.tunables.json)
+
+`config.tunables.json` allows deterministic tuning of humanizer conflict thresholds used during style application. The schema below defines the supported keys and types:
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://stylometric-transfer/schema/config.tunables.schema.json",
+  "title": "Stylometric-Transfer Tunables Schema",
+  "description": "Optional tuning parameters for humanizer conflict thresholds",
+  "type": "object",
+  "properties": {
+    "humanizer_conflicts": {
+      "type": "object",
+      "properties": {
+        "em_dash_keep_rate": { "type": "number", "minimum": 0 },
+        "hedge_keep_rate": { "type": "number", "minimum": 0 },
+        "first_person_keep_rate": { "type": "number", "minimum": 0 },
+        "contractions_avoid_threshold": { "type": "number", "minimum": 0 },
+        "contractions_use_threshold": { "type": "number", "minimum": 0 },
+        "heading_title_case_keep_rate": { "type": "number", "minimum": 0 },
+        "boldface_keep_per_1000w": { "type": "number", "minimum": 0 },
+        "inline_header_list_keep_rate": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+**Attribution:** Humanization guidelines are adapted from the humanizer skill in softaworks/agent-toolkit by @leonardocouy.
+
+### H.1 Tunable definitions (interpretation)
+
+- `em_dash_keep_rate`: if the fingerprint’s em‑dash rate (per 1000 words) is at or above this value, the “avoid em dashes” rule is dropped as conflicting.
+- `hedge_keep_rate`: if the fingerprint’s hedging rate (per 1000 words) is at or above this value, “avoid hedging” rules are dropped.
+- `first_person_keep_rate`: if the fingerprint’s first‑person rate (per 1000 words) is below this value (or pronoun preferences avoid first‑person), “use I/first‑person” rules are dropped.
+- `contractions_avoid_threshold`: if the fingerprint’s contraction rate (per 1000 words) is at or above this value, “avoid contractions” rules are dropped.
+- `contractions_use_threshold`: if the fingerprint’s contraction rate (per 1000 words) is below this value, “use contractions” rules are dropped.
+- `heading_title_case_keep_rate`: if the input Markdown’s heading Title Case ratio is at or above this value, “avoid Title Case headings” rules are dropped.
+- `boldface_keep_per_1000w`: if boldface density (per 1000 words) is at or above this value, “avoid boldface” rules are dropped.
+- `inline_header_list_keep_rate`: if the ratio of inline‑header list items (e.g., `- **Label:**`) is at or above this value, “avoid inline‑header lists” rules are dropped.

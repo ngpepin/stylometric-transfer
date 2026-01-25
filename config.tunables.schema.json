@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://stylometric-transfer/schema/config.tunables.schema.json",
+  "title": "Stylometric-Transfer Tunables Schema",
+  "description": "Optional tuning parameters for humanizer conflict thresholds",
+  "type": "object",
+  "properties": {
+    "humanizer_conflicts": {
+      "type": "object",
+      "properties": {
+        "em_dash_keep_rate": { "type": "number", "minimum": 0 },
+        "hedge_keep_rate": { "type": "number", "minimum": 0 },
+        "first_person_keep_rate": { "type": "number", "minimum": 0 },
+        "contractions_avoid_threshold": { "type": "number", "minimum": 0 },
+        "contractions_use_threshold": { "type": "number", "minimum": 0 },
+        "heading_title_case_keep_rate": { "type": "number", "minimum": 0 },
+        "boldface_keep_per_1000w": { "type": "number", "minimum": 0 },
+        "inline_header_list_keep_rate": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

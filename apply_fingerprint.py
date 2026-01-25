@@ -24,6 +24,7 @@ import argparse
 import json
 import re
 import sys
+import collections
 from pathlib import Path
 import copy
 from typing import Any, Dict, List
@@ -36,6 +37,7 @@ import requests
 # - Measure the input Markdown (lightweight, explainable stats)
 # - Build a prompt using an externalized template (prompts.json)
 # - Call an OpenAI-compatible LLM to rewrite while preserving meaning
+# - Score style compliance and optionally retry with delta feedback
 # - Handle oversized prompts by chunking the Markdown
 # - Strip base64 images before prompting, then reinsert after rewriting
 # - Preserve non-voice blocks (blockquotes, references, footnotes, citations) verbatim
@@ -46,6 +48,20 @@ PARA_SPLIT_RE = re.compile(r"\n\s*\n+")
 BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\s]+", re.IGNORECASE)
 BASE64_PLACEHOLDER_RE = re.compile(r"\[\[BASE64_IMAGE_\d+\]\]")
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
+HUMANIZER_GUIDELINES_FILENAME = "general-guidelines.md"
+TUNABLES_FILENAME = "config.tunables.json"
+DEFAULT_TUNABLES = {
+    "humanizer_conflicts": {
+        "em_dash_keep_rate": 0.5,
+        "hedge_keep_rate": 1.0,
+        "first_person_keep_rate": 0.5,
+        "contractions_avoid_threshold": 2.0,
+        "contractions_use_threshold": 0.5,
+        "heading_title_case_keep_rate": 0.6,
+        "boldface_keep_per_1000w": 3.0,
+        "inline_header_list_keep_rate": 0.2
+    }
+}
 
 REFERENCE_HEADINGS = {
     "references",
@@ -69,11 +85,60 @@ PAREN_GROUP_RE = re.compile(r"\([^()]{1,80}\)")
 FROZEN_BLOCK_RE = re.compile(r"\[\[FROZEN_BLOCK_\d+\]\]")
 CITATION_PLACEHOLDER_RE = re.compile(r"\[\[CITATION_\d+\]\]")
 
+SECTION_HEADING_RE = re.compile(r"^###\s+(\d+\\.)?\s*(.+)$")
+WORDS_TO_WATCH_RE = re.compile(r"^\*\*Words to watch:\*\*\s*(.+)$")
+PROBLEM_RE = re.compile(r"^\*\*Problem:\*\*\s*(.+)$")
+
+
 def load_prompts() -> Dict[str, Any]:
     # Load externalized prompt templates located alongside this script.
     if not PROMPTS_PATH.exists():
         raise FileNotFoundError(f"prompts.json not found at {PROMPTS_PATH}")
     return json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))
+
+
+def deep_merge_dict(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    out = dict(base)
+    for k, v in override.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = deep_merge_dict(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+def load_tunables(path: Path | None = None) -> Dict[str, Any]:
+    # Load optional tunables JSON.
+    if path and path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return deep_merge_dict(DEFAULT_TUNABLES, data)
+        except Exception:
+            return dict(DEFAULT_TUNABLES)
+    # Fallback search.
+    cwd_path = Path.cwd() / TUNABLES_FILENAME
+    script_path = Path(__file__).resolve().parent / TUNABLES_FILENAME
+    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    if not path:
+        return dict(DEFAULT_TUNABLES)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            return deep_merge_dict(DEFAULT_TUNABLES, data)
+    except Exception:
+        pass
+    return dict(DEFAULT_TUNABLES)
+
+
+def load_general_guidelines() -> str | None:
+    # Load optional humanizer guidelines from CWD or script directory.
+    cwd_path = Path.cwd() / HUMANIZER_GUIDELINES_FILENAME
+    script_path = Path(__file__).resolve().parent / HUMANIZER_GUIDELINES_FILENAME
+    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    if not path:
+        return None
+    return path.read_text(encoding="utf-8")
 
 def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
     # Traverse a nested dict safely and fail fast if a key is missing.
@@ -365,6 +430,264 @@ def find_placeholders(text: str, pattern: re.Pattern[str]) -> List[str]:
     return pattern.findall(text)
 
 
+def parse_humanizer_guidelines(text: str) -> List[Dict[str, Any]]:
+    # Parse general-guidelines.md into structured rules.
+    rules: List[Dict[str, Any]] = []
+    current: Dict[str, Any] | None = None
+    in_voice_section = False
+    current_category: str | None = None
+    in_frontmatter = False
+    frontmatter_done = False
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if not frontmatter_done and line == "---":
+            in_frontmatter = not in_frontmatter
+            if not in_frontmatter:
+                frontmatter_done = True
+            continue
+        if in_frontmatter:
+            continue
+        if line.startswith("## ") and not line.startswith("### "):
+            current_category = line.replace("##", "").strip()
+            continue
+        if line == "### How to add voice:":
+            in_voice_section = True
+            continue
+        if line.startswith("### ") and line != "### How to add voice:":
+            in_voice_section = False
+        m = SECTION_HEADING_RE.match(line)
+        if m:
+            if current:
+                rules.append(current)
+            title = m.group(2).strip()
+            current = {
+                "title": title,
+                "problem": None,
+                "words_to_watch": [],
+                "source": "section",
+                "category": current_category
+            }
+            continue
+        if in_voice_section and line.startswith("**") and "**" in line[2:]:
+            title = line.strip("*").strip().rstrip(".")
+            rules.append({
+                "title": title,
+                "problem": "Voice/flow guidance",
+                "words_to_watch": [],
+                "source": "voice",
+                "category": current_category
+            })
+            continue
+        if in_voice_section and line.startswith("- "):
+            rules.append({
+                "title": line.lstrip("-").strip(),
+                "problem": "Voice/flow guidance",
+                "words_to_watch": [],
+                "source": "voice",
+                "category": current_category
+            })
+            continue
+        if current:
+            m = WORDS_TO_WATCH_RE.match(line)
+            if m:
+                words = [w.strip() for w in m.group(1).split(",") if w.strip()]
+                current["words_to_watch"] = words
+                continue
+            m = PROBLEM_RE.match(line)
+            if m:
+                current["problem"] = m.group(1).strip()
+                continue
+
+    if current:
+        rules.append(current)
+    return rules
+
+
+def analyze_markdown_style(text: str) -> Dict[str, Any]:
+    # Estimate heading case, boldface density, and inline-header list usage.
+    headings_total = 0
+    headings_title_case = 0
+    bold_count = 0
+    word_count = 0
+    list_total = 0
+    inline_header_list = 0
+
+    blocks = split_markdown_blocks(text)
+    for block in blocks:
+        if is_code_block(block):
+            continue
+        lines = block.splitlines()
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                headings_total += 1
+                heading_text = stripped.lstrip("#").strip()
+                words = [re.sub(r"[^A-Za-z]", "", w) for w in heading_text.split()]
+                words = [w for w in words if w]
+                if words:
+                    cap = sum(1 for w in words if w[0].isupper())
+                    if cap / max(1, len(words)) >= 0.6:
+                        headings_title_case += 1
+            if re.match(r"^\\s*[-*+]\\s+", line) or re.match(r"^\\s*\\d+\\.\\s+", line):
+                list_total += 1
+                if re.match(r"^\\s*[-*+]\\s+\\*\\*[^*]+:\\*\\*", line) or re.match(r"^\\s*\\d+\\.\\s+\\*\\*[^*]+:\\*\\*", line):
+                    inline_header_list += 1
+            bold_count += len(re.findall(r"\\*\\*[^*]+\\*\\*", line))
+            word_count += len(words(line))
+
+    return {
+        "heading_title_case_rate": (headings_title_case / max(1, headings_total)) if headings_total else 0.0,
+        "boldface_per_1000w": (bold_count / max(1, word_count)) * 1000.0,
+        "inline_header_list_rate": (inline_header_list / max(1, list_total)) if list_total else 0.0
+    }
+
+
+def filter_humanizer_rules(
+    rules: List[Dict[str, Any]],
+    fingerprint: Dict[str, Any],
+    input_style: Dict[str, Any] | None = None,
+    tunables: Dict[str, Any] | None = None
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    # Drop rules that deterministically conflict with the fingerprint signals.
+    kept: List[Dict[str, Any]] = []
+    dropped: List[Dict[str, Any]] = []
+    tunables = tunables or DEFAULT_TUNABLES
+    conf = tunables.get("humanizer_conflicts", {}) if isinstance(tunables, dict) else {}
+
+    meas = fingerprint.get("measurements", {}) if isinstance(fingerprint, dict) else {}
+    punct = meas.get("punctuation", {}).get("rates_per_1000w", {}) if isinstance(meas, dict) else {}
+    stance = meas.get("stance_signals", {}) if isinstance(meas, dict) else {}
+    ortho = meas.get("orthography_signals", {}) if isinstance(meas, dict) else {}
+    templates_signals = meas.get("templates_signals", {}) if isinstance(meas, dict) else {}
+    common_phrases_validation = meas.get("common_phrases_validation", {}) if isinstance(meas, dict) else {}
+
+    em_dash_rate = float(punct.get("em_dashes", 0.0)) if isinstance(punct, dict) else 0.0
+    contractions_rate = float(ortho.get("contractions_rate", 0.0)) if isinstance(ortho, dict) else 0.0
+    hedge_rate = float(stance.get("hedge_rate", 0.0)) if isinstance(stance, dict) else 0.0
+    first_person_rate = float(stance.get("first_person_rate", 0.0)) if isinstance(stance, dict) else 0.0
+
+    em_dash_keep_rate = float(conf.get("em_dash_keep_rate", 0.5))
+    hedge_keep_rate = float(conf.get("hedge_keep_rate", 1.0))
+    first_person_keep_rate = float(conf.get("first_person_keep_rate", 0.5))
+    contractions_avoid_threshold = float(conf.get("contractions_avoid_threshold", 2.0))
+    contractions_use_threshold = float(conf.get("contractions_use_threshold", 0.5))
+    heading_title_case_keep_rate = float(conf.get("heading_title_case_keep_rate", 0.6))
+    boldface_keep_per_1000w = float(conf.get("boldface_keep_per_1000w", 3.0))
+    inline_header_list_keep_rate = float(conf.get("inline_header_list_keep_rate", 0.2))
+
+    lexicon = fingerprint.get("lexicon", {}) if isinstance(fingerprint, dict) else {}
+    preferred_words = set(w.lower() for w in lexicon.get("preferred_words", []) if isinstance(w, str))
+    preferred_phrases = set(p.lower() for p in lexicon.get("preferred_phrases", []) if isinstance(p, str))
+    synonym_keys = set(k.lower() for k in lexicon.get("synonym_preferences", {}).keys() if isinstance(k, str))
+
+    transition_top = set(
+        (item.get("phrase", "") or "").lower()
+        for item in (templates_signals.get("transition_openers_top", []) or [])
+        if isinstance(item, dict)
+    )
+    opener_top = set(
+        (item.get("phrase", "") or "").lower()
+        for item in (templates_signals.get("sentence_openers_top", []) or [])
+        if isinstance(item, dict)
+    )
+
+    validated_phrases = set()
+    validated = common_phrases_validation.get("validated", {}) if isinstance(common_phrases_validation, dict) else {}
+    for item in (validated.get("bigrams_top", []) or []) + (validated.get("trigrams_top", []) or []):
+        if isinstance(item, dict) and isinstance(item.get("phrase"), str):
+            validated_phrases.add(item["phrase"].lower())
+
+    preferred_set = preferred_words | preferred_phrases | synonym_keys | transition_top | opener_top | validated_phrases
+
+    persona = fingerprint.get("targets", {}).get("persona", {}) if isinstance(fingerprint, dict) else {}
+    pronouns = persona.get("pronoun_preferences", {}) if isinstance(persona, dict) else {}
+    avoid_sets = pronouns.get("avoid_sets", []) if isinstance(pronouns, dict) else []
+    avoid_first_person = isinstance(avoid_sets, list) and any("i" in s.lower() for s in avoid_sets if isinstance(s, str))
+
+    def collect_style_context() -> str:
+        parts: List[str] = []
+        for path in ("notes",):
+            val = lexicon.get(path)
+            if isinstance(val, str):
+                parts.append(val)
+        templates = fingerprint.get("templates", {}) if isinstance(fingerprint, dict) else {}
+        for key in ("syntactic_patterns", "paragraph_moves", "rhetorical_moves"):
+            vals = templates.get(key, [])
+            if isinstance(vals, list):
+                parts.extend(v for v in vals if isinstance(v, str))
+        controls = fingerprint.get("controls", {}) if isinstance(fingerprint, dict) else {}
+        rewrite_policy = controls.get("rewrite_policy")
+        if isinstance(rewrite_policy, str):
+            parts.append(rewrite_policy)
+        return " ".join(parts).lower()
+
+    style_context = collect_style_context()
+    formal_style = any(tag in style_context for tag in ("formal", "academic", "technical", "scholarly"))
+
+    def normalize_word(token: str) -> str:
+        token = re.sub(r"[\"“”'’()\\[\\]{}]", "", token.lower()).strip()
+        return re.sub(r"\\s+", " ", token)
+
+    def expand_words(words: List[str]) -> set[str]:
+        out: set[str] = set()
+        for w in words:
+            if not w:
+                continue
+            parts = re.split(r"/|\\bor\\b", w)
+            for part in parts:
+                part = normalize_word(part)
+                if part:
+                    out.add(part)
+        return out
+
+    for rule in rules:
+        title = str(rule.get("title", "")).lower()
+        words = " ".join(rule.get("words_to_watch", [])).lower()
+        drop_reason = None
+        tokens = expand_words(rule.get("words_to_watch", []))
+
+        if "em dash" in title or "em dash" in words:
+            if em_dash_rate >= em_dash_keep_rate:
+                drop_reason = "Author uses em dashes frequently."
+        if "hedging" in title or "hedging" in words:
+            if hedge_rate >= hedge_keep_rate:
+                drop_reason = "Author uses hedging at a high rate."
+        if "use \"i\"" in title or "first person" in title:
+            if avoid_first_person or first_person_rate < first_person_keep_rate:
+                drop_reason = "Author voice avoids first person."
+        if "contraction" in title or "contraction" in words:
+            if "avoid" in title and contractions_rate >= contractions_avoid_threshold:
+                drop_reason = "Author uses contractions frequently."
+            if "use" in title and contractions_rate < contractions_use_threshold:
+                drop_reason = "Author rarely uses contractions."
+        if tokens and preferred_set:
+            if any(t in preferred_set for t in tokens):
+                drop_reason = "Rule conflicts with preferred lexicon/phrases in fingerprint."
+        if formal_style and any(k in title for k in ("add voice", "have opinions", "humor", "edge", "mess", "feelings")):
+            drop_reason = "Formal/academic voice discourages subjective embellishment."
+        if input_style:
+            title_case_rate = float(input_style.get("heading_title_case_rate", 0.0))
+            bold_rate = float(input_style.get("boldface_per_1000w", 0.0))
+            inline_header_rate = float(input_style.get("inline_header_list_rate", 0.0))
+            if "title case" in title and title_case_rate >= heading_title_case_keep_rate:
+                drop_reason = "Input headings use Title Case."
+            if "boldface" in title and bold_rate >= boldface_keep_per_1000w:
+                drop_reason = "Input uses boldface frequently."
+            if "inline-header" in title or "inline header" in title:
+                if inline_header_rate >= inline_header_list_keep_rate:
+                    drop_reason = "Input uses inline-header lists frequently."
+
+        if drop_reason:
+            dropped.append({**rule, "drop_reason": drop_reason})
+        else:
+            kept.append(rule)
+
+    return kept, dropped
+
+
 def estimate_tokens(text: str) -> int:
     # Rough heuristic: ~4 characters per token.
     return max(1, (len(text) + 3) // 4)
@@ -607,6 +930,67 @@ def compute_measurements(text: str) -> Dict[str, Any]:
         "ellipses_three_dots": text.count("...")
     }
 
+    # Contractions rate (rough)
+    contraction_hits = len(re.findall(r"\b\w+(?:n't|'re|'ve|'ll|'d|'m|'s)\b", text))
+    contraction_rate = contraction_hits / max(1, total_words)
+
+    # Oxford comma heuristic (rough): ", and"/", or" vs " and"/" or"
+    and_total = text.lower().count(" and ")
+    comma_and = text.lower().count(", and ")
+    oxford_signal = comma_and / max(1, and_total)
+
+    toks = [t.lower() for t in w]
+    function_words = [
+        "the","a","an","and","or","but","if","then","because","so","while","although","though",
+        "of","in","on","for","with","as","by","from","to","into","over","under","between",
+        "is","are","was","were","be","been","being","it","this","that","these","those",
+        "i","we","you","he","she","they","me","us","him","her","them","my","our","your","their",
+        "not","no","nor","very","also","even","only","just","rather","however","therefore"
+    ]
+    fw_counter = collections.Counter(toks)
+    fw_counts = {fw: fw_counter.get(fw, 0) for fw in function_words}
+    fw_rates = {fw: approx_rate_per_1000_words(cnt, total_words) for fw, cnt in fw_counts.items()}
+    fw_top = sorted(
+        [{"word": fw, "count": fw_counts.get(fw, 0)} for fw in function_words],
+        key=lambda x: x["count"],
+        reverse=True
+    )[:20]
+
+    hedge_terms = {"may","might","perhaps","likely","possibly","seems","appears","suggests","tends"}
+    booster_terms = {"clearly","obviously","certainly","undoubtedly","indeed","surely"}
+    directive_terms = {"must","should","need","needs","ought","required"}
+    first_person = {"i","me","my","mine","we","us","our","ours"}
+    second_person = {"you","your","yours"}
+    third_person = {"he","him","his","she","her","hers","they","them","their","theirs"}
+
+    hedge_hits = sum(1 for t in toks if t in hedge_terms)
+    booster_hits = sum(1 for t in toks if t in booster_terms)
+    directive_hits = sum(1 for t in toks if t in directive_terms)
+    first_hits = sum(1 for t in toks if t in first_person)
+    second_hits = sum(1 for t in toks if t in second_person)
+    third_hits = sum(1 for t in toks if t in third_person)
+
+    sent_openers = collections.Counter()
+    transition_terms = {
+        "however","therefore","moreover","furthermore","nevertheless","nonetheless",
+        "for example","for instance","in short","in sum","in practice","in effect",
+        "first","second","third","finally","overall"
+    }
+    transition_hits = collections.Counter()
+    for s in split_sentences(text):
+        ws = [t.lower() for t in words(s)]
+        if len(ws) >= 2:
+            opener = " ".join(ws[:3]) if len(ws) >= 3 else " ".join(ws[:2])
+            if sum(1 for x in opener.split() if x in {"the","a","an","and","or","but","if","then","to","of","in","on","for","with","as"}) <= 1:
+                sent_openers[opener] += 1
+        if ws:
+            start_two = " ".join(ws[:2])
+            start_three = " ".join(ws[:3]) if len(ws) >= 3 else ""
+            for cand in (start_three, start_two, ws[0]):
+                if cand and cand in transition_terms:
+                    transition_hits[cand] += 1
+                    break
+
     return {
         "totals": {
             "total_words_est": total_words,
@@ -629,8 +1013,123 @@ def compute_measurements(text: str) -> Dict[str, Any]:
             "rates_per_1000w": {k: approx_rate_per_1000_words(v, total_words) for k, v in punct.items()}
         },
         "orthography_signals": {
+            "contractions_rate": contraction_rate,
+            "oxford_comma_signal": oxford_signal,
             "spelling_variant": detect_english_spelling_variant(text)
+        },
+        "function_words": {
+            "rates_per_1000w": fw_rates,
+            "top": fw_top
+        },
+        "stance_signals": {
+            "hedge_rate": approx_rate_per_1000_words(hedge_hits, total_words),
+            "booster_rate": approx_rate_per_1000_words(booster_hits, total_words),
+            "directive_rate": approx_rate_per_1000_words(directive_hits, total_words),
+            "first_person_rate": approx_rate_per_1000_words(first_hits, total_words),
+            "second_person_rate": approx_rate_per_1000_words(second_hits, total_words),
+            "third_person_rate": approx_rate_per_1000_words(third_hits, total_words)
+        },
+        "templates_signals": {
+            "sentence_openers_top": [{"phrase": p, "count": c} for p, c in sent_openers.most_common(20)],
+            "transition_openers_top": [{"phrase": p, "count": c} for p, c in transition_hits.most_common(15)]
         }
+    }
+
+
+def l1_distance(a: List[float], b: List[float]) -> float:
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    return sum(abs(x - y) for x, y in zip(a, b))
+
+
+def relative_diff(a: float, b: float) -> float:
+    denom = max(abs(b), 1.0)
+    return abs(a - b) / denom
+
+
+def compute_style_compliance(
+    fingerprint: Dict[str, Any],
+    output_text: str
+) -> Dict[str, Any]:
+    # Compare output measurements to fingerprint measurements and return score + deltas.
+    fp_meas = fingerprint.get("measurements", {}) if isinstance(fingerprint, dict) else {}
+    out_meas = compute_measurements(output_text)
+    deltas: List[Dict[str, Any]] = []
+
+    score_parts: List[float] = []
+
+    # Sentence length histogram
+    fp_sent = fp_meas.get("sentence", {}).get("length_words", {}).get("histogram_p")
+    out_sent = out_meas.get("sentence", {}).get("length_words", {}).get("histogram_p")
+    if isinstance(fp_sent, list) and isinstance(out_sent, list) and len(fp_sent) == len(out_sent):
+        diff = l1_distance(fp_sent, out_sent) / 2.0
+        score_parts.append(max(0.0, 1.0 - min(1.0, diff)))
+        if diff > 0.15:
+            deltas.append({"metric": "sentence_length_histogram", "diff": diff})
+
+    # Paragraph length histogram
+    fp_para = fp_meas.get("paragraph", {}).get("length_sentences_histogram_p")
+    out_para = out_meas.get("paragraph", {}).get("length_sentences_histogram_p")
+    if isinstance(fp_para, list) and isinstance(out_para, list) and len(fp_para) == len(out_para):
+        diff = l1_distance(fp_para, out_para) / 2.0
+        score_parts.append(max(0.0, 1.0 - min(1.0, diff)))
+        if diff > 0.15:
+            deltas.append({"metric": "paragraph_length_histogram", "diff": diff})
+
+    # One-sentence paragraph rate
+    fp_one = fp_meas.get("paragraph", {}).get("one_sentence_paragraph_rate")
+    out_one = out_meas.get("paragraph", {}).get("one_sentence_paragraph_rate")
+    if isinstance(fp_one, (int, float)) and isinstance(out_one, (int, float)):
+        diff = abs(fp_one - out_one)
+        score_parts.append(max(0.0, 1.0 - min(1.0, diff)))
+        if diff > 0.1:
+            deltas.append({"metric": "one_sentence_paragraph_rate", "diff": diff})
+
+    # Punctuation rates
+    fp_punct = fp_meas.get("punctuation", {}).get("rates_per_1000w", {})
+    out_punct = out_meas.get("punctuation", {}).get("rates_per_1000w", {})
+    if isinstance(fp_punct, dict) and isinstance(out_punct, dict) and fp_punct:
+        diffs = []
+        for k, target in fp_punct.items():
+            if k in out_punct and isinstance(target, (int, float)):
+                diff = relative_diff(out_punct.get(k, 0.0), float(target))
+                diffs.append(diff)
+                if diff > 0.5:
+                    deltas.append({"metric": f"punctuation.{k}", "diff": diff})
+        if diffs:
+            avg = sum(diffs) / len(diffs)
+            score_parts.append(max(0.0, 1.0 - min(1.0, avg)))
+
+    # Contractions / Oxford comma signals
+    fp_ortho = fp_meas.get("orthography_signals", {})
+    out_ortho = out_meas.get("orthography_signals", {})
+    for key in ("contractions_rate", "oxford_comma_signal"):
+        if isinstance(fp_ortho.get(key), (int, float)) and isinstance(out_ortho.get(key), (int, float)):
+            diff = relative_diff(float(out_ortho[key]), float(fp_ortho[key]))
+            score_parts.append(max(0.0, 1.0 - min(1.0, diff)))
+            if diff > 0.5:
+                deltas.append({"metric": f"orthography.{key}", "diff": diff})
+
+    # Stance signals (optional)
+    fp_stance = fp_meas.get("stance_signals", {})
+    out_stance = out_meas.get("stance_signals", {})
+    if isinstance(fp_stance, dict) and isinstance(out_stance, dict) and fp_stance:
+        diffs = []
+        for k, target in fp_stance.items():
+            if k in out_stance and isinstance(target, (int, float)):
+                diff = relative_diff(float(out_stance.get(k, 0.0)), float(target))
+                diffs.append(diff)
+                if diff > 0.6:
+                    deltas.append({"metric": f"stance.{k}", "diff": diff})
+        if diffs:
+            avg = sum(diffs) / len(diffs)
+            score_parts.append(max(0.0, 1.0 - min(1.0, avg)))
+
+    score = sum(score_parts) / len(score_parts) if score_parts else 1.0
+    return {
+        "score": score,
+        "deltas": deltas,
+        "output_measurements": out_meas
     }
 
 
@@ -723,7 +1222,9 @@ def build_apply_prompt(
     input_md: str,
     input_meas: Dict[str, Any],
     cfg: LLMConfig,
-    prompts: Dict[str, Any]
+    prompts: Dict[str, Any],
+    style_feedback: Dict[str, Any] | None = None,
+    humanizer_rules: List[Dict[str, Any]] | None = None
 ) -> List[Dict[str, str]]:
     # Fill the apply prompt template with runtime data.
     system = get_prompt_value(prompts, "apply", "system")
@@ -734,6 +1235,10 @@ def build_apply_prompt(
     user["style_fingerprint_json"] = fingerprint
     user["input_measurements"] = input_meas
     user["input_markdown"] = input_md
+    if style_feedback:
+        user["style_feedback"] = style_feedback
+    if humanizer_rules:
+        user["humanizer_guidelines"] = humanizer_rules
 
     return [
         {"role": "system", "content": system},
@@ -766,6 +1271,34 @@ def main() -> int:
         default=None,
         help="Maximum prompt tokens before chunking (default: config max_prompt_tokens)"
     )
+    ap.add_argument(
+        "--no-humanizer-guidelines",
+        action="store_true",
+        help="Disable applying general-guidelines.md humanizer rules"
+    )
+    ap.add_argument(
+        "--tunables",
+        type=Path,
+        default=None,
+        help="Path to config.tunables.json (default: ./config.tunables.json if present; else next to script)"
+    )
+    ap.add_argument(
+        "--no-style-retry",
+        action="store_true",
+        help="Disable the style compliance retry pass"
+    )
+    ap.add_argument(
+        "--style-retry-threshold",
+        type=float,
+        default=0.75,
+        help="Retry threshold for style compliance score (default: 0.75)"
+    )
+    ap.add_argument(
+        "--max-style-retries",
+        type=int,
+        default=1,
+        help="Maximum number of style retry passes (default: 1)"
+    )
     args = ap.parse_args()
 
     if args.fingerprint.suffix == "":
@@ -785,9 +1318,18 @@ def main() -> int:
 
     cfg = load_config(args.config)
     prompts = load_prompts()
+    if args.tunables is None:
+        cwd_tunables = Path.cwd() / TUNABLES_FILENAME
+        script_tunables = Path(__file__).resolve().parent / TUNABLES_FILENAME
+        args.tunables = cwd_tunables if cwd_tunables.exists() else script_tunables
+    tunables = load_tunables(args.tunables if args.tunables.exists() else None)
     if args.max_prompt_tokens is not None:
         # Allow CLI override for chunking threshold.
         cfg.max_prompt_tokens = args.max_prompt_tokens
+
+    humanizer_rules: List[Dict[str, Any]] = []
+    humanizer_debug: Dict[str, Any] | None = None
+    input_style_signals: Dict[str, Any] | None = None
 
     if not args.fingerprint.exists():
         # Fall back to the script directory if fingerprint isn't in CWD.
@@ -808,6 +1350,20 @@ def main() -> int:
     input_md, base64_map = strip_base64_images(input_md)
     if base64_map:
         vprint(f"Stripped {len(base64_map)} base64 image embed(s) from prompt.")
+    if not args.no_humanizer_guidelines:
+        raw_guidelines = load_general_guidelines()
+        if raw_guidelines:
+            parsed_rules = parse_humanizer_guidelines(raw_guidelines)
+            input_style = analyze_markdown_style(input_md)
+            input_style_signals = input_style
+            humanizer_rules, dropped_rules = filter_humanizer_rules(parsed_rules, fingerprint, input_style, tunables)
+            humanizer_debug = {
+                "rule_or_field": "humanizer_guidelines",
+                "kept": humanizer_rules,
+                "dropped": dropped_rules
+            }
+            if args.verbose:
+                print(f"Humanizer rules loaded: {len(humanizer_rules)} kept, {len(dropped_rules)} dropped")
     # Mask non-voice blocks and inline citations so they are preserved verbatim.
     input_md, frozen_blocks = mask_non_voice_blocks(input_md)
     input_md, citation_map = mask_inline_citations(input_md)
@@ -815,27 +1371,58 @@ def main() -> int:
     all_deviations: List[Any] = []
     outputs: List[str] = []
 
-    def build_messages_for_chunk(md_chunk: str) -> List[Dict[str, str]]:
+    def build_messages_for_chunk(md_chunk: str, style_feedback: Dict[str, Any] | None = None) -> List[Dict[str, str]]:
         # Build prompts per chunk using local measurements.
         input_meas = compute_measurements(filter_author_voice_text(md_chunk))
-        return build_apply_prompt(fingerprint, md_chunk, input_meas, cfg, prompts)
+        return build_apply_prompt(
+            fingerprint,
+            md_chunk,
+            input_meas,
+            cfg,
+            prompts,
+            style_feedback,
+            humanizer_rules
+        )
+
+    def rewrite_chunk(md_chunk: str, chunk_index: int | None = None, chunk_total: int | None = None) -> tuple[str, Dict[str, Any], Dict[str, Any]]:
+        # Rewrite a chunk with optional style retry.
+        attempts = 0
+        style_feedback: Dict[str, Any] | None = None
+        last_out: Dict[str, Any] = {}
+        while True:
+            messages = build_messages_for_chunk(md_chunk, style_feedback)
+            raw = chat_completions(cfg, messages)
+            try:
+                out_obj = parse_json_strict(raw)
+            except Exception:
+                vprint("Invalid JSON returned; attempting repair...")
+                out_obj = repair_json_with_llm(cfg, raw, prompts)
+
+            final_md = out_obj.get("final_markdown")
+            if not isinstance(final_md, str) or not final_md.strip():
+                print("LLM did not return final_markdown.", file=sys.stderr)
+                print(raw)
+                raise RuntimeError("LLM did not return final_markdown")
+
+            compliance = compute_style_compliance(fingerprint, filter_author_voice_text(final_md))
+            if not args.no_style_retry and attempts < args.max_style_retries and compliance["score"] < args.style_retry_threshold:
+                style_feedback = {
+                    "score": compliance["score"],
+                    "deltas": compliance.get("deltas", [])
+                }
+                attempts += 1
+                continue
+
+            last_out = out_obj
+            return final_md, out_obj, compliance
 
     initial_messages = build_messages_for_chunk(input_md)
     initial_tokens = estimate_tokens_for_messages(initial_messages)
     if initial_tokens <= cfg.max_prompt_tokens:
         vprint("Calling LLM to apply fingerprint...")
-        raw = chat_completions(cfg, initial_messages)
-
         try:
-            out_obj = parse_json_strict(raw)
-        except Exception:
-            vprint("Invalid JSON returned; attempting repair...")
-            out_obj = repair_json_with_llm(cfg, raw, prompts)
-
-        final_md = out_obj.get("final_markdown")
-        if not isinstance(final_md, str) or not final_md.strip():
-            print("LLM did not return final_markdown.", file=sys.stderr)
-            print(raw)
+            final_md, out_obj, compliance = rewrite_chunk(input_md)
+        except RuntimeError:
             return 3
         # Ensure any frozen blocks and citation placeholders survive.
         missing_frozen = [p for p in find_placeholders(input_md, FROZEN_BLOCK_RE) if p not in final_md]
@@ -874,24 +1461,20 @@ def main() -> int:
         final_md = restore_base64_images(final_md, base64_map, find_base64_placeholders(final_md))
         outputs.append(final_md)
         all_deviations.extend(out_obj.get("deviations", []) or [])
+        all_deviations.append({
+            "rule_or_field": "style_compliance",
+            "score": compliance.get("score"),
+            "deltas": compliance.get("deltas", [])
+        })
     else:
         vprint(f"Prompt too large ({initial_tokens} tokens); chunking input...")
         chunks = chunk_markdown(input_md, build_messages_for_chunk, cfg.max_prompt_tokens)
         vprint(f"Chunked into {len(chunks)} parts.")
         for idx, chunk in enumerate(chunks, start=1):
             vprint(f"Rewriting chunk {idx}/{len(chunks)}...")
-            messages = build_messages_for_chunk(chunk)
-            raw = chat_completions(cfg, messages)
             try:
-                out_obj = parse_json_strict(raw)
-            except Exception:
-                vprint("Invalid JSON returned; attempting repair...")
-                out_obj = repair_json_with_llm(cfg, raw, prompts)
-
-            final_md = out_obj.get("final_markdown")
-            if not isinstance(final_md, str) or not final_md.strip():
-                print("LLM did not return final_markdown.", file=sys.stderr)
-                print(raw)
+                final_md, out_obj, compliance = rewrite_chunk(chunk, idx, len(chunks))
+            except RuntimeError:
                 return 3
             # Ensure any frozen blocks and citation placeholders survive.
             missing_frozen = [p for p in find_placeholders(chunk, FROZEN_BLOCK_RE) if p not in final_md]
@@ -943,6 +1526,13 @@ def main() -> int:
                     all_deviations.append(d)
                 else:
                     all_deviations.append({"chunk_index": idx, "chunk_total": len(chunks), "detail": d})
+            all_deviations.append({
+                "rule_or_field": "style_compliance",
+                "score": compliance.get("score"),
+                "deltas": compliance.get("deltas", []),
+                "chunk_index": idx,
+                "chunk_total": len(chunks)
+            })
 
     # Stitch chunks back together, preserving the original order.
     final_md = "\n\n".join(s.strip() for s in outputs if s.strip()).strip()
@@ -952,6 +1542,13 @@ def main() -> int:
     print(f"Wrote rewritten markdown to: {out_path}")
 
     # Optionally also write deviations report
+    if humanizer_debug:
+        all_deviations.append(humanizer_debug)
+    if input_style_signals:
+        all_deviations.append({
+            "rule_or_field": "input_style_signals",
+            "signals": input_style_signals
+        })
     if all_deviations:
         rep = out_path.with_suffix(out_path.suffix + ".deviations.json")
         rep.write_text(json.dumps(all_deviations, ensure_ascii=False, indent=2), encoding="utf-8")

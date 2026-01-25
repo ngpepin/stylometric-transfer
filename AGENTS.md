@@ -54,6 +54,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Strip embedded BASE64 images from prompts
     - Select representative excerpts
     - Call LLM to synthesise fingerprint JSON
+    - Validate common phrases via a separate LLM pass to remove OCR/citation noise (disable with `--no-phrase-validation`)
     - Repair invalid JSON if necessary
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-a` (archive), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
@@ -68,6 +69,8 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Strip embedded BASE64 images before prompt and re-insert after rewrite
     - Call LLM with fingerprint + measurements
     - Enforce preservation of meaning
+    - Score style compliance locally and retry once by default with delta feedback (disable with `--no-style-retry`)
+    - Apply `general-guidelines.md` humanizer rules when available, parsing and deterministically filtering out conflicts using fingerprint signals (disable with `--no-humanizer-guidelines`)
     - Return rewritten text and deviations
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
@@ -84,6 +87,10 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Stores API configuration
   - OpenAI‑compatible
   - `max_prompt_tokens` controls chunking for large prompts (defaults to `max_tokens`)
+  - Optional `lexicon_hints.json` can be used to inject preferred/avoided phrases into fingerprinting
+- `config.tunables.json`
+  - Overrides humanizer conflict thresholds for `apply_fingerprint.py`
+  - See README for per‑field explanations and defaults
 
 ### Data Flow
 
@@ -160,8 +167,10 @@ Note: `metadata.corpus` includes `document_count` and `documents` (per-document 
 Process:
 1. Filter out non‑author voice content (blockquotes, references/footnotes, inline citations)
 2. Compute local measurements
-3. Select representative excerpts
-4. Send both to LLM with:
+3. Validate common phrases with an LLM pass to remove OCR/citation noise (disable with `--no-phrase-validation`)
+4. Select representative excerpts
+5. Include optional `lexicon_hints.json` if present
+6. Send both to LLM with:
    - Schema hint
    - JSON‑only requirement
    - Controlled vocabulary instructions
@@ -232,6 +241,9 @@ Current measurements include:
 - US vs Canadian spelling heuristic (English-only)
 - Dash / ellipsis counts
 - Frequent bigrams / trigrams
+- Function‑word profile
+- Stance signals (hedging/boosting/pronouns)
+- Sentence‑opener and transition templates
 
 Schema note:
 - `measurements.orthography_signals.spelling_variant` records the spelling heuristic output
@@ -308,7 +320,7 @@ High‑value next steps, in priority order:
 
 ## 11. Testing Strategy
 
-Current state: no formal tests
+Current state: lightweight regression tests + smoke test
 
 Recommended additions:
 
@@ -325,6 +337,9 @@ Recommended additions:
 
 Current smoke test:
 - `tests/run_smoke.sh` — end-to-end pipeline using small fixtures (requires valid `config.llm.json`)
+
+Regression suite:
+- `tests/test_v1_1_0_regression.py` (run via `./tests/run_v1_1_0_regression.sh`; executed automatically by `run_smoke.sh`)
 
 ---
 

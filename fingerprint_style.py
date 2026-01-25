@@ -58,9 +58,11 @@ except Exception:
 # - Extract a corpus archive into a temp directory
 # - Read text-like files and normalize content
 # - Filter blockquotes, references, footnotes, and inline citations from style analysis
+# - Normalize common OCR artifacts (ligatures, hyphenation)
 # - Compute lightweight, interpretable stylometric measurements
 # - Select representative excerpts
 # - Build a prompt from prompts.json and call an OpenAI-compatible LLM
+# - Optionally validate common phrases with a separate LLM pass
 # - Repair malformed JSON if needed and write the final fingerprint
 
 TEXT_EXTS = {
@@ -76,12 +78,26 @@ DEFAULT_MAX_FILES = 2000
 DEFAULT_MAX_BYTES_PER_FILE = 2_000_000  # 2 MB per file
 DEFAULT_MAX_TOTAL_CHARS_FOR_LLM = 180_000  # excerpt cap; we send stats + representative excerpts
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
+LEXICON_HINTS_FILENAME = "lexicon_hints.json"
 
 def load_prompts() -> Dict[str, Any]:
     # Load externalized prompt templates located alongside this script.
     if not PROMPTS_PATH.exists():
         raise FileNotFoundError(f"prompts.json not found at {PROMPTS_PATH}")
     return json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))
+
+def load_optional_lexicon_hints() -> Optional[Dict[str, Any]]:
+    # Load optional lexicon hints from CWD or script directory.
+    cwd_path = Path.cwd() / LEXICON_HINTS_FILENAME
+    script_path = Path(__file__).resolve().parent / LEXICON_HINTS_FILENAME
+    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    if not path:
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
 
 def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
     # Traverse a nested dict safely and fail fast if a key is missing.
@@ -147,6 +163,17 @@ def read_text_file(path: Path, max_bytes: int) -> str:
 
 
 FRONTMATTER_RE = re.compile(r"(?s)\A---\s*\n.*?\n---\s*\n")
+HYPHEN_LINEBREAK_RE = re.compile(r"(\w)-\n(\w)")
+
+OCR_LIGATURES = {
+    "ﬁ": "fi",
+    "ﬂ": "fl",
+    "ﬀ": "ff",
+    "ﬃ": "ffi",
+    "ﬄ": "ffl",
+    "ﬅ": "ft",
+    "ﬆ": "st"
+}
 
 def normalize_text(s: str) -> str:
     # Strip frontmatter and normalize line breaks for consistent measurement.
@@ -154,6 +181,12 @@ def normalize_text(s: str) -> str:
     s = re.sub(FRONTMATTER_RE, "", s)
     # Normalize newlines
     s = s.replace("\r\n", "\n").replace("\r", "\n")
+    # Fix common OCR ligatures.
+    for src, repl in OCR_LIGATURES.items():
+        if src in s:
+            s = s.replace(src, repl)
+    # Join hyphenated line breaks (OCR/line wrap artifacts).
+    s = re.sub(HYPHEN_LINEBREAK_RE, r"\1\2", s)
     # Collapse too many blank lines a bit (keep structure)
     s = re.sub(r"\n{4,}", "\n\n\n", s)
     return s.strip()
@@ -630,6 +663,59 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
     big = collections.Counter(ngrams(2)).most_common(30)
     tri = collections.Counter(ngrams(3)).most_common(30)
 
+    # Function word profile (classic stylometry signal).
+    function_words = [
+        "the","a","an","and","or","but","if","then","because","so","while","although","though",
+        "of","in","on","for","with","as","by","from","to","into","over","under","between",
+        "is","are","was","were","be","been","being","it","this","that","these","those",
+        "i","we","you","he","she","they","me","us","him","her","them","my","our","your","their",
+        "not","no","nor","very","also","even","only","just","rather","however","therefore"
+    ]
+    fw_counts = collections.Counter(toks)
+    fw_rates = {fw: approx_rate_per_1000_words(fw_counts.get(fw, 0), total_words) for fw in function_words}
+    fw_top = sorted(
+        [{"word": fw, "count": fw_counts.get(fw, 0)} for fw in function_words],
+        key=lambda x: x["count"],
+        reverse=True
+    )[:20]
+
+    # Stance/persona signals (interpretable markers).
+    hedge_terms = {"may","might","perhaps","likely","possibly","seems","appears","suggests","tends"}
+    booster_terms = {"clearly","obviously","certainly","undoubtedly","indeed","surely"}
+    directive_terms = {"must","should","need","needs","ought","required"}
+    first_person = {"i","me","my","mine","we","us","our","ours"}
+    second_person = {"you","your","yours"}
+    third_person = {"he","him","his","she","her","hers","they","them","their","theirs"}
+
+    hedge_hits = sum(1 for t in toks if t in hedge_terms)
+    booster_hits = sum(1 for t in toks if t in booster_terms)
+    directive_hits = sum(1 for t in toks if t in directive_terms)
+    first_hits = sum(1 for t in toks if t in first_person)
+    second_hits = sum(1 for t in toks if t in second_person)
+    third_hits = sum(1 for t in toks if t in third_person)
+
+    # Sentence openers / rhetorical templates (top sentence starts).
+    sent_openers = collections.Counter()
+    transition_terms = {
+        "however","therefore","moreover","furthermore","nevertheless","nonetheless",
+        "for example","for instance","in short","in sum","in practice","in effect",
+        "first","second","third","finally","overall"
+    }
+    transition_hits = collections.Counter()
+    for s in all_sents:
+        ws = [t.lower() for t in words(s)]
+        if len(ws) >= 2:
+            opener = " ".join(ws[:3]) if len(ws) >= 3 else " ".join(ws[:2])
+            if sum(1 for x in opener.split() if x in stop) <= 1:
+                sent_openers[opener] += 1
+        if ws:
+            start_two = " ".join(ws[:2])
+            start_three = " ".join(ws[:3]) if len(ws) >= 3 else ""
+            for cand in (start_three, start_two, ws[0]):
+                if cand and cand in transition_terms:
+                    transition_hits[cand] += 1
+                    break
+
     sent_bins = [(0,9),(10,17),(18,25),(26,40),(41,None)]
     sent_hist = histogram(all_sent_lens, sent_bins)
 
@@ -672,6 +758,22 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
             "oxford_comma_signal": oxford_signal,
             "spelling_variant": detect_english_spelling_variant(combined)
         },
+        "function_words": {
+            "rates_per_1000w": fw_rates,
+            "top": fw_top
+        },
+        "stance_signals": {
+            "hedge_rate": approx_rate_per_1000_words(hedge_hits, total_words),
+            "booster_rate": approx_rate_per_1000_words(booster_hits, total_words),
+            "directive_rate": approx_rate_per_1000_words(directive_hits, total_words),
+            "first_person_rate": approx_rate_per_1000_words(first_hits, total_words),
+            "second_person_rate": approx_rate_per_1000_words(second_hits, total_words),
+            "third_person_rate": approx_rate_per_1000_words(third_hits, total_words)
+        },
+        "templates_signals": {
+            "sentence_openers_top": [{"phrase": p, "count": c} for p, c in sent_openers.most_common(20)],
+            "transition_openers_top": [{"phrase": p, "count": c} for p, c in transition_hits.most_common(15)]
+        },
         "common_phrases": {
             "bigrams_top": [{"phrase": p, "count": c} for p, c in big],
             "trigrams_top": [{"phrase": p, "count": c} for p, c in tri]
@@ -688,16 +790,65 @@ def pick_representative_excerpts(files_and_texts: List[Tuple[str, str]], max_tot
     excerpts: List[Dict[str, str]] = []
     used = 0
 
-    # Prefer mid-sized pieces and variety while keeping a total budget.
-    sorted_items = sorted(files_and_texts, key=lambda x: abs(len(x[1]) - 6000))
-    for rel, txt in sorted_items:
+    def score_paragraph_voice(p: str) -> float:
+        # Heuristic: prefer clean, narrative paragraphs with fewer artifacts.
+        ws = words(p)
+        if not ws:
+            return 0.0
+        score = 1.0
+        wc = len(ws)
+        if wc < 60:
+            score *= 0.3
+        elif wc > 280:
+            score *= 0.6
+        if re.match(r"^\s*[-*+]\s+", p) or re.match(r"^\s*\d+\.\s+", p):
+            score *= 0.5
+        upper_ratio = sum(1 for ch in p if ch.isupper()) / max(1, len(p))
+        if upper_ratio > 0.2:
+            score *= 0.7
+        digit_ratio = sum(1 for ch in p if ch.isdigit()) / max(1, len(p))
+        if digit_ratio > 0.08:
+            score *= 0.7
+        if re.search(r"\b(ibid|supra|infra|cf|op\.|cit|pp?)\b", p.lower()):
+            score *= 0.4
+        if re.search(r"\[[0-9,\s]+\]", p):
+            score *= 0.5
+        return score
+
+    candidates: List[Tuple[float, str, str]] = []
+    for rel, txt in files_and_texts:
+        for para in split_paragraphs(txt):
+            if len(para) < 200:
+                continue
+            candidates.append((score_paragraph_voice(para), rel, para))
+
+    if not candidates:
+        return excerpts
+
+    # Seed with top paragraph per document for variety.
+    by_doc: Dict[str, List[Tuple[float, str]]] = {}
+    for score, rel, para in candidates:
+        by_doc.setdefault(rel, []).append((score, para))
+    for rel in by_doc:
+        by_doc[rel].sort(key=lambda x: x[0], reverse=True)
+    for rel, paras in by_doc.items():
         if used >= max_total_chars:
             break
-        snippet = txt[:6000]
-        if len(snippet) < 800:
+        score, para = paras[0]
+        take = min(len(para), max_total_chars - used)
+        snippet = para[:take]
+        excerpts.append({"path": rel, "excerpt": snippet})
+        used += len(snippet)
+
+    # Fill remaining budget with highest-scoring paragraphs overall.
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    for score, rel, para in candidates:
+        if used >= max_total_chars:
+            break
+        if any(e["excerpt"] == para for e in excerpts):
             continue
-        take = min(len(snippet), max_total_chars - used)
-        snippet = snippet[:take]
+        take = min(len(para), max_total_chars - used)
+        snippet = para[:take]
         excerpts.append({"path": rel, "excerpt": snippet})
         used += len(snippet)
 
@@ -773,7 +924,8 @@ def build_fingerprint_prompt(
     measurements: Dict[str, Any],
     excerpts: List[Dict[str, str]],
     cfg: LLMConfig,
-    prompts: Dict[str, Any]
+    prompts: Dict[str, Any],
+    lexicon_hints: Optional[Dict[str, Any]] = None
 ) -> List[Dict[str, str]]:
     # Fill the fingerprint prompt template with runtime data.
     schema = fingerprint_schema_template(prompts)
@@ -786,6 +938,8 @@ def build_fingerprint_prompt(
     user["schema_hint"] = schema
     user["measurements"] = measurements
     user["excerpts"] = excerpts
+    if lexicon_hints:
+        user["lexicon_hints"] = lexicon_hints
 
     return [
         {"role": "system", "content": system},
@@ -823,15 +977,47 @@ def build_merge_prompt(
     ]
 
 
+def build_phrase_validation_prompt(
+    phrases: List[Dict[str, Any]],
+    prompts: Dict[str, Any]
+) -> List[Dict[str, str]]:
+    # Build a prompt to validate common phrases (OCR/citation noise filtering).
+    system = get_prompt_value(prompts, "validate_phrases", "system")
+    user_template = get_prompt_value(prompts, "validate_phrases", "user")
+    if not isinstance(user_template, dict):
+        raise TypeError("prompts.validate_phrases.user must be an object")
+    user = copy.deepcopy(user_template)
+    user["phrases"] = phrases
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": json.dumps(user, ensure_ascii=False)}
+    ]
+
+
+def validate_common_phrases(
+    cfg: LLMConfig,
+    phrases: List[Dict[str, Any]],
+    prompts: Dict[str, Any]
+) -> Dict[str, Any]:
+    # Ask the LLM to flag OCR/citation noise in common phrases.
+    messages = build_phrase_validation_prompt(phrases, prompts)
+    raw = chat_completions(cfg, messages)
+    try:
+        return parse_json_strict(raw)
+    except Exception:
+        return repair_json_with_llm(cfg, raw, prompts)
+
+
 def chunk_excerpts(
     excerpts: List[Dict[str, str]],
     measurements: Dict[str, Any],
     cfg: LLMConfig,
     max_prompt_tokens: int,
-    prompts: Dict[str, Any]
+    prompts: Dict[str, Any],
+    lexicon_hints: Optional[Dict[str, Any]] = None
 ) -> List[List[Dict[str, str]]]:
     # Split excerpts into prompt-sized batches if the prompt is too large.
-    base_messages = build_fingerprint_prompt(measurements, [], cfg, prompts)
+    base_messages = build_fingerprint_prompt(measurements, [], cfg, prompts, lexicon_hints)
     base_tokens = estimate_tokens_for_messages(base_messages)
     if base_tokens >= max_prompt_tokens:
         return [excerpts[:1]] if excerpts else [[]]
@@ -916,6 +1102,11 @@ def main() -> int:
         default=None,
         help="Author name (metadata only; default: output filename without .json)"
     )
+    ap.add_argument(
+        "--no-phrase-validation",
+        action="store_true",
+        help="Disable the LLM pass that validates common phrases (OCR/citation noise filtering)"
+    )
     ap.add_argument("--max-files", type=int, default=DEFAULT_MAX_FILES)
     ap.add_argument("--max-bytes-per-file", type=int, default=DEFAULT_MAX_BYTES_PER_FILE)
     ap.add_argument("--excerpt-char-budget", type=int, default=DEFAULT_MAX_TOTAL_CHARS_FOR_LLM)
@@ -939,6 +1130,7 @@ def main() -> int:
 
     cfg = load_config(args.config)
     prompts = load_prompts()
+    lexicon_hints = load_optional_lexicon_hints()
     if args.max_prompt_tokens is not None:
         # Allow CLI override for chunking threshold.
         cfg.max_prompt_tokens = args.max_prompt_tokens
@@ -962,11 +1154,81 @@ def main() -> int:
         vprint(f"Found {len(files_and_texts)} files; computing measurements...")
         texts = [t for _, t in files_and_texts]
         measurements = compute_measurements(texts)
+        if not args.no_phrase_validation:
+            vprint("Validating common phrases with LLM...")
+            common = measurements.get("common_phrases", {})
+            candidates: List[Dict[str, Any]] = []
+            for item in common.get("bigrams_top", []) or []:
+                candidates.append({
+                    "phrase": item.get("phrase", ""),
+                    "count": item.get("count", 0),
+                    "ngram": 2
+                })
+            for item in common.get("trigrams_top", []) or []:
+                candidates.append({
+                    "phrase": item.get("phrase", ""),
+                    "count": item.get("count", 0),
+                    "ngram": 3
+                })
+            if candidates:
+                validation = validate_common_phrases(cfg, candidates, prompts)
+                decisions = validation.get("decisions", []) or []
+                decision_map: Dict[Tuple[str, int], Dict[str, Any]] = {}
+                for d in decisions:
+                    phrase = d.get("phrase")
+                    ngram = d.get("ngram")
+                    if isinstance(phrase, str) and isinstance(ngram, int):
+                        decision_map[(phrase, ngram)] = d
+
+                validated_bi: List[Dict[str, Any]] = []
+                validated_tri: List[Dict[str, Any]] = []
+                dropped: List[Dict[str, Any]] = []
+
+                for item in common.get("bigrams_top", []) or []:
+                    phrase = item.get("phrase", "")
+                    decision = decision_map.get((phrase, 2))
+                    if decision and decision.get("decision") == "drop":
+                        dropped.append({
+                            "phrase": phrase,
+                            "count": item.get("count", 0),
+                            "ngram": 2,
+                            "reason": decision.get("reason", "")
+                        })
+                    else:
+                        validated_bi.append(item)
+
+                for item in common.get("trigrams_top", []) or []:
+                    phrase = item.get("phrase", "")
+                    decision = decision_map.get((phrase, 3))
+                    if decision and decision.get("decision") == "drop":
+                        dropped.append({
+                            "phrase": phrase,
+                            "count": item.get("count", 0),
+                            "ngram": 3,
+                            "reason": decision.get("reason", "")
+                        })
+                    else:
+                        validated_tri.append(item)
+
+                measurements["common_phrases_validation"] = {
+                    "validated": {
+                        "bigrams_top": validated_bi,
+                        "trigrams_top": validated_tri
+                    },
+                    "dropped": dropped,
+                    "notes": validation.get("notes", [])
+                }
+            else:
+                measurements["common_phrases_validation"] = {
+                    "validated": {"bigrams_top": [], "trigrams_top": []},
+                    "dropped": [],
+                    "notes": ["No common phrases to validate."]
+                }
         vprint("Selecting representative excerpts...")
         excerpts = pick_representative_excerpts(files_and_texts, max_total_chars=args.excerpt_char_budget)
 
         vprint("Calling LLM to synthesize fingerprint...")
-        messages = build_fingerprint_prompt(measurements, excerpts, cfg, prompts)
+        messages = build_fingerprint_prompt(measurements, excerpts, cfg, prompts, lexicon_hints)
         prompt_tokens = estimate_tokens_for_messages(messages)
         if prompt_tokens <= cfg.max_prompt_tokens:
             raw = chat_completions(cfg, messages)
@@ -977,12 +1239,12 @@ def main() -> int:
                 fingerprint = repair_json_with_llm(cfg, raw, prompts)
         else:
             vprint(f"Prompt too large ({prompt_tokens} tokens); chunking excerpts...")
-            batches = chunk_excerpts(excerpts, measurements, cfg, cfg.max_prompt_tokens, prompts)
+            batches = chunk_excerpts(excerpts, measurements, cfg, cfg.max_prompt_tokens, prompts, lexicon_hints)
             vprint(f"Chunked into {len(batches)} excerpt batches.")
             partials: List[Dict[str, Any]] = []
             for idx, batch in enumerate(batches, start=1):
                 vprint(f"Synthesizing partial fingerprint {idx}/{len(batches)}...")
-                batch_messages = build_fingerprint_prompt(measurements, batch, cfg, prompts)
+                batch_messages = build_fingerprint_prompt(measurements, batch, cfg, prompts, lexicon_hints)
                 raw = chat_completions(cfg, batch_messages)
                 try:
                     partial = parse_json_strict(raw)
