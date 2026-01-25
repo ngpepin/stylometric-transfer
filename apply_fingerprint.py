@@ -84,6 +84,11 @@ INLINE_NUMERIC_CITE_RE = re.compile(r"\[(?:\d+|[IVX]+)(?:\s*[-–,;]\s*(?:\d+|[I
 PAREN_GROUP_RE = re.compile(r"\([^()]{1,80}\)")
 FROZEN_BLOCK_RE = re.compile(r"\[\[FROZEN_BLOCK_\d+\]\]")
 CITATION_PLACEHOLDER_RE = re.compile(r"\[\[CITATION_\d+\]\]")
+INLINE_CODE_PLACEHOLDER_RE = re.compile(r"\[\[INLINE_CODE_\d+\]\]")
+HTML_PLACEHOLDER_RE = re.compile(r"\[\[HTML_BLOCK_\d+\]\]")
+INLINE_MATH_PLACEHOLDER_RE = re.compile(r"\[\[INLINE_MATH_\d+\]\]")
+DISPLAY_MATH_PLACEHOLDER_RE = re.compile(r"\[\[DISPLAY_MATH_\d+\]\]")
+HTML_ENTITY_PLACEHOLDER_RE = re.compile(r"\[\[HTML_ENTITY_\d+\]\]")
 
 SECTION_HEADING_RE = re.compile(r"^###\s+(\d+\\.)?\s*(.+)$")
 WORDS_TO_WATCH_RE = re.compile(r"^\*\*Words to watch:\*\*\s*(.+)$")
@@ -295,6 +300,58 @@ def strip_non_voice_sections(text: str) -> str:
     return cleaned.strip()
 
 
+def strip_fenced_code_blocks(text: str) -> str:
+    # Remove fenced code blocks (``` or ~~~) entirely.
+    lines = text.splitlines()
+    out: List[str] = []
+    in_code = False
+    fence = ""
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            if not in_code:
+                in_code = True
+                fence = stripped[:3]
+            else:
+                if stripped.startswith(fence):
+                    in_code = False
+                    fence = ""
+            continue
+        if not in_code:
+            out.append(line)
+    return "\n".join(out)
+
+
+def strip_inline_code(text: str) -> str:
+    # Remove inline code spans delimited by backticks.
+    return re.sub(r"(``[^`]+``|`[^`]+`)", "", text)
+
+
+def strip_html(text: str) -> str:
+    # Remove HTML tags and block elements to exclude HTML from profiling.
+    text = re.sub(r"(?is)<[^>]+>.*?</[^>]+>", "\n", text)
+    text = re.sub(r"(?is)<!--.*?-->", "", text)
+    text = re.sub(r"<[^>]+>", "", text)
+    return text
+
+
+def strip_latex_math(text: str) -> str:
+    # Remove LaTeX-style inline/display math.
+    text = re.sub(r"(?s)\\\[.*?\\\]", "\n", text)
+    text = re.sub(r"(?s)\\\(.*?\\\)", "", text)
+    text = re.sub(r"(?s)\$\$.*?\$\$", "\n", text)
+    text = re.sub(r"(?s)\$[^$]*\$", "", text)
+    text = re.sub(r"(?s)\\begin\\{[^}]+\\}.*?\\end\\{[^}]+\\}", "\n", text)
+    # Remove bare LaTeX command sequences outside delimiters.
+    text = re.sub(r"\\[A-Za-z]+(?:\{[^}]*\})?", "", text)
+    return text
+
+
+def strip_html_entities(text: str) -> str:
+    # Remove HTML entities (e.g., &nbsp;).
+    return re.sub(r"&[A-Za-z0-9#]+;", "", text)
+
+
 def is_parenthetical_citation(inner: str) -> bool:
     if not re.search(r"\b(19|20)\d{2}[a-z]?\b", inner):
         return False
@@ -332,11 +389,20 @@ def strip_inline_citations(text: str) -> str:
 
 def filter_author_voice_text(text: str) -> str:
     # Remove non-author voice segments and inline citations for measurements.
+    text = strip_fenced_code_blocks(text)
+    text = strip_inline_code(text)
     text = strip_non_voice_sections(text)
+    text = strip_latex_math(text)
+    text = strip_html(text)
+    text = strip_html_entities(text)
     text = BASE64_PLACEHOLDER_RE.sub("", text)
     text = strip_inline_citations(text)
     text = FROZEN_BLOCK_RE.sub("", text)
     text = CITATION_PLACEHOLDER_RE.sub("", text)
+    text = INLINE_CODE_PLACEHOLDER_RE.sub("", text)
+    text = INLINE_MATH_PLACEHOLDER_RE.sub("", text)
+    text = DISPLAY_MATH_PLACEHOLDER_RE.sub("", text)
+    text = HTML_ENTITY_PLACEHOLDER_RE.sub("", text)
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
@@ -525,11 +591,11 @@ def analyze_markdown_style(text: str) -> Dict[str, Any]:
             if stripped.startswith("#"):
                 headings_total += 1
                 heading_text = stripped.lstrip("#").strip()
-                words = [re.sub(r"[^A-Za-z]", "", w) for w in heading_text.split()]
-                words = [w for w in words if w]
-                if words:
-                    cap = sum(1 for w in words if w[0].isupper())
-                    if cap / max(1, len(words)) >= 0.6:
+                wlist = [re.sub(r"[^A-Za-z]", "", w) for w in heading_text.split()]
+                wlist = [w for w in wlist if w]
+                if wlist:
+                    cap = sum(1 for w in wlist if w[0].isupper())
+                    if cap / max(1, len(wlist)) >= 0.6:
                         headings_title_case += 1
             if re.match(r"^\\s*[-*+]\\s+", line) or re.match(r"^\\s*\\d+\\.\\s+", line):
                 list_total += 1
@@ -581,7 +647,13 @@ def filter_humanizer_rules(
     lexicon = fingerprint.get("lexicon", {}) if isinstance(fingerprint, dict) else {}
     preferred_words = set(w.lower() for w in lexicon.get("preferred_words", []) if isinstance(w, str))
     preferred_phrases = set(p.lower() for p in lexicon.get("preferred_phrases", []) if isinstance(p, str))
-    synonym_keys = set(k.lower() for k in lexicon.get("synonym_preferences", {}).keys() if isinstance(k, str))
+    synonym_prefs = lexicon.get("synonym_preferences", {})
+    if isinstance(synonym_prefs, dict):
+        synonym_keys = set(k.lower() for k in synonym_prefs.keys() if isinstance(k, str))
+    elif isinstance(synonym_prefs, list):
+        synonym_keys = set(str(k).lower() for k in synonym_prefs)
+    else:
+        synonym_keys = set()
 
     transition_top = set(
         (item.get("phrase", "") or "").lower()
@@ -750,6 +822,96 @@ def is_code_block(block: str) -> bool:
     if (first.startswith("```") or first.startswith("~~~")) and (last.startswith("```") or last.startswith("~~~")):
         return True
     return False
+
+
+def mask_inline_code(text: str) -> tuple[str, Dict[str, str]]:
+    # Replace inline code spans with placeholders to preserve verbatim.
+    mapping: Dict[str, str] = {}
+    counter = 0
+
+    def repl(match: re.Match[str]) -> str:
+        nonlocal counter
+        placeholder = f"[[INLINE_CODE_{counter}]]"
+        mapping[placeholder] = match.group(0)
+        counter += 1
+        return placeholder
+
+    # Handle single and double backticks.
+    pattern = re.compile(r"(``[^`]+``|`[^`]+`)")
+    stripped = pattern.sub(repl, text)
+    return stripped, mapping
+
+
+def find_inline_code_placeholders(text: str) -> List[str]:
+    return re.findall(r"\[\[INLINE_CODE_\d+\]\]", text)
+
+
+def mask_html(text: str) -> tuple[str, Dict[str, str]]:
+    # Replace HTML blocks and tags with placeholders to preserve verbatim.
+    mapping: Dict[str, str] = {}
+    counter = 0
+
+    def make_placeholder(block: str) -> str:
+        nonlocal counter
+        placeholder = f"[[HTML_BLOCK_{counter}]]"
+        mapping[placeholder] = block
+        counter += 1
+        return placeholder
+
+    def repl_block(match: re.Match[str]) -> str:
+        return make_placeholder(match.group(0))
+
+    # Mask block elements first.
+    text = re.sub(r"(?is)<(script|style|table|pre|code|svg|math|div|section|article|header|footer|nav|aside)[^>]*>.*?</\\1>", repl_block, text)
+    # Mask HTML comments.
+    text = re.sub(r"(?is)<!--.*?-->", repl_block, text)
+    # Mask any remaining tags.
+    text = re.sub(r"(?is)<[^>]+>", repl_block, text)
+    return text, mapping
+
+
+def mask_math_notation(text: str) -> tuple[str, Dict[str, str]]:
+    # Replace LaTeX-style math with placeholders to preserve verbatim.
+    mapping: Dict[str, str] = {}
+    counter_inline = 0
+    counter_display = 0
+
+    def repl_display(match: re.Match[str]) -> str:
+        nonlocal counter_display
+        placeholder = f"[[DISPLAY_MATH_{counter_display}]]"
+        mapping[placeholder] = match.group(0)
+        counter_display += 1
+        return placeholder
+
+    def repl_inline(match: re.Match[str]) -> str:
+        nonlocal counter_inline
+        placeholder = f"[[INLINE_MATH_{counter_inline}]]"
+        mapping[placeholder] = match.group(0)
+        counter_inline += 1
+        return placeholder
+
+    text = re.sub(r"(?s)\\begin\\{[^}]+\\}.*?\\end\\{[^}]+\\}", repl_display, text)
+    text = re.sub(r"(?s)\\$\\$.*?\\$\\$", repl_display, text)
+    text = re.sub(r"(?s)\\\[.*?\\\]", repl_display, text)
+    text = re.sub(r"(?s)\\\(.*?\\\)", repl_inline, text)
+    text = re.sub(r"(?s)\\$(?:\\\\\\$|[^$])+\\$", repl_inline, text)
+    return text, mapping
+
+
+def mask_html_entities(text: str) -> tuple[str, Dict[str, str]]:
+    # Replace HTML entities with placeholders to preserve verbatim.
+    mapping: Dict[str, str] = {}
+    counter = 0
+
+    def repl(match: re.Match[str]) -> str:
+        nonlocal counter
+        placeholder = f"[[HTML_ENTITY_{counter}]]"
+        mapping[placeholder] = match.group(0)
+        counter += 1
+        return placeholder
+
+    stripped = re.sub(r"&[A-Za-z0-9#]+;", repl, text)
+    return stripped, mapping
 
 
 def split_oversize_block(block: str, build_messages_fn, max_prompt_tokens: int) -> List[str]:
@@ -1350,6 +1512,11 @@ def main() -> int:
     input_md, base64_map = strip_base64_images(input_md)
     if base64_map:
         vprint(f"Stripped {len(base64_map)} base64 image embed(s) from prompt.")
+    # Mask HTML, math, entities, and inline code spans so they are preserved verbatim.
+    input_md, html_map = mask_html(input_md)
+    input_md, math_map = mask_math_notation(input_md)
+    input_md, entity_map = mask_html_entities(input_md)
+    input_md, inline_code_map = mask_inline_code(input_md)
     if not args.no_humanizer_guidelines:
         raw_guidelines = load_general_guidelines()
         if raw_guidelines:
@@ -1425,6 +1592,47 @@ def main() -> int:
         except RuntimeError:
             return 3
         # Ensure any frozen blocks and citation placeholders survive.
+        missing_html = [p for p in find_placeholders(input_md, HTML_PLACEHOLDER_RE) if p not in final_md]
+        if missing_html:
+            for p in missing_html:
+                all_deviations.append({
+                    "rule_or_field": "html",
+                    "reason": "HTML placeholder missing from output; re-embedded at end of document.",
+                    "placeholder": p
+                })
+            final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_html)
+
+        missing_math = [p for p in find_placeholders(input_md, INLINE_MATH_PLACEHOLDER_RE) if p not in final_md]
+        missing_math += [p for p in find_placeholders(input_md, DISPLAY_MATH_PLACEHOLDER_RE) if p not in final_md]
+        if missing_math:
+            for p in missing_math:
+                all_deviations.append({
+                    "rule_or_field": "math",
+                    "reason": "Math placeholder missing from output; re-embedded at end of document.",
+                    "placeholder": p
+                })
+            final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_math)
+
+        missing_entities = [p for p in find_placeholders(input_md, HTML_ENTITY_PLACEHOLDER_RE) if p not in final_md]
+        if missing_entities:
+            for p in missing_entities:
+                all_deviations.append({
+                    "rule_or_field": "html_entity",
+                    "reason": "HTML entity placeholder missing from output; re-embedded at end of document.",
+                    "placeholder": p
+                })
+            final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_entities)
+
+        missing_inline = [p for p in find_placeholders(input_md, INLINE_CODE_PLACEHOLDER_RE) if p not in final_md]
+        if missing_inline:
+            for p in missing_inline:
+                all_deviations.append({
+                    "rule_or_field": "inline_code",
+                    "reason": "Inline code placeholder missing from output; re-embedded at end of document.",
+                    "placeholder": p
+                })
+            final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_inline)
+
         missing_frozen = [p for p in find_placeholders(input_md, FROZEN_BLOCK_RE) if p not in final_md]
         if missing_frozen:
             for p in missing_frozen:
@@ -1456,6 +1664,10 @@ def main() -> int:
                 })
             footer = "\n".join(f"![]({base64_map[p]})" for p in missing if p in base64_map)
             final_md = final_md.rstrip() + "\n\n" + footer
+        final_md = restore_placeholders(final_md, html_map)
+        final_md = restore_placeholders(final_md, math_map)
+        final_md = restore_placeholders(final_md, entity_map)
+        final_md = restore_placeholders(final_md, inline_code_map)
         final_md = restore_placeholders(final_md, frozen_blocks)
         final_md = restore_placeholders(final_md, citation_map)
         final_md = restore_base64_images(final_md, base64_map, find_base64_placeholders(final_md))
@@ -1477,6 +1689,55 @@ def main() -> int:
             except RuntimeError:
                 return 3
             # Ensure any frozen blocks and citation placeholders survive.
+            missing_html = [p for p in find_placeholders(chunk, HTML_PLACEHOLDER_RE) if p not in final_md]
+            if missing_html:
+                for p in missing_html:
+                    all_deviations.append({
+                        "rule_or_field": "html",
+                        "reason": "HTML placeholder missing from output; re-embedded at end of chunk.",
+                        "placeholder": p,
+                        "chunk_index": idx,
+                        "chunk_total": len(chunks)
+                    })
+                final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_html)
+
+            missing_math = [p for p in find_placeholders(chunk, INLINE_MATH_PLACEHOLDER_RE) if p not in final_md]
+            missing_math += [p for p in find_placeholders(chunk, DISPLAY_MATH_PLACEHOLDER_RE) if p not in final_md]
+            if missing_math:
+                for p in missing_math:
+                    all_deviations.append({
+                        "rule_or_field": "math",
+                        "reason": "Math placeholder missing from output; re-embedded at end of chunk.",
+                        "placeholder": p,
+                        "chunk_index": idx,
+                        "chunk_total": len(chunks)
+                    })
+                final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_math)
+
+            missing_entities = [p for p in find_placeholders(chunk, HTML_ENTITY_PLACEHOLDER_RE) if p not in final_md]
+            if missing_entities:
+                for p in missing_entities:
+                    all_deviations.append({
+                        "rule_or_field": "html_entity",
+                        "reason": "HTML entity placeholder missing from output; re-embedded at end of chunk.",
+                        "placeholder": p,
+                        "chunk_index": idx,
+                        "chunk_total": len(chunks)
+                    })
+                final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_entities)
+
+            missing_inline = [p for p in find_placeholders(chunk, INLINE_CODE_PLACEHOLDER_RE) if p not in final_md]
+            if missing_inline:
+                for p in missing_inline:
+                    all_deviations.append({
+                        "rule_or_field": "inline_code",
+                        "reason": "Inline code placeholder missing from output; re-embedded at end of chunk.",
+                        "placeholder": p,
+                        "chunk_index": idx,
+                        "chunk_total": len(chunks)
+                    })
+                final_md = final_md.rstrip() + "\n\n" + "\n\n".join(missing_inline)
+
             missing_frozen = [p for p in find_placeholders(chunk, FROZEN_BLOCK_RE) if p not in final_md]
             if missing_frozen:
                 for p in missing_frozen:
@@ -1513,6 +1774,10 @@ def main() -> int:
                     })
                 footer = "\n".join(f"![]({base64_map[p]})" for p in missing if p in base64_map)
                 final_md = final_md.rstrip() + "\n\n" + footer
+            final_md = restore_placeholders(final_md, html_map)
+            final_md = restore_placeholders(final_md, math_map)
+            final_md = restore_placeholders(final_md, entity_map)
+            final_md = restore_placeholders(final_md, inline_code_map)
             final_md = restore_placeholders(final_md, frozen_blocks)
             final_md = restore_placeholders(final_md, citation_map)
             final_md = restore_base64_images(final_md, base64_map, find_base64_placeholders(final_md))

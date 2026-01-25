@@ -74,6 +74,8 @@ DOCX_EXTS = {".docx"}
 
 BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\s]+", re.IGNORECASE)
 BASE64_PLACEHOLDER_RE = re.compile(r"\[\[BASE64_IMAGE(?:_\d+)?\]\]")
+HTML_TAG_RE = re.compile(r"<[^>]+>")
+HTML_ENTITY_RE = re.compile(r"&[A-Za-z0-9#]+;")
 DEFAULT_MAX_FILES = 2000
 DEFAULT_MAX_BYTES_PER_FILE = 2_000_000  # 2 MB per file
 DEFAULT_MAX_TOTAL_CHARS_FOR_LLM = 180_000  # excerpt cap; we send stats + representative excerpts
@@ -301,6 +303,58 @@ def strip_non_voice_sections(text: str) -> str:
     return cleaned.strip()
 
 
+def strip_fenced_code_blocks(text: str) -> str:
+    # Remove fenced code blocks (``` or ~~~) entirely.
+    lines = text.splitlines()
+    out: List[str] = []
+    in_code = False
+    fence = ""
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            if not in_code:
+                in_code = True
+                fence = stripped[:3]
+            else:
+                if stripped.startswith(fence):
+                    in_code = False
+                    fence = ""
+            continue
+        if not in_code:
+            out.append(line)
+    return "\n".join(out)
+
+
+def strip_inline_code(text: str) -> str:
+    # Remove inline code spans delimited by backticks.
+    return re.sub(r"(``[^`]+``|`[^`]+`)", "", text)
+
+
+def strip_latex_math(text: str) -> str:
+    # Remove LaTeX-style inline/display math.
+    text = re.sub(r"(?s)\\\[.*?\\\]", "\n", text)
+    text = re.sub(r"(?s)\\\(.*?\\\)", "", text)
+    text = re.sub(r"(?s)\$\$.*?\$\$", "\n", text)
+    text = re.sub(r"(?s)\$[^$]*\$", "", text)
+    text = re.sub(r"(?s)\\begin\\{[^}]+\\}.*?\\end\\{[^}]+\\}", "\n", text)
+    # Remove bare LaTeX command sequences outside delimiters.
+    text = re.sub(r"\\[A-Za-z]+(?:\{[^}]*\})?", "", text)
+    return text
+
+
+def strip_html(text: str) -> str:
+    # Remove HTML tags and block elements to exclude HTML from profiling.
+    text = re.sub(r"(?is)<[^>]+>.*?</[^>]+>", "\n", text)
+    text = re.sub(r"(?is)<!--.*?-->", "", text)
+    text = HTML_TAG_RE.sub("", text)
+    return text
+
+
+def strip_html_entities(text: str) -> str:
+    # Remove HTML entities (e.g., &nbsp;).
+    return HTML_ENTITY_RE.sub("", text)
+
+
 def is_parenthetical_citation(inner: str) -> bool:
     if not re.search(r"\b(19|20)\d{2}[a-z]?\b", inner):
         return False
@@ -338,7 +392,12 @@ def strip_inline_citations(text: str) -> str:
 
 def filter_author_voice_text(text: str) -> str:
     # Remove non-author voice segments and inline citations for measurements/excerpts.
+    text = strip_fenced_code_blocks(text)
     text = strip_non_voice_sections(text)
+    text = strip_inline_code(text)
+    text = strip_latex_math(text)
+    text = strip_html(text)
+    text = strip_html_entities(text)
     text = BASE64_PLACEHOLDER_RE.sub("", text)
     text = strip_inline_citations(text)
     return re.sub(r"\n{3,}", "\n\n", text).strip()

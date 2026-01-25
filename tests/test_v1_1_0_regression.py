@@ -21,6 +21,13 @@ class TestV110Regression(unittest.TestCase):
             "Intro paragraph.\n\n"
             "> Quoted material.\n"
             "> Still quoted.\n\n"
+            "```python\n"
+            "print('code block')\n"
+            "```\n\n"
+            "Inline `code span` should be removed.\n"
+            "<div>HTML content</div>\n"
+            "Inline $E=mc^2$ and \\alpha+\\beta should be removed.\n"
+            "Inline $E=mc^2$ and \\alpha+\\beta should be removed.\n"
             "More prose (Smith 2020).\n\n"
             "## References\n"
             "- [1] Example reference\n\n"
@@ -28,6 +35,11 @@ class TestV110Regression(unittest.TestCase):
         )
         cleaned = fs.filter_author_voice_text(text)
         self.assertNotIn("Quoted material", cleaned)
+        self.assertNotIn("code block", cleaned)
+        self.assertNotIn("code span", cleaned)
+        self.assertNotIn("HTML content", cleaned)
+        self.assertNotIn("E=mc^2", cleaned)
+        self.assertNotIn("\\alpha+\\beta", cleaned)
         self.assertNotIn("References", cleaned)
         self.assertNotIn("Footnote content", cleaned)
         self.assertNotIn("Smith 2020", cleaned)
@@ -71,6 +83,34 @@ class TestV110Regression(unittest.TestCase):
     def test_mask_and_restore_inline_citations(self) -> None:
         md = "A sentence (Smith 2020) with [12] citations."
         masked, mapping = af.mask_inline_citations(md)
+        self.assertTrue(mapping)
+        restored = af.restore_placeholders(masked, mapping)
+        self.assertEqual(restored, md)
+
+    def test_mask_and_restore_inline_code(self) -> None:
+        md = "Use `code` and ``more code`` inline."
+        masked, mapping = af.mask_inline_code(md)
+        self.assertTrue(mapping)
+        restored = af.restore_placeholders(masked, mapping)
+        self.assertEqual(restored, md)
+
+    def test_mask_and_restore_html(self) -> None:
+        md = "Inline <span>HTML</span> and <div>block</div> and <math>x^2</math>."
+        masked, mapping = af.mask_html(md)
+        self.assertTrue(mapping)
+        restored = af.restore_placeholders(masked, mapping)
+        self.assertEqual(restored, md)
+
+    def test_mask_and_restore_math(self) -> None:
+        md = "Inline $E=mc^2$ and $$x^2$$ plus \\(y\\) and \\[z\\] and \\begin{equation}a=b\\end{equation}."
+        masked, mapping = af.mask_math_notation(md)
+        self.assertTrue(mapping)
+        restored = af.restore_placeholders(masked, mapping)
+        self.assertEqual(restored, md)
+
+    def test_mask_and_restore_html_entities(self) -> None:
+        md = "Spacing&nbsp;and&nbsp;entities."
+        masked, mapping = af.mask_html_entities(md)
         self.assertTrue(mapping)
         restored = af.restore_placeholders(masked, mapping)
         self.assertEqual(restored, md)
@@ -121,6 +161,22 @@ class TestV110Regression(unittest.TestCase):
         fingerprint = {"measurements": {}}
         input_style = {"heading_title_case_rate": 0.9}
         kept, dropped = af.filter_humanizer_rules(rules, fingerprint, input_style, af.DEFAULT_TUNABLES)
+        self.assertFalse(kept)
+        self.assertTrue(dropped)
+
+    def test_humanizer_synonym_preferences_list(self) -> None:
+        sample = (
+            "### 7. Overused \"AI Vocabulary\" Words\n"
+            "**Words to watch:** synergy\n"
+        )
+        rules = af.parse_humanizer_guidelines(sample)
+        fingerprint = {
+            "measurements": {},
+            "lexicon": {
+                "synonym_preferences": ["synergy"]
+            }
+        }
+        kept, dropped = af.filter_humanizer_rules(rules, fingerprint, {}, af.DEFAULT_TUNABLES)
         self.assertFalse(kept)
         self.assertTrue(dropped)
 
