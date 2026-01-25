@@ -4,7 +4,7 @@
 
 `stylometric-transfer` builds an explicit, interpretable **stylometric style profile** from an author’s corpus and then applies that profile to rewrite or generate new text in the same voice.
 
-Or, in plain language: Get an LLM to apply your writing style to any text input. Performs stylometric profiling and humization on writing samples and constraint-guided author-style transfer to a target document. Builds a style "fingerprint" from your writing corpus using classic stylometric measurements graph structure and applies that fingerprint via an LLM to rewrite any text. 
+Or, in plain language: Get an LLM to apply your writing style to any text input. Performs stylometric profiling and humanization on writing samples and constraint-guided author-style transfer to a target document. Builds a style "fingerprint" from your writing corpus using classic stylometric measurements graph structure and applies that fingerprint via an LLM to rewrite any text. 
 
 It really works but comments welcome ;)!
 
