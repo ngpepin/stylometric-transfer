@@ -50,6 +50,7 @@ BASE64_PLACEHOLDER_RE = re.compile(r"\[\[BASE64_IMAGE_\d+\]\]")
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
 HUMANIZER_GUIDELINES_FILENAME = "general-guidelines.md"
 TUNABLES_FILENAME = "config.tunables.json"
+AVOID_LIST_FILENAME = "config.avoid.txt"
 DEFAULT_TUNABLES = {
     "humanizer_conflicts": {
         "em_dash_keep_rate": 0.5,
@@ -135,6 +136,68 @@ def load_tunables(path: Path | None = None) -> Dict[str, Any]:
         pass
     return dict(DEFAULT_TUNABLES)
 
+
+def parse_avoid_list(text: str) -> List[str]:
+    items: List[str] = []
+    for raw in text.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if line:
+            items.append(line)
+    return items
+
+
+def load_avoid_list(path: Path | None = None) -> List[str]:
+    # Load optional avoid-word list from CWD or script directory.
+    if path and path.exists():
+        try:
+            return parse_avoid_list(path.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+    cwd_path = Path.cwd() / AVOID_LIST_FILENAME
+    script_path = Path(__file__).resolve().parent / AVOID_LIST_FILENAME
+    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    if not path:
+        return []
+    try:
+        return parse_avoid_list(path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def merge_avoid_list_into_fingerprint(
+    fingerprint: Dict[str, Any],
+    avoid_list: List[str]
+) -> Dict[str, Any]:
+    if not avoid_list or not isinstance(fingerprint, dict):
+        return fingerprint
+    lexicon = fingerprint.get("lexicon")
+    if not isinstance(lexicon, dict):
+        lexicon = {}
+        fingerprint["lexicon"] = lexicon
+
+    existing = lexicon.get("avoid_words")
+    merged: List[str] = []
+    seen = set()
+
+    def add_item(item: Any) -> None:
+        if not isinstance(item, str):
+            return
+        if item not in seen:
+            seen.add(item)
+            merged.append(item)
+
+    if isinstance(existing, list):
+        for item in existing:
+            add_item(item)
+    elif isinstance(existing, str):
+        add_item(existing)
+
+    for item in avoid_list:
+        add_item(item)
+
+    if merged:
+        lexicon["avoid_words"] = merged
+    return fingerprint
 
 def load_general_guidelines() -> str | None:
     # Load optional humanizer guidelines from CWD or script directory.
@@ -647,6 +710,7 @@ def filter_humanizer_rules(
     lexicon = fingerprint.get("lexicon", {}) if isinstance(fingerprint, dict) else {}
     preferred_words = set(w.lower() for w in lexicon.get("preferred_words", []) if isinstance(w, str))
     preferred_phrases = set(p.lower() for p in lexicon.get("preferred_phrases", []) if isinstance(p, str))
+    avoid_words = set(w.lower() for w in lexicon.get("avoid_words", []) if isinstance(w, str))
     synonym_prefs = lexicon.get("synonym_preferences", {})
     if isinstance(synonym_prefs, dict):
         synonym_keys = set(k.lower() for k in synonym_prefs.keys() if isinstance(k, str))
@@ -735,6 +799,9 @@ def filter_humanizer_rules(
                 drop_reason = "Author uses contractions frequently."
             if "use" in title and contractions_rate < contractions_use_threshold:
                 drop_reason = "Author rarely uses contractions."
+        if tokens and avoid_words:
+            if any(t in avoid_words for t in tokens):
+                drop_reason = "Rule conflicts with global avoid words."
         if tokens and preferred_set:
             if any(t in preferred_set for t in tokens):
                 drop_reason = "Rule conflicts with preferred lexicon/phrases in fingerprint."
@@ -1507,6 +1574,9 @@ def main() -> int:
 
     vprint("Loading fingerprint and input...")
     fingerprint = json.loads(args.fingerprint.read_text(encoding="utf-8"))
+    avoid_list = load_avoid_list()
+    if avoid_list:
+        fingerprint = merge_avoid_list_into_fingerprint(fingerprint, avoid_list)
     input_md = args.inp.read_text(encoding="utf-8")
     # Strip base64 images to keep prompts within token limits.
     input_md, base64_map = strip_base64_images(input_md)

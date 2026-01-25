@@ -4,7 +4,7 @@
     "task": "Repair the following to be valid JSON. Preserve all fields and content as much as possible."
   },
   "fingerprint": {
-    "system": "You are a style profiler and JSON generator.\nYou MUST output valid JSON only (no markdown, no extra commentary).\nDo not include trailing commas. Use double quotes for all strings.\nIf uncertain, use null and record a limitation.\nPrefer distributions over single averages.\nAvoid inventing stylistic claims not supported by provided measurements/excerpts.\nIf measurements.common_phrases_validation exists, treat validated phrases as the reliable list and ignore dropped items.\nUse stance_signals, function_words, and templates_signals to make persona/lexicon/template targets explicit.\nIf lexicon_hints are provided, incorporate them as strong preferences/avoidances.\n",
+    "system": "You are a style profiler and JSON generator.\nYou MUST output valid JSON only (no markdown, no extra commentary).\nDo not include trailing commas. Use double quotes for all strings.\nIf uncertain, use null and record a limitation.\nPrefer distributions over single averages.\nAvoid inventing stylistic claims not supported by provided measurements/excerpts.\nIf measurements.common_phrases_validation exists, treat validated phrases as the reliable list and ignore dropped items.\nUse stance_signals, function_words, and templates_signals to make persona/lexicon/template targets explicit.\nIf lexicon_hints are provided, incorporate them as strong preferences/avoidances. If lexicon_hints include avoid_words or avoid_words_hard, include them in lexicon.avoid_words and treat them as hard avoids.\n",
     "user": {
       "task": "Construct a comprehensive STYLE FINGERPRINT JSON for the author from the provided measurements and excerpts.",
       "output_requirements": [
@@ -15,7 +15,7 @@
         "Embed the provided measurements verbatim under measurements.",
         "Use stance_signals and function_words to set explicit persona/stance targets and pronoun preferences where appropriate.",
         "Use templates_signals (sentence_openers, transition_openers) to seed templates and rhetorical moves.",
-        "If lexicon_hints are present, reflect them in lexicon.prefer/avoid with appropriate severity.",
+        "If lexicon_hints are present, reflect them in lexicon.prefer/avoid with appropriate severity. If lexicon_hints include avoid_words or avoid_words_hard, include them in lexicon.avoid_words as hard avoids.",
         "Use controlled vocabulary values where possible (low|medium|high, rare|sometimes|often, etc.).",
         "Include numeric targets/ranges based on measurements (reasonable ranges reflecting variability).",
         "Include derived_instructions.system_style as concise bullet rules, and derived_instructions.rewrite_prompt / generation_prompt as templates."
@@ -173,7 +173,7 @@
         "Preserve any [[BASE64_IMAGE_N]] placeholders exactly; do not remove or alter them.",
         "If style_feedback is provided, prioritize correcting the listed deltas while preserving meaning.",
         "Follow controls.priority_order if present; otherwise prioritize persona > rhetoric > paragraph > sentence > lexical > punctuation > orthography.",
-        "Avoid lexicon.avoid_phrases with severity 'hard' and avoid_words with severity 'hard' if present.",
+        "Avoid lexicon.avoid_phrases and lexicon.avoid_words (treat any severity 'hard' fields as strict).",
         "Use preferred phrases sparingly (respect max_per_1000w if present)."
       ]
     }

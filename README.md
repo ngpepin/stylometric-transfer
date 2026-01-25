@@ -184,6 +184,7 @@ Notes:
 - Lower temperature is recommended for consistency
 - Prompt templates are stored in `prompts.json` next to the Python scripts and are loaded at runtime (includes the `validate_phrases` template used for common‑phrase validation)
 - Optional `lexicon_hints.json` (in repo root or next to the scripts) can provide preferred/avoided phrases for fingerprinting
+- Optional `config.avoid.txt` (in repo root or next to the scripts) lists words/phrases to always avoid; it is merged into the fingerprint lexicon and enforced during style application
 
 ### Tunables: `config.tunables.json`
 
@@ -217,6 +218,17 @@ Example (defaults shown):
 - `inline_header_list_keep_rate` (0–1): if the input uses inline‑header list style (e.g., `- **Label:** text`) **at or above** this ratio, the “avoid inline‑header lists” guideline is dropped.
 
 All thresholds are conservative defaults. Lowering a threshold makes a conflict more likely (i.e., more rules dropped). Raising a threshold makes the humanizer rules more permissive.
+
+---
+
+### Global avoid list: `config.avoid.txt`
+
+If present, `config.avoid.txt` provides a hard “never use” list. Each non‑empty line is treated as a word or short phrase to avoid. Lines can include comments after `#`, and blank lines are ignored. The list is:
+
+- Injected into fingerprinting as hard lexicon avoids
+- Merged into `lexicon.avoid_words` during application (even if the fingerprint does not include them)
+
+This is useful for organization‑level bans, regulatory terms, or personal preferences that should override the author voice.
 
 ---
 

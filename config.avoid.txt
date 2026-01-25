@@ -1,0 +1,5 @@
+# Optional global avoid list (one word or phrase per line).
+# Lines starting with # are comments and ignored.
+# Example:
+# very
+# obviously

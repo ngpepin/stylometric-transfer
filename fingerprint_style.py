@@ -81,6 +81,7 @@ DEFAULT_MAX_BYTES_PER_FILE = 2_000_000  # 2 MB per file
 DEFAULT_MAX_TOTAL_CHARS_FOR_LLM = 180_000  # excerpt cap; we send stats + representative excerpts
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
 LEXICON_HINTS_FILENAME = "lexicon_hints.json"
+AVOID_LIST_FILENAME = "config.avoid.txt"
 
 def load_prompts() -> Dict[str, Any]:
     # Load externalized prompt templates located alongside this script.
@@ -100,6 +101,60 @@ def load_optional_lexicon_hints() -> Optional[Dict[str, Any]]:
         return data if isinstance(data, dict) else None
     except Exception:
         return None
+
+
+def parse_avoid_list(text: str) -> List[str]:
+    items: List[str] = []
+    for raw in text.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if line:
+            items.append(line)
+    return items
+
+
+def load_avoid_list() -> List[str]:
+    # Load optional avoid-word list from CWD or script directory.
+    cwd_path = Path.cwd() / AVOID_LIST_FILENAME
+    script_path = Path(__file__).resolve().parent / AVOID_LIST_FILENAME
+    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    if not path:
+        return []
+    try:
+        return parse_avoid_list(path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def merge_avoid_list_into_hints(
+    lexicon_hints: Optional[Dict[str, Any]],
+    avoid_list: List[str]
+) -> Optional[Dict[str, Any]]:
+    if not avoid_list:
+        return lexicon_hints
+    hints = dict(lexicon_hints) if isinstance(lexicon_hints, dict) else {}
+    existing = hints.get("avoid_words")
+    merged: List[str] = []
+    seen = set()
+
+    def add_item(item: Any) -> None:
+        if not isinstance(item, str):
+            return
+        if item not in seen:
+            seen.add(item)
+            merged.append(item)
+
+    if isinstance(existing, list):
+        for item in existing:
+            add_item(item)
+    elif isinstance(existing, str):
+        add_item(existing)
+
+    for item in avoid_list:
+        add_item(item)
+
+    if merged:
+        hints["avoid_words"] = merged
+    return hints
 
 def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
     # Traverse a nested dict safely and fail fast if a key is missing.
@@ -1190,6 +1245,9 @@ def main() -> int:
     cfg = load_config(args.config)
     prompts = load_prompts()
     lexicon_hints = load_optional_lexicon_hints()
+    avoid_list = load_avoid_list()
+    if avoid_list:
+        lexicon_hints = merge_avoid_list_into_hints(lexicon_hints, avoid_list)
     if args.max_prompt_tokens is not None:
         # Allow CLI override for chunking threshold.
         cfg.max_prompt_tokens = args.max_prompt_tokens

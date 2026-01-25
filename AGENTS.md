@@ -91,6 +91,9 @@ Avoid ambiguous terms like “clone” in public documentation.
 - `config.tunables.json`
   - Overrides humanizer conflict thresholds for `apply_fingerprint.py`
   - See README for per‑field explanations and defaults
+- `config.avoid.txt`
+  - Optional global avoid list (one word/phrase per line)
+  - Applied during fingerprinting (via lexicon hints) and merged into `lexicon.avoid_words` during application
 
 ### Data Flow
 

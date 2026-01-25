@@ -16,6 +16,21 @@ class TestV110Regression(unittest.TestCase):
         self.assertIn("office", out)
         self.assertIn("hyphen", out)
 
+    def test_parse_avoid_list(self) -> None:
+        text = "# comment\nfoo\nbar # inline\n\n"
+        self.assertEqual(fs.parse_avoid_list(text), ["foo", "bar"])
+        self.assertEqual(af.parse_avoid_list(text), ["foo", "bar"])
+
+    def test_merge_avoid_list_into_hints(self) -> None:
+        hints = {"avoid_words": ["alpha"], "preferred_words": ["x"]}
+        merged = fs.merge_avoid_list_into_hints(hints, ["beta", "alpha"])
+        self.assertEqual(merged.get("avoid_words"), ["alpha", "beta"])
+
+    def test_merge_avoid_list_into_fingerprint(self) -> None:
+        fingerprint = {"lexicon": {"avoid_words": ["alpha"]}}
+        merged = af.merge_avoid_list_into_fingerprint(fingerprint, ["beta", "alpha"])
+        self.assertEqual(merged["lexicon"]["avoid_words"], ["alpha", "beta"])
+
     def test_filter_author_voice_text_removes_non_voice(self) -> None:
         text = (
             "Intro paragraph.\n\n"
