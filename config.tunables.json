@@ -10,8 +10,8 @@
     "inline_header_list_keep_rate": 0.2
   },
   "humanizer_mandatory": {
-    "avoid_em_dashes": false,
-    "emoji_policy": "remove"
+    "avoid_em_dashes": true,
+    "emoji_policy": "replace"
   },
   "sanity_checks": {
     "line_count_warn_pct": 10.0,

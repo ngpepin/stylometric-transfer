@@ -61,6 +61,9 @@ EM_DASH_CHAR = "—"
 EMOJI_RE = re.compile(
     r"(?:[\U0001F1E6-\U0001F1FF]{2}|[\U0001F300-\U0001FAFF]|[\u2600-\u26FF]|[\u2700-\u27BF]|\uFE0F)"
 )
+EMOJI_REMOVED_MARKER = "[[EMOJI_REMOVED]]"
+TERMINAL_PUNCT_RE = re.compile(r"[.!?…]$")
+CLOSER_CHARS = "\"'”’»)]}"
 EMOJI_SUBSTITUTIONS: list[tuple[str, str]] | None = None
 ANSI_RED = "\x1b[31m"
 ANSI_YELLOW = "\x1b[33m"
@@ -287,6 +290,58 @@ def enforce_no_em_dashes(text: str) -> tuple[str, int]:
     return text, count
 
 
+def is_heading_or_list_line(text: str) -> bool:
+    stripped = text.lstrip()
+    if not stripped:
+        return False
+    if stripped.startswith("#") or stripped.startswith(">"):
+        return True
+    if re.match(r"([-*+]|\\d+[.)])\\s+", stripped):
+        return True
+    return False
+
+
+def apply_removed_emoji_punctuation(text: str) -> str:
+    marker = EMOJI_REMOVED_MARKER
+    if marker not in text:
+        return text
+    parts = re.split(r"(\n\s*\n+)", text)
+    updated: list[str] = []
+    for part in parts:
+        if not part or part.isspace():
+            updated.append(part)
+            continue
+        if part.startswith("\n"):
+            updated.append(part)
+            continue
+        if marker not in part:
+            updated.append(part)
+            continue
+        first_line = part.lstrip().splitlines()[0] if part.strip() else ""
+        if is_heading_or_list_line(first_line):
+            updated.append(part.replace(marker, ""))
+            continue
+        trimmed = part.rstrip()
+        trailing_ws = part[len(trimmed):]
+        idx = len(trimmed)
+        while idx > 0 and trimmed[idx - 1] in CLOSER_CHARS:
+            idx -= 1
+        closers = trimmed[idx:]
+        base = trimmed[:idx]
+        removed_at_end = False
+        while base.endswith(marker):
+            removed_at_end = True
+            base = base[: -len(marker)]
+        if removed_at_end and base.strip():
+            if not TERMINAL_PUNCT_RE.search(base):
+                base = base + "."
+            rebuilt = base + closers + trailing_ws
+        else:
+            rebuilt = trimmed + trailing_ws
+        updated.append(rebuilt.replace(marker, ""))
+    return "".join(updated)
+
+
 def enforce_emoji_policy(text: str, policy: str) -> tuple[str, int, int]:
     # Remove or replace emoji glyphs with conventional monochrome symbols.
     removed = 0
@@ -304,19 +359,22 @@ def enforce_emoji_policy(text: str, policy: str) -> tuple[str, int, int]:
                 continue
             if replacement:
                 replaced += count
+                text = text.replace(emoji, replacement)
+                continue
             else:
                 removed += count
-            text = text.replace(emoji, replacement)
+                text = text.replace(emoji, EMOJI_REMOVED_MARKER)
 
     if policy == "remove":
         removed += len(EMOJI_RE.findall(text))
-        text = EMOJI_RE.sub("", text)
-        return text, removed, replaced
+        text = EMOJI_RE.sub(EMOJI_REMOVED_MARKER, text)
+    else:
+        leftover = len(EMOJI_RE.findall(text))
+        if leftover:
+            removed += leftover
+            text = EMOJI_RE.sub(EMOJI_REMOVED_MARKER, text)
 
-    leftover = len(EMOJI_RE.findall(text))
-    if leftover:
-        removed += leftover
-        text = EMOJI_RE.sub("", text)
+    text = apply_removed_emoji_punctuation(text)
     return text, removed, replaced
 
 def resolve_general_guidelines_path() -> Path | None:
