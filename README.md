@@ -6,7 +6,7 @@
 
 Or, in plain language: Get an LLM to apply your writing style to any text input. Performs stylometric profiling and humanization on writing samples and constraint-guided author-style transfer to a target document. Builds a style "fingerprint" from your writing corpus using classic stylometric measurements graph structure and applies that fingerprint via an LLM to rewrite any text. 
 
-It really works but comments welcome ;)!
+It really works but comments most welcome ;)!
 
 For more information, see `Article-Teaching-Machines-to-Write-Like-You.md` and `Research-Paper.md`.
 
