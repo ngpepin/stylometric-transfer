@@ -17,6 +17,9 @@ class LLMConfig {
   +max_prompt_tokens: int
   +temperature: float
   +timeout_seconds: int
+  +max_retries: int
+  +backoff_base_seconds: float
+  +backoff_max_seconds: float
 }
 
 class FingerprintPipeline {
@@ -102,6 +105,8 @@ else (no)
   :Synthesize fingerprint JSON;
 endif
 
+:Retry LLM call with backoff on timeout/5xx (up to max_retries);
+
 :Ensure required metadata fields;
 :Embed measurements verbatim;
 :Write style_fingerprint.json;
@@ -129,7 +134,7 @@ FS -> FS : compute measurements
 FS -> LLM : validate common phrases (optional)
 LLM --> FS : validation decisions
 FS -> FS : pick excerpts
-FS -> LLM : synthesize fingerprint JSON
+FS -> LLM : synthesize fingerprint JSON (retry on transient errors)
 LLM --> FS : fingerprint JSON (maybe repaired)
 FS -> FSYS : write style_fingerprint.json
 FS --> User : done

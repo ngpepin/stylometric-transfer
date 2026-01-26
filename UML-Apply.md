@@ -17,6 +17,9 @@ class LLMConfig {
   +max_prompt_tokens: int
   +temperature: float
   +timeout_seconds: int
+  +max_retries: int
+  +backoff_base_seconds: float
+  +backoff_max_seconds: float
 }
 
 class ApplyPipeline {
@@ -101,7 +104,7 @@ if (Humanizer guidelines enabled?) then (yes)
 endif
 
 :Build apply prompt;
-:Call LLM to rewrite;
+:Call LLM to rewrite (retry with backoff on timeout/5xx);
 :Restore placeholders;
 :Compute style compliance;
 
@@ -137,11 +140,11 @@ AF -> FS : read input.md
 AF -> AF : mask non-voice blocks & placeholders
 AF -> AF : compute input measurements
 AF -> FS : read general-guidelines.md (optional)
-AF -> LLM : parse humanizer guidelines (optional)
+AF -> LLM : parse humanizer guidelines (optional; retry on transient errors)
 LLM --> AF : rules JSON
 AF -> AF : fallback regex parse if needed
 AF -> AF : filter humanizer rules
-AF -> LLM : rewrite request (fingerprint + measurements + rules)
+AF -> LLM : rewrite request (fingerprint + measurements + rules; retry on transient errors)
 LLM --> AF : JSON with final_markdown
 AF -> AF : restore placeholders
 AF -> AF : compute style compliance
