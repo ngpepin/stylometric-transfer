@@ -1795,7 +1795,11 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
             backoff = min(cfg.backoff_max_seconds, cfg.backoff_base_seconds * (2 ** attempt))
             jitter = random.uniform(0, backoff * 0.2)
             sleep_s = backoff + jitter
-            print_warn(f"LLM request failed (attempt {attempt + 1}/{cfg.max_retries + 1}); retrying in {sleep_s:.1f}s.")
+            print_warn(
+                "LLM request failed "
+                f"(attempt {attempt + 1}/{cfg.max_retries + 1}); "
+                f"retrying in {sleep_s:.1f}s. Error: {exc}"
+            )
             time.sleep(sleep_s)
     raise RuntimeError(f"LLM call failed after {cfg.max_retries + 1} attempts: {last_err}")
 
@@ -2038,10 +2042,11 @@ def main() -> int:
                         continue
                     reason = rule.get("drop_reason")
                     if isinstance(reason, str) and reason.strip():
-                        drop_labels.append(f"{title} — {reason}")
+                        clean_reason = reason.strip().rstrip(".")
+                        drop_labels.append(f"{title} — {clean_reason}")
                     else:
                         drop_labels.append(str(title))
-                preview = ", ".join(drop_labels[:10])
+                preview = "; ".join(drop_labels[:10])
                 suffix = "..." if len(drop_labels) > 10 else ""
                 print(f"Dropped {len(drop_labels)} humanizer rule(s): {preview}{suffix}")
             if args.verbose:

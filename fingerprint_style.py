@@ -1073,7 +1073,12 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
             backoff = min(cfg.backoff_max_seconds, cfg.backoff_base_seconds * (2 ** attempt))
             jitter = random.uniform(0, backoff * 0.2)
             sleep_s = backoff + jitter
-            print(f"LLM request failed (attempt {attempt + 1}/{cfg.max_retries + 1}); retrying in {sleep_s:.1f}s.", file=sys.stderr)
+            print(
+                "LLM request failed "
+                f"(attempt {attempt + 1}/{cfg.max_retries + 1}); "
+                f"retrying in {sleep_s:.1f}s. Error: {exc}",
+                file=sys.stderr
+            )
             time.sleep(sleep_s)
     raise RuntimeError(f"LLM call failed after {cfg.max_retries + 1} attempts: {last_err}")
 
