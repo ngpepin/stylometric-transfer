@@ -1,54 +1,50 @@
-# Stylometric-Transfer: Interpretable Stylometric Profiling and Constraint-Guided Author-Conditioned Style Transfer with Large Language Models
-
+ 
 **Repository:** `stylometric-transfer`  
 **Keywords:** stylometry, computational stylistics, authorship attribution, controllable text generation, text style transfer, interpretability
+
+(c) 2026 Nicolas Pepin
 
 ---
 
 ## Abstract
 
-We present **Stylometric-Transfer**, a practical method for (i) **stylometric profiling** of an author's writing corpus into an explicit, interpretable JSON artifact (a *style fingerprint*) and (ii) **meaning-preserving style transfer** that rewrites new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement--e.g., punctuation rates and sentence-length distributions--with LLM-mediated synthesis into human-editable constraints (ranges, histograms, lexicon rules, rhetorical templates). We formalize the fingerprint as a constraint set and provide a constraint-satisfaction decoding view for LLM rewriting, together with compliance scoring based on distributional divergences. A novel contribution is the unification of stylometric transfer and humanization in a single framework by formalizing and quantifying a conflict-resolution layer that filters humanization guidelines against fingerprint constraints. This hybrid design offers an auditable alternative to purely latent "style embeddings" while remaining consistent with established stylometry and text style transfer literature.
+Stylometric-Transfer provides a practical method for (i) stylometric profiling of an author's writing corpus into an explicit, interpretable JSON artefact (a style fingerprint) and (ii) meaning-preserving style transfer that rewrites new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement - such as punctuation rates and sentence-length distributions - with LLM-mediated synthesis into human-editable constraints, including ranges, histograms, lexicon rules, and rhetorical templates. The fingerprint is formalized as a constraint set, and a constraint-satisfaction decoding view is provided for LLM rewriting, together with compliance scoring based on distributional divergences. Notably, the framework unifies stylometric transfer and humanization by quantifying a conflict-resolution layer that filters humanization guidelines against fingerprint constraints. This hybrid design allows for an auditable alternative to latent style embeddings, while remaining consistent with established stylometry and text style transfer research.
 
-**Reader’s guide (plain language):** Sections 1–3 explain what the system does and why; Section 4 explains the measurements using simple examples; Sections 5–6 explain how those measurements become constraints for rewriting; Section 7 connects the ideas to the actual code; the appendices provide deeper mathematical and algorithmic detail for expert readers.
-
-<div class="page-footer">
-  <span class="footer-left">(c) 2026 Nicolas Pepin</span>
-</div>
+**Reader’s guide:** Sections 1–3 outline the system’s purpose and rationale. Section 4 explains the measurements with simple examples. Sections 5–6 describe how those measurements become constraints for rewriting. Section 7 connects the ideas to the code. The appendices provide further mathematical and algorithmic detail for expert readers.
 
 ---
 
 ## 1. Introduction
 
-**Stylometry** studies quantitative signals of writing style for tasks including authorship attribution and author profiling. A canonical demonstration is the Federalist Papers authorship analysis, where frequent-word statistics support Bayesian inference over disputed authorship. ([press.uchicago.edu](https://press.uchicago.edu/ucp/books/book/distributed/I/bo5667096.html?utm_source=chatgpt.com))
+Stylometry examines quantitative signals of writing style for tasks such as authorship attribution and author profiling. A well-known example is the Federalist Papers analysis, where frequent-word statistics support Bayesian inference over disputed authorship ([press.uchicago.edu](https://press.uchicago.edu/ucp/books/book/distributed/I/bo5667096.html?utm_source=chatgpt.com)).
 
-Separately, **text style transfer (TST)** aims to transform text so stylistic properties match a target style while preserving style-independent content. A recurring challenge is separating "content" from "style" without parallel data, motivating methods such as cross-alignment approaches and ongoing evaluation/ethical discussions. ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com))
+Text style transfer (TST), by contrast, seeks to transform text so that stylistic properties match a target style, while preserving content. A persistent challenge is separating content from style in the absence of parallel data, which has led to cross-alignment approaches and ongoing debate about evaluation and ethics ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com)).
 
-In plain terms, stylometry treats an author’s style like a set of measurable habits—how long sentences are, how often certain punctuation appears, which transitions recur, and which words are almost never used. Style transfer then tries to write new text *as if* those habits were followed, without changing the meaning. The tension is that a model can easily sound “stylish” while drifting away from the facts or introducing artifacts; this paper is about making that tension measurable and manageable.
+In practical terms, stylometry treats an author’s style as a set of measurable habits: sentence length, punctuation frequency, recurring transitions, and words that are rarely used. Style transfer attempts to generate new text as if those habits were followed, without altering meaning. The difficulty lies in ensuring that a model does not introduce stylistic artefacts or factual drift. This paper addresses how to make that tension measurable and manageable.
 
-This paper motivates a hybrid approach: represent style explicitly as a **stylometric style fingerprint** (JSON) and use an LLM as a constrained rewriter guided by (a) the fingerprint and (b) locally measured statistics of both the author corpus and the candidate text. **We further show how humanization guidelines can be integrated without violating voice constraints by defining a conflict-resolution layer that deterministically filters guideline rules when they contradict fingerprint signals or the input’s stylistic scaffolding.**
+A hybrid approach is proposed: style is represented explicitly as a stylometric style fingerprint (in JSON), and an LLM acts as a constrained rewriter, guided by both the fingerprint and locally measured statistics from the author corpus and candidate text. Humanization guidelines are integrated by means of a conflict-resolution layer, which deterministically filters guideline rules when they contradict fingerprint signals or the input’s stylistic structure.
 
 ---
 
 ## 2. Related Work
 
-This section gives non‑specialists a quick map of the landscape and gives specialists enough pointers to compare assumptions. The key takeaway is that we keep the **measurements** interpretable and put the LLM in a **constraint‑following** role rather than a hidden style‑embedding role.
+This section provides a brief overview for non-specialists and references for specialists. The central point is that measurements are kept interpretable, and the LLM is tasked with following constraints rather than relying on hidden style embeddings.
 
 ### 2.1 Stylometry and Distance-Based Measures
 
-Stylometric authorship attribution typically uses robust, interpretable features (e.g., word frequency profiles) and distance measures. Burrows's Delta and its variants are widely used; more recent work provides detailed explanations that decompose feature selection, feature scaling (e.g., z-transformation), and distance metrics, clarifying why Delta-style measures can be effective. ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com))
+Stylometric authorship attribution typically relies on robust, interpretable features such as word frequency profiles and distance measures. Burrows's Delta and its variants remain widely used; recent work explains the decomposition of feature selection, scaling (for example, z-transformation), and distance metrics, clarifying the effectiveness of Delta-style measures ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com)).
 
-For newcomers: these methods are simple by design—they rely on counts and distributions rather than opaque neural features—making them a good match for an interpretable fingerprint.
+For those new to the field, these methods are intentionally simple, relying on counts and distributions rather than opaque neural features. This makes them suitable for interpretable fingerprints.
 
 ### 2.2 Text Style Transfer and Evaluation
 
-Non-parallel TST methods such as **cross-alignment** demonstrate the feasibility of changing certain stylistic attributes without parallel sentence pairs. ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com))  
-Recent surveys highlight broad application scenarios alongside open challenges in evaluation and ethical risk (e.g., misuse for impersonation), supporting explicit safeguards and transparency in TST pipelines. ([arxiv.org](https://arxiv.org/abs/2407.16737?utm_source=chatgpt.com))
+Non-parallel TST methods, such as cross-alignment, demonstrate that certain stylistic attributes can be changed without parallel sentence pairs ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com)). Recent surveys discuss broad applications alongside challenges in evaluation and ethical risk, including concerns about misuse for impersonation, and support explicit safeguards and transparency in TST pipelines ([arxiv.org](https://arxiv.org/abs/2407.16737?utm_source=chatgpt.com)).
 
-For newcomers: the literature shows that “style” is slippery—so we make style **explicit** and **auditable** instead of learned and hidden.
+The literature indicates that style is difficult to define precisely. The approach here is to make style explicit and auditable, rather than learned and hidden.
 
 ### 2.3 Humanization-Aware Stylometric Transfer
 
-Most style-transfer pipelines treat "humanization" as a separate editing pass. Stylometric-Transfer integrates humanization directly into constraint-guided rewriting by formalizing a **conflict-resolution layer**: humanization guidelines are applied only when they do not violate fingerprint-derived constraints or the input's structural scaffold (e.g., heading case, inline-header lists). The guideline list is parsed into structured rules by an LLM (with deterministic fallback), then filtered against fingerprint signals before any rewrite prompt is constructed. This yields a single, auditable framework that balances stylistic fidelity with de-AI artifacts, rather than layering post-hoc edits that can drift away from the author's voice.
+Most style-transfer pipelines treat humanization as a separate editing step. Stylometric-Transfer incorporates humanization directly into constraint-guided rewriting by formalizing a conflict-resolution layer: humanization guidelines are applied only when they do not violate fingerprint-derived constraints or the input's structural features (such as heading case or inline-header lists). The guideline list is parsed into structured rules by an LLM (with deterministic fallback), then filtered against fingerprint signals before any rewrite prompt is constructed. This produces a single, auditable framework that balances stylistic fidelity with the removal of AI artefacts, rather than relying on post-hoc edits that may diverge from the author’s voice.
 
 ---
 
@@ -60,27 +56,27 @@ $$\mathcal{D} = \{d_1,\dots,d_N\}, \quad d_i \in \Sigma^*$$
 
 where $\Sigma$ is a character alphabet.
 
-We define:
+Define:
 
-- An **interpretable feature extractor** $\phi: \Sigma^* \to \mathbb{R}^K$ producing measurable statistics (rates, histograms, counts).
-- A **style fingerprint** $\mathcal{F}$ storing target statistics, distributions, and discrete constraints (lexicon rules, templates).
-- A **rewriter** $\mathcal{R}_\theta$ (LLM with parameters $\theta$) mapping input text $x$ to output $y$:
+- An interpretable feature extractor $\phi: \Sigma^* \to \mathbb{R}^K$ that produces measurable statistics (rates, histograms, counts).
+- A style fingerprint $\mathcal{F}$ that stores target statistics, distributions, and discrete constraints (lexicon rules, templates).
+- A rewriter $\mathcal{R}_\theta$ (LLM with parameters $\theta$) mapping input text $x$ to output $y$:
 
 $$y = \mathcal{R}_\theta(x \mid \mathcal{F}).$$
 
-**Primary constraint:** meaning preservation (no new facts, claims, or examples; preserve entities and numerals unless explicitly permitted).
+The primary constraint is meaning preservation: no new facts, claims, or examples; entities and numerals are preserved unless explicitly permitted.
 
-Intuitively: we measure the author’s writing habits, compress those habits into a JSON “fingerprint,” and then ask the LLM to rewrite new text so those habits are respected while the underlying meaning stays unchanged.
+In essence, the author’s writing habits are measured and compressed into a JSON fingerprint. The LLM is then asked to rewrite new text so that these habits are respected, while the underlying meaning remains unchanged.
 
 ---
 
 ## 4. Stylometric Measurements
 
-This section explains the simple, interpretable statistics that the system measures. The goal is not to be linguistically perfect; it is to be **stable, explainable, and easy to audit**. These measurements are the “ground truth” the LLM must follow.
+This section describes the simple, interpretable statistics measured by the system. The aim is not linguistic perfection, but stability, explainability, and auditability. These measurements constitute the ground truth the LLM must follow.
 
 ### 4.1 Rate and Density Features
 
-Let $W(d)$ be an approximate word-token count and $C_e(d)$ the count of an event $e$ (e.g., commas). Define per-1000-word rates:
+Let $W(d)$ be an approximate word-token count and $C_e(d)$ the count of an event $e$ (such as commas). Define per-1000-word rates:
 
 $$r_e(d) = 1000 \cdot \frac{C_e(d)}{\max(1, W(d))}.$$
 
@@ -96,77 +92,77 @@ For sentence lengths $\ell_1,\dots,\ell_m$ (in words), define a binned histogram
 
 $$\mathbf{h} \in \Delta^{B-1}, \quad h_b = \frac{1}{m}\sum_{i=1}^m \mathbf{1}[\ell_i \in \text{bin}(b)],$$
 
-where $\Delta^{B-1}$ is the probability simplex and bins are ordinal intervals (e.g., $<10$, 10-17, 18-25, ...).
+where $\Delta^{B-1}$ is the probability simplex and bins are ordinal intervals (for example, $<10$, 10–17, 18–25, ...).
 
-We also capture **paragraph rhythm** with a one‑sentence paragraph rate:
+Paragraph rhythm is also captured with a one-sentence paragraph rate:
 
 $$\rho_{1}(d) = \frac{\#\{\text{paragraphs with exactly one sentence}\}}{\max(1,\ \#\{\text{paragraphs}\})}.$$
 
-This rate is treated as a stylistic baseline: excessive one‑sentence paragraphs are only flagged as an AI tell if they exceed the author’s $\rho_1$ range.
+This rate serves as a stylistic baseline. Excessive one-sentence paragraphs are flagged as an AI artefact only if they exceed the author’s $\rho_1$ range.
 
 ### 4.3 Rare-Word Signals
 
-Let $f(w)$ be the corpus frequency of a token $w$ after filtering stopwords, numerals, and short tokens. We record a **rare‑word list**:
+Let $f(w)$ be the corpus frequency of a token $w$ after filtering stopwords, numerals, and short tokens. A rare-word list is recorded:
 
 $$\mathcal{R} = \{w : f(w) \le c_{\max}\},$$
 
-where $c_{\max}$ is a small threshold (e.g., 2–5 occurrences). These terms can be surfaced as **avoid‑lexicon hints** so the rewriter does not overuse words the author rarely employs.
+where $c_{\max}$ is a small threshold (for example, 2–5 occurrences). These terms can be surfaced as avoid-lexicon hints so the rewriter does not overuse words the author rarely employs.
 
 ### 4.4 Delta-Style Diagnostics (Optional)
 
-While Stylometric-Transfer is not an authorship attribution system, Delta-style distances can serve as *diagnostic* measures of stylistic proximity. Following standardization and Manhattan-style aggregation:
+Although Stylometric-Transfer is not an authorship attribution system, Delta-style distances can serve as diagnostic measures of stylistic proximity. Following standardization and Manhattan-style aggregation:
 
 $$\Delta(d,d') = \frac{1}{K}\sum_{k=1}^K \left|z_k(d) - z_k(d')\right|,$$
 
-where $z_k$ is the z-transformed version of feature $k$. Detailed decompositions and explanations of Delta variants motivate this lens. ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com))
+where $z_k$ is the z-transformed version of feature $k$. Detailed explanations of Delta variants motivate this approach ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com)).
 
 ---
 
 ## 5. The Style Fingerprint as a Constraint Model
 
-We treat the fingerprint as a set of weighted constraints:
+The fingerprint is treated as a set of weighted constraints:
 
 $$\mathcal{F} = \{(\psi_j, \mathcal{C}_j, w_j)\}_{j=1}^J,$$
 
 where:
-- $\psi_j(y)$ is a measurable statistic of output text (e.g., comma rate, histogram vector).
+- $\psi_j(y)$ is a measurable statistic of output text (for example, comma rate or histogram vector).
 - $\mathcal{C}_j$ is an admissible set (range, divergence tolerance, forbidden list).
 - $w_j$ is a weight (priority).
 
-Typical constraint types:
+Typical constraint types include:
 
-1. **Range constraints**: $\psi_j(y) \in [a,b]$  
-2. **Histogram constraints**: $D(\mathbf{h}^*, \mathbf{h}(y)) \le \tau$  
-3. **Lexicon constraints**: forbidden phrases/words; preferred synonyms; avoid‑rare words $\mathcal{R}$  
-4. **Template constraints**: rhetorical move frequency bounds  
+1. Range constraints: $\psi_j(y) \in [a,b]$  
+2. Histogram constraints: $D(\mathbf{h}^*, \mathbf{h}(y)) \le \tau$  
+3. Lexicon constraints: forbidden phrases or words; preferred synonyms; avoid-rare words $\mathcal{R}$  
+4. Template constraints: rhetorical move frequency bounds
 
-The JSON representation adds practical control fields such as `priority_order` and `strictness` to determine constraint precedence.
+The JSON format introduces practical control fields, such as `priority_order` and `strictness`, to specify constraint precedence.
 
-**Plain‑language view:** think of the fingerprint as a checklist with weights. Some items are strict (“never use em‑dashes”), others are soft (“prefer shorter sentences”), and the system records how closely the output satisfies each item.
+**Plain-language explanation:** The fingerprint functions as a weighted checklist. Certain items are strict (for example, “never use em-dashes”); others are soft (such as “prefer shorter sentences”). The system tracks how closely the output adheres to each requirement.
 
 ---
 
 ## 6. Constraint Satisfaction Decoding and Compliance Scoring
 
-At generation time, the LLM produces a candidate rewrite, and we immediately *measure it* the same way we measured the author’s corpus. This closes the loop: if the output diverges, we can tell the model exactly which metrics drifted and ask for a correction.
+During generation, the language model produces a candidate rewrite, which is immediately measured using the same metrics applied to the author’s corpus. This closes the loop: if the output diverges, the model receives precise feedback on which metrics have drifted and can be prompted for correction.
 
-This section expands the mathematical view of rewriting as a **constraint satisfaction** problem.
+This section develops the mathematical framing of rewriting as a constraint satisfaction problem.
 
 ### 6.1 Soft-Constrained Objective
 
-Let $p_\theta(y\mid x)$ be the LLM's conditional probability of an output $y$ given input $x$. We define a soft-constrained objective:
+Let $p_\theta(y\mid x)$ denote the model’s conditional probability of output $y$ given input $x$. The soft-constrained objective is defined as:
 
 $$\max_{y \in \mathcal{Y}} \; \log p_\theta(y \mid x) - \lambda\, \mathcal{L}_{style}(y;\mathcal{F}) - \mu\,\mathcal{L}_{sem}(y;x),$$
 
 where:
-- $\mathcal{L}_{style}$ penalizes deviation from the fingerprint.
-- $\mathcal{L}_{sem}$ penalizes semantic drift (approximated conservatively via invariants; optionally via semantic similarity models).
+- $\mathcal{L}_{style}$ penalizes deviation from the style fingerprint.
+- $\mathcal{L}_{sem}$ penalizes semantic drift (estimated conservatively via invariants or, optionally, semantic similarity models).
 
-A standard decomposition is:
+A typical decomposition is:
 
 $$\mathcal{L}_{style}(y;\mathcal{F}) = \sum_{j=1}^J w_j\, \ell_j(\psi_j(y), \mathcal{C}_j).$$
 
-Example penalties:
+Examples of penalties include:
 
 **Range penalty** for $\mathcal{C}_j=[a,b]$:
 
@@ -176,45 +172,45 @@ $$\ell_j(v,[a,b]) = \big(\max(0,a-v)\big)^2 + \big(\max(0,v-b)\big)^2.$$
 
 $$\ell_j(\mathbf{h},\mathbf{h}^{*}) = D_{KL}(\mathbf{h}^{*}\|\mathbf{h}) = \sum_{b=1}^B h_b^{*} \log \frac{h_b^{*}}{\max(\epsilon,h_b)}.$$
 
-(For ordinal bins, Wasserstein distance $W_1$ is often preferable; the implementation may adopt either.)
+For ordinal bins, the Wasserstein distance $W_1$ may be preferable; the implementation can support either approach.
 
 ### 6.2 Hard Constraints (Feasibility)
 
-Some constraints are best treated as hard feasibility requirements:
+Some constraints are best enforced as hard feasibility requirements:
 
-- Entity/number preservation constraints $\Rightarrow$ must hold unless explicitly overridden.
-- Hard forbidden lexicon constraints (e.g., "must not appear").
+- Entity and number preservation constraints must be satisfied unless explicitly overridden.
+- Hard forbidden lexicon constraints (for instance, terms that must not appear).
 
-Define the feasible set:
+The feasible set is defined as:
 
 $$\mathcal{Y}_{hard}(x,\mathcal{F}) = \{y\in \mathcal{Y} : \forall j\in \mathcal{H},\; \psi_j(y)\in \mathcal{C}_j\},$$
 
-where $\mathcal{H}\subseteq\{1,\dots,J\}$ indexes hard constraints.
+where $\mathcal{H}\subseteq\{1,\dots,J\}$ indexes the hard constraints.
 
-Then decoding becomes:
+Decoding then becomes:
 
 $$\max_{y\in \mathcal{Y}_{hard}(x,\mathcal{F})} \log p_\theta(y\mid x) - \lambda\sum_{j\notin \mathcal{H}} w_j\,\ell_j(\psi_j(y),\mathcal{C}_j) - \mu\,\mathcal{L}_{sem}(y;x).$$
 
 ### 6.3 Practical Constraint-Satisfaction Decoding Procedure
 
-In production LLM use, exact constrained decoding over $\mathcal{Y}_{hard}$ is rarely available. Stylometric-Transfer approximates constraint satisfaction using **(i) instruction prompting**, **(ii) self-audit**, and **(iii) repair**.
+In practice, exact constrained decoding over $\mathcal{Y}_{hard}$ is rarely available in production language models. Stylometric-Transfer approximates constraint satisfaction through instruction prompting, self-audit, and repair.
 
-A practical decoding approximation:
+A practical approximation proceeds as follows:
 
-1. Generate a candidate rewrite $y^{(0)}$ from the LLM under explicit instructions encoding $\mathcal{F}$.
-2. Compute local measurements $\phi(y^{(t)})$ and audit constraint violations.
-3. If violations exist, re-prompt the LLM with a structured report to obtain $y^{(t+1)}$.
-4. Stop when compliance exceeds a threshold or iteration limit.
+1. Generate a candidate rewrite $y^{(0)}$ using explicit instructions that encode $\mathcal{F}$.
+2. Compute local measurements $\phi(y^{(t)})$ and audit for constraint violations.
+3. If violations are detected, re-prompt the model with a structured report to obtain $y^{(t+1)}$.
+4. Stop when compliance exceeds a threshold or an iteration limit is reached.
 
 ### 6.4 Compliance Scoring
 
-Define a normalized compliance score $S(y;\mathcal{F})\in[0,1]$ aggregating constraint satisfaction:
+A normalised compliance score $S(y;\mathcal{F})\in[0,1]$ aggregates constraint satisfaction:
 
 $$S(y;\mathcal{F}) = \sigma\Big(\sum_{j=1}^J w_j\, s_j(y)\Big), \quad \sum_j w_j = 1,$$
 
-where $\sigma$ is a squashing function (e.g., identity clipped to $[0,1]$, or logistic), and $s_j(y)\in[0,1]$ is a per-constraint score.
+where $\sigma$ is a squashing function (such as the identity clipped to $[0,1]$ or a logistic function), and $s_j(y)\in[0,1]$ is a per-constraint score.
 
-Examples:
+Examples include:
 
 - **Range score**:
 $$s_j(y) = 1 - \min\left(1, \frac{\ell_j(\psi_j(y),[a,b])}{\kappa_j}\right)$$
@@ -226,62 +222,59 @@ $$s_j(y) = \exp\big(-\alpha_j\, D_{KL}(\mathbf{h}^*\|\mathbf{h}(y))\big).$$
 - **Lexicon hard constraint score**:
 $$s_j(y)=\mathbf{1}[\text{no forbidden term appears}].$$
 
-This compliance score supports:
-- reporting (`validators.weights` and `checks` in JSON)
-- iterative repair thresholds
-- regression tests for stability
+This compliance score supports reporting (via `validators.weights` and `checks` in JSON), iterative repair thresholds, and regression tests for stability.
 
 ---
 
 ## 7. Implementation Notes (Stylometric-Transfer)
 
-This section links the theory to the actual code paths. Readers looking for a practical understanding can treat it as an annotated “how it works,” while experts can treat it as an implementation‑level specification.
+This section connects the theoretical framework to the codebase. Readers seeking a practical overview may treat it as an annotated guide to system operation; experts may regard it as an implementation-level specification.
 
-The repository implements:
+The repository provides:
 
 1. **Local measurement stage**
-   - sentence-length histogram
-   - paragraph-length histogram
-   - punctuation rates per 1000 words
-   - contraction/dash/ellipsis signals
-   - frequent n-grams (diagnostic lexicon hints)
+   - Sentence-length histogram
+   - Paragraph-length histogram
+   - Punctuation rates per 1,000 words
+   - Contraction, dash, and ellipsis signals
+   - Frequent n-grams (diagnostic lexicon hints)
 
 2. **LLM synthesis stage**
-   - schema-guided JSON-only prompting
-   - embed measurements verbatim
-   - automated JSON repair pass if parsing fails
+   - Schema-guided, JSON-only prompting
+   - Embedding of measurements verbatim
+   - Automated JSON repair if parsing fails
 
 3. **Rewrite stage**
-   - fingerprint + input measurements + markdown text
-   - JSON output: rewritten markdown + deviations + self-check
+   - Fingerprint, input measurements, and markdown text
+   - JSON output: rewritten markdown, deviations, and self-check
 
-These design choices align with stylometric traditions emphasizing interpretable features and with TST concerns about evaluation and ethical risk. ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com))
+These design choices reflect stylometric traditions that favour interpretable features, as well as concerns about evaluation and ethical risk in text style transfer. ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com))
 
 ---
 
 ## 8. Ethical Considerations
 
-We emphasize transparency and non‑impersonation. The system is designed for personal writing, editing assistance, and self‑modeling; it is not a tool for mimicking living authors without consent.
+Transparency and non-impersonation are central. The system is intended for personal writing, editing support, and self-modelling, not for imitating living authors without consent.
 
-TST can be misused for impersonation-like behaviors; recent surveys explicitly highlight ethical considerations and the need for safeguards. ([arxiv.org](https://arxiv.org/abs/2407.16737?utm_source=chatgpt.com))
+Stylometric-Transfer could be misapplied for impersonation; recent surveys highlight ethical risks and the need for safeguards. ([arxiv.org](https://arxiv.org/abs/2407.16737?utm_source=chatgpt.com))
 
-Stylometric-Transfer is intended for:
-- self-authored corpora
-- licensed/public-domain corpora
-- editing assistance and personal voice consistency
+Intended uses include:
+- Self-authored corpora
+- Licensed or public-domain corpora
+- Editing support and personal voice consistency
 
 Recommended safeguards:
-- provenance tracking in `metadata`
-- default controls that discourage third-party imitation
-- deviation reporting when constraints conflict with meaning preservation
+- Provenance tracking in `metadata`
+- Default controls that discourage third-party imitation
+- Deviation reporting when constraints conflict with meaning preservation
 
 ---
 
 ## 9. Conclusion
 
-For newcomers: the take‑home is that you can combine classic stylometry with modern LLMs without losing interpretability. For experts: the contribution is a concrete, auditable constraint model and a measurable conflict‑resolution layer that unifies stylometric transfer and humanization.
+For those new to the field, the main point is that classic stylometry and modern language models can be combined without sacrificing interpretability. For experts, the contribution is a concrete, auditable constraint model and a measurable conflict-resolution layer that unifies stylometric transfer and humanisation.
 
-Stylometric-Transfer bridges **classic stylometry** and **LLM-based rewriting** by pairing interpretable, versionable style models with constraint-guided generation. The explicit JSON fingerprint improves auditability and editorial control while drawing on well-established stylometric measurement and style transfer insights. ([press.uchicago.edu](https://press.uchicago.edu/ucp/books/book/distributed/I/bo5667096.html?utm_source=chatgpt.com))
+Stylometric-Transfer connects classic stylometry and LLM-based rewriting by pairing interpretable, versionable style models with constraint-guided generation. The explicit JSON fingerprint enhances auditability and editorial control, drawing on established stylometric measurement and style transfer research. ([press.uchicago.edu](https://press.uchicago.edu/ucp/books/book/distributed/I/bo5667096.html?utm_source=chatgpt.com))
 
 ---
 
@@ -297,12 +290,12 @@ Stylometric-Transfer bridges **classic stylometry** and **LLM-based rewriting** 
 
 ## Appendix A. Methods (Pseudocode)
 
-This appendix provides pseudocode for the **fingerprinter** (extractor) and **rewriter** stages. It is meant to be readable even if you are new to stylometry; treat it as a procedural summary of the system.
+This appendix presents pseudocode for the fingerprinter (extractor) and rewriter stages. It is intended to be accessible to those new to stylometry and serves as a procedural summary of the system.
 
 ### A.1 Fingerprint Extraction (Corpus → Style Fingerprint JSON)
 
-**Inputs:** corpus archive $A$, LLM $\mathcal{R}_\theta$, schema template $S$  
-**Output:** style fingerprint $\mathcal{F}$ (JSON)
+**Inputs:** Corpus archive $A$, language model $\mathcal{R}_\theta$, schema template $S$  
+**Output:** Style fingerprint $\mathcal{F}$ (JSON)
 
 ```text
 procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
@@ -351,8 +344,8 @@ end procedure
 
 ### A.2 Rewrite (Fingerprint + Draft → Styled Draft)
 
-**Inputs:** fingerprint $\mathcal{F}$, input Markdown $x$, LLM $\mathcal{R}_\theta$  
-**Output:** rewritten Markdown $y$ and deviations report
+**Inputs:** Fingerprint $\mathcal{F}$, input Markdown $x$, language model $\mathcal{R}_\theta$  
+**Output:** Rewritten Markdown $y$ and deviations report
 
 ```text
 procedure APPLY_FINGERPRINT(fingerprint F, markdown_path in, output_path out, llm_config C):
@@ -412,26 +405,25 @@ procedure REWRITE_WITH_ITERATIVE_REPAIR(fingerprint F, input x, llm_config C, ma
 end procedure
 ```
 
-
 ---
 
 ## Appendix B. Formal Constrained Decoding Framing
 
-This appendix tightens the decoding formulation into a standard constrained optimization / constrained MDP view. Readers unfamiliar with the formalism can focus on the intuition: the LLM is guided by measurable constraints rather than hidden embeddings.
+This appendix reframes the decoding process as a standard constrained optimisation or constrained Markov decision process. For those less familiar with the formalism, the essential point is that the LLM is directed by measurable constraints, not hidden embeddings.
 
 ### B.1 Constrained Maximum A Posteriori Decoding
 
-Let $p_\theta(y\mid x)$ denote the base LLM distribution. Let constraints be indexed by $j=1,\dots,J$ with statistics $\psi_j(y)$ and admissible sets $\mathcal{C}_j$.
+Let $p_\theta(y\mid x)$ represent the base LLM distribution. Constraints are indexed by $j=1,\dots,J$, each with statistics $\psi_j(y)$ and admissible sets $\mathcal{C}_j$.
 
-We define the feasible set of hard constraints:
+The feasible set of hard constraints is defined as:
 
 $$\mathcal{Y}_{hard}(x,\mathcal{F}) = \{y : \forall j \in \mathcal{H},\; \psi_j(y) \in \mathcal{C}_j\}$$
 
-The constrained MAP problem is:
+The constrained MAP problem becomes:
 
 $$\hat y = \arg\max_{y \in \mathcal{Y}_{hard}(x,\mathcal{F})} \; \log p_\theta(y\mid x)$$
 
-In practice, $\mathcal{Y}_{hard}$ is not explicitly enumerable. We therefore relax the problem using a **Lagrangian penalty formulation**:
+In practice, $\mathcal{Y}_{hard}$ cannot be enumerated directly. The problem is therefore relaxed using a Lagrangian penalty formulation:
 
 $$\hat y = \arg\max_{y \in \mathcal{Y}} \; \log p_\theta(y\mid x)
 - \sum_{j=1}^J \lambda_j \cdot g_j(\psi_j(y))
@@ -439,51 +431,50 @@ $$\hat y = \arg\max_{y \in \mathcal{Y}} \; \log p_\theta(y\mid x)
 
 where:
 
-- $g_j(\cdot)$ is a non-negative violation function such that $g_j(v)=0$ iff $v \in \mathcal{C}_j$
+- $g_j(\cdot)$ is a non-negative violation function, with $g_j(v)=0$ if and only if $v \in \mathcal{C}_j$
 - $\lambda_j \ge 0$ are Lagrange multipliers derived from `validators.weights`
-- $\mathcal{L}_{sem}$ enforces meaning preservation
+- $\mathcal{L}_{sem}$ enforces preservation of meaning
 
-This matches the standard **soft-constrained decoding** paradigm used in controllable generation and lexically constrained decoding.
+This approach aligns with the standard soft-constrained decoding paradigm in controllable generation and lexically constrained decoding.
 
 ---
 
 ### B.2 Projection View
 
-Equivalently, rewriting can be interpreted as projection of an unconstrained sample $y^{(0)} \sim p_\theta(\cdot \mid x)$ onto the admissible region:
+Alternatively, rewriting may be seen as projecting an unconstrained sample $y^{(0)} \sim p_\theta(\cdot \mid x)$ onto the admissible region:
 
 $$\hat y = \Pi_{\mathcal{C}}(y^{(0)}) = \arg\min_{y} \; d(y, y^{(0)}) + \sum_j \lambda_j g_j(\psi_j(y)),$$
 
-where $d(\cdot,\cdot)$ is an edit or semantic divergence.  
-In practice, $\Pi_{\mathcal{C}}$ is approximated by **LLM self-repair passes** guided by explicit audit reports.
+where $d(\cdot,\cdot)$ measures edit or semantic divergence. In practice, $\Pi_{\mathcal{C}}$ is approximated by LLM self-repair passes, each guided by explicit audit reports.
 
 ---
 
 ### B.3 Constrained Markov Decision Process (CMDP) Interpretation
 
-Token generation may be framed as a CMDP:
+Token generation can be framed as a CMDP:
 
-- States: $s_t = y_{1:t}$  
-- Actions: $a_t = y_{t+1}$  
-- Reward: $r_t = \log p_\theta(a_t\mid s_t,x)$  
-- Costs: $c_{j,t}$ accumulating toward $\psi_j(y)$
+- States: $s_t = y_{1:t}$
+- Actions: $a_t = y_{t+1}$
+- Reward: $r_t = \log p_\theta(a_t\mid s_t,x)$
+- Costs: $c_{j,t}$, which accumulate toward $\psi_j(y)$
 
 with terminal constraints:
 
 $$\mathbb{E}\Big[ \sum_t c_{j,t} \Big] \le \tau_j$$
 
-This clarifies that the system approximates **policy optimization under global style budgets**, implemented via instruction-guided generation and post-hoc repair.
+This formulation clarifies that the system approximates policy optimisation under global style budgets, implemented through instruction-guided generation and post-hoc repair.
 
 ---
 
 ## Appendix C. Evaluation and Acceptance Criteria
 
-This appendix defines concrete divergence metrics and acceptance thresholds mapped directly to the fingerprint JSON fields. For a quick read, focus on how each metric corresponds to a specific JSON field.
+This appendix specifies divergence metrics and acceptance thresholds, each mapped to a corresponding fingerprint JSON field. For a summary, note how each metric aligns with a specific JSON field.
 
 ### C.1 Metric Families
 
 #### (1) Rate Constraints (scalar)
 
-For a target interval $[a,b]$ and observed value $v$:
+Given a target interval $[a,b]$ and observed value $v$:
 
 $$\text{viol}_r(v) = \max(0,a-v) + \max(0,v-b)$$
 
@@ -499,7 +490,7 @@ Mapped JSON paths:
 
 #### (2) Histogram Constraints (sentence / paragraph)
 
-Primary metric: **L1 histogram distance**
+The primary metric is the L1 histogram distance:
 
 $$d_h(\mathbf{h}^*, \mathbf{h}) = \\frac{1}{2} \sum_{b=1}^{B} |h_b - h_b^*|$$
 
@@ -515,11 +506,11 @@ Mapped JSON:
 
 #### (3) Lexicon Constraints
 
-Hard:
+Hard constraints:
 
 $$s_{lex}^{hard} = \mathbf{1}[\text{no forbidden term appears}]$$
 
-Soft:
+Soft constraints:
 
 $$s_{lex}^{soft} = \exp(-\alpha_{lex} \cdot |f_y - f^*|)$$
 
@@ -532,7 +523,7 @@ Mapped JSON:
 
 #### (4) Function‑Word and Stance Signals
 
-For each rate signal (e.g., `hedge_rate`, `first_person_rate`), define relative deviation:
+For each rate signal (such as `hedge_rate`, `first_person_rate`), the relative deviation is defined as:
 
 $$d_s(v, v^*) = \\frac{|v - v^*|}{\\max(|v^*|, 1)}$$
 
@@ -548,7 +539,7 @@ Mapped JSON:
 
 ### C.2 Aggregated Compliance Score
 
-Let weights $w_j$ come from `validators.weights` with $\sum_j w_j = 1$.
+Let weights $w_j$ be specified in `validators.weights` with $\sum_j w_j = 1$.
 
 $$S(y;\mathcal{F}) = \sum_{j=1}^J w_j s_j(y)$$
 
@@ -585,62 +576,56 @@ Mapped JSON:
 
 ### C.4 Iterative Repair Stopping Rule
 
-Let $S_t$ be the score at iteration $t$. Stop when:
+Let $S_t$ denote the score at iteration $t$. The process stops when:
 
 $$S_t \ge S_{pass} \quad \text{and} \quad H_t = 0$$
 
-Else continue up to $T_{max}$ repair passes.
+Otherwise, continue for up to $T_{max}$ repair passes.
 
 ---
 
 ## Appendix D. Mechanism of Fingerprint-Conditioned Rewriting
 
-This appendix provides a detailed account of **how an explicit stylometric fingerprint guides an LLM to rewrite text in the target author style**, despite the LLM's internal representations being latent and opaque. We formalize the process as *externalized style conditioning* through instruction embedding, constraint activation, and iterative projection.
-For non‑experts, the key idea is simple: the fingerprint acts like a checklist the model must satisfy, and the audit loop enforces that checklist.
+This appendix details how an explicit stylometric fingerprint guides an LLM to rewrite text in the target author style, despite the LLM's internal representations being latent and opaque. The process is formalised as external style conditioning through instruction embedding, constraint activation, and iterative projection.
+
+For non‑experts, the essential idea is straightforward: the fingerprint functions as a checklist, and the audit loop enforces adherence to that checklist.
 
 ---
 
 ## D.1 From Stylometric Profile to Control Signals
 
-The style fingerprint $\mathcal{F}$ is not consumed by the LLM as raw statistics, but rather as a **compiled control representation** consisting of:
+The style fingerprint $\mathcal{F}$ is not provided to the LLM as raw statistics, but as a compiled control representation comprising:
 
-1. **Numeric constraints**  
-   (ranges, histograms, tolerances)
+1. Numeric constraints (ranges, histograms, tolerances)
+2. Discrete symbolic constraints (lexicon rules, rhetorical templates, structural policies)
+3. Priority and strictness controls (ordering, hard versus soft constraints)
+4. Derived natural-language instructions (compiled in `derived_instructions.*`)
 
-2. **Discrete symbolic constraints**  
-   (lexicon rules, rhetorical templates, structural policies)
-
-3. **Priority and strictness controls**  
-   (ordering, hard vs soft constraints)
-
-4. **Derived natural-language instructions**  
-   (compiled in `derived_instructions.*`)
-
-We denote the compiled instruction set as:
+The compiled instruction set is denoted:
 
 $$\mathcal{I}(\mathcal{F}) = \text{Compile}(\mathcal{F})$$
 
 where $\mathcal{I}(\mathcal{F})$ is a structured textual representation injected into the LLM prompt.
 
-This compilation step performs three key transformations:
+This compilation step involves three main transformations:
 
-### (i) Constraint verbalization
+### (i) Constraint verbalisation
 
-Numeric constraints are converted into qualitative instructions:
+Numeric constraints are rendered as qualitative instructions:
 
-- "Use short-to-medium sentences (10-18 words typical)"  
-- "Favor one-sentence paragraphs occasionally (~15%)"  
-- "Avoid heavy semicolon usage; commas preferred"  
+- "Use short-to-medium sentences (10-18 words typical)"
+- "Favour one-sentence paragraphs occasionally (~15%)"
+- "Avoid heavy semicolon usage; commas preferred"
 
-This converts $\psi_j(y)\in\mathcal{C}_j$ into *behavioral descriptors*.
+This converts $\psi_j(y)\in\mathcal{C}_j$ into behavioural descriptors.
 
 ### (ii) Salience weighting
 
-Constraint weights $w_j$ are mapped to:
+Constraint weights $w_j$ are reflected in:
 
-- ordering in the prompt  
-- emphasis (phrasing, repetition)  
-- explicit "must" vs "prefer" language  
+- prompt ordering
+- emphasis (phrasing, repetition)
+- explicit language such as "must" or "prefer"
 
 ### (iii) Conflict resolution policy
 
@@ -648,27 +633,27 @@ The `controls.priority_order` field induces a partial order:
 
 $$\text{meaning preservation} \succ \text{lexicon} \succ \text{sentence rhythm} \succ \text{punctuation} \succ \text{templates}$$
 
-This ordering is verbalized explicitly to ensure that stylistic fidelity never overrides semantic fidelity.
+This ordering is verbalised to ensure that stylistic fidelity does not override semantic fidelity.
 
 ---
 
 ## D.2 Conditioning as External Latent Space Steering
 
-Let $h(x)$ denote the latent representation of the input text under the LLM, and let $c(\mathcal{I})$ denote the latent encoding of the instruction set.
+Let $h(x)$ denote the latent representation of the input text under the LLM, and $c(\mathcal{I})$ the latent encoding of the instruction set.
 
 The model samples from:
 
 $$p_\theta(y \mid x, \mathcal{I}) = p_\theta(y \mid h(x), c(\mathcal{I}))$$
 
-We interpret $c(\mathcal{I})$ as inducing a **soft bias over stylistic manifolds** in latent space.
+Here, $c(\mathcal{I})$ induces a soft bias over stylistic manifolds in latent space.
 
 Rather than learning a new style embedding, the fingerprint:
 
-- activates regions of latent space corresponding to sentence rhythm  
-- biases token transitions associated with punctuation patterns  
-- suppresses lexical clusters disfavored by the lexicon rules  
+- activates latent regions associated with sentence rhythm
+- biases token transitions linked to punctuation patterns
+- suppresses lexical clusters disfavoured by the lexicon rules
 
-This is analogous to **feature activation steering** in controllable generation, except the features are externalized and interpretable.
+This is analogous to feature activation steering in controllable generation, but with externalised and interpretable features.
 
 ---
 
@@ -956,135 +941,123 @@ This yields a controllable, auditable, and theoretically grounded mechanism for 
    2. All range constraints satisfy:
    $$[a_j, b_j] \supseteq [\psi_j(x) - \delta_j, \psi_j(x) + \delta_j]$$
    for some $\delta_j > 0$
-   
+
    3. Hard constraints do not contradict semantic invariants
-   
+
    Then:
    $$\mathcal{F}(x,\mathcal{F}) \neq \varnothing$$
-   
-   #### Sketch of proof
-   
-   - Let $\mathcal{P}(x)$ be the set of meaning-preserving paraphrases of $x$ (non-empty for any non-degenerate $x$).  
-   - Feature maps $\psi_j$ are continuous (or piecewise continuous) under paraphrase operations.  
-   - By assumption, tolerance intervals include a neighborhood around $\psi_j(x)$.  
-   - Therefore, there exists $y \in \mathcal{P}(x)$ such that $\psi_j(y)\in\mathcal{C}_j$ for all $j$. ∎
-   
-   ---
-   
-   ## E.4 Constraint Compatibility and Conflict Graphs
-   
-   Define a constraint compatibility graph:
-   
-   - Nodes: constraints $j$  
-   - Edge between $j,k$ if $\mathcal{C}_j \cap \mathcal{C}_k = \varnothing$ under semantic invariants  
-   
-   A necessary condition for feasibility is:
-   
-   $$\text{Graph}(\mathcal{F}) \text{ is bipartite with respect to hard constraints}$$
-   
-   In practice:
-   
-   - Sentence rhythm vs paragraph rhythm are compatible  
-   - Lexicon vs semantic invariants may conflict  
-   - Template vs rhythm may conflict on short texts  
-   
-   The system enforces a partial order:
-   
-   $$\text{meaning} \succ \text{lexicon} \succ \text{structure} \succ \text{punctuation} \succ \text{templates}$$
-   
-   ensuring that conflicts collapse in favor of feasibility.
-   
-   ---
-   
-   ## E.5 Minimal Tolerance Bounds
-   
-   Let $\sigma_j$ be the empirical standard deviation of feature $\psi_j$ over the author corpus.
-   
-   Recommended sufficient tolerances:
-   
-   - Range constraints:
-   $$[a_j, b_j] = [\mu_j - 2\sigma_j,\; \mu_j + 2\sigma_j]$$
-   
-   - Histogram constraints:
-   $$\tau_j \ge 2 \cdot \mathbb{E}[W_1(\mathbf{h},\mathbf{h}')]$$
-   
-   where $\mathbf{h},\mathbf{h}'$ are histograms from independent samples of the corpus.
-   
-   These ensure that:
-   
-   - intra-author variation is admissible  
-   - projection steps remain contractive  
-   
-   ---
-   
-   ## E.6 Convergence of Iterative Repair
-   
-   Let $S(y;\mathcal{F})$ be the compliance score.
-   
-   Assume:
-   
-   1. Each repair step reduces total violation:
-   $$\mathbb{E}[S(y^{(t+1)})] \ge S(y^{(t)}) + \eta$$
-   for some $\eta > 0$
-   
-   2. $S$ is bounded above by 1
-   
-   Then:
-   
-   $$\exists T < \infty : S(y^{(T)}) \ge S_{pass}$$
-   
-   i.e., **finite-step convergence** in expectation.
-   
-   This explains empirically observed rapid convergence (1-3 iterations) in most rewrites.
-   
-   ---
-   
-   ## E.7 Degenerate and Infeasible Cases
-   
-   Feasibility may fail when:
-   
-   1. **Extremely short texts**  
-      Insufficient degrees of freedom for histogram control.
-   
-   2. **Highly constrained technical content**  
-      Semantic invariants dominate stylistic degrees of freedom.
-   
-   3. **Over-tight tolerances**  
-      $\tau_j < \epsilon_j$
-   
-   In such cases, Stylometric-Transfer:
-   
-   - reports deviation  
-   - relaxes lowest-priority constraints  
-   - guarantees semantic correctness  
-   
-   ---
-   
-   ## E.8 Interpretation
-   
-   The fingerprint does not specify a point in style space, but a **convex (or approximately convex) admissible region**.
-   
-   Rewriting succeeds when:
-   
-   $$\mathcal{E}(x) \cap \mathcal{M}_{style} \neq \varnothing$$
-   
-   This framing clarifies why:
-   
-   - tolerances are essential  
-   - strict imitation is ill-posed  
-   - deviation reporting is principled  
-   
-   ---
-   
-## Appendix F. Comparison with Fine-Tuning, LoRA, and Latent Style Embedding Approaches
 
-This appendix situates Stylometric-Transfer among existing approaches to author-style modeling and controlled generation, emphasizing transparency and editorial control.
+   #### Sketch of proof
+
+- Let $\mathcal{P}(x)$ denote the set of meaning-preserving paraphrases of $x$, which is non-empty for any non-degenerate $x$.
+- Feature maps $\psi_j$ are continuous, or piecewise continuous, under paraphrase operations.
+- By assumption, tolerance intervals contain a neighbourhood around $\psi_j(x)$.
+- It follows that there exists $y \in \mathcal{P}(x)$ such that $\psi_j(y)\in\mathcal{C}_j$ for all $j$. ∎
 
 ---
 
-## F.1 Taxonomy of Style Modeling Approaches
+## E.4 Constraint Compatibility and Conflict Graphs
 
-We distinguish four dominant paradigms:
+A constraint compatibility graph is defined as follows:
+
+- Nodes represent constraints $j$.
+- An edge connects $j$ and $k$ if $\mathcal{C}_j \cap \mathcal{C}_k = \varnothing$ under semantic invariants.
+
+A necessary condition for feasibility is:
+
+$$\text{Graph}(\mathcal{F}) \text{ is bipartite with respect to hard constraints}$$
+
+In practice, some constraints are compatible, while others may conflict:
+
+- Sentence rhythm and paragraph rhythm are compatible.
+- Lexicon and semantic invariants may conflict.
+- Template and rhythm may conflict in short texts.
+
+The system imposes a partial order:
+
+$$\text{meaning} \succ \text{lexicon} \succ \text{structure} \succ \text{punctuation} \succ \text{templates}$$
+
+This ensures that, in the event of conflict, feasibility is prioritised.
+
+---
+
+## E.5 Minimal Tolerance Bounds
+
+Let $\sigma_j$ denote the empirical standard deviation of feature $\psi_j$ across the author corpus.
+
+Recommended sufficient tolerances are:
+
+- For range constraints:
+  $$[a_j, b_j] = [\mu_j - 2\sigma_j,\; \mu_j + 2\sigma_j]$$
+
+- For histogram constraints:
+  $$\tau_j \ge 2 \cdot \mathbb{E}[W_1(\mathbf{h},\mathbf{h}')]$$
+
+where $\mathbf{h}$ and $\mathbf{h}'$ are histograms from independent corpus samples.
+
+These tolerances ensure that intra-author variation is admissible and that projection steps remain contractive.
+
+---
+
+## E.6 Convergence of Iterative Repair
+
+Let $S(y;\mathcal{F})$ be the compliance score.
+
+Suppose:
+
+1. Each repair step reduces total violation:
+   $$\mathbb{E}[S(y^{(t+1)})] \ge S(y^{(t)}) + \eta$$
+   for some $\eta > 0$.
+
+2. $S$ is bounded above by 1.
+
+Then,
+
+$$\exists T < \infty : S(y^{(T)}) \ge S_{pass}$$
+
+i.e., finite-step convergence in expectation.
+
+Empirically, rapid convergence (within one to three iterations) is observed in most rewrites.
+
+---
+
+## E.7 Degenerate and Infeasible Cases
+
+Feasibility may fail in several situations:
+
+1. **Extremely short texts**: There are insufficient degrees of freedom for histogram control.
+2. **Highly constrained technical content**: Semantic invariants dominate stylistic degrees of freedom.
+3. **Overly tight tolerances**: $\tau_j < \epsilon_j$.
+
+In such cases, Stylometric-Transfer:
+
+- reports deviation,
+- relaxes the lowest-priority constraints,
+- guarantees semantic correctness.
+
+---
+
+## E.8 Interpretation
+
+The fingerprint does not specify a single point in style space, but rather a convex (or approximately convex) admissible region.
+
+Rewriting succeeds when
+
+$$\mathcal{E}(x) \cap \mathcal{M}_{style} \neq \varnothing$$
+
+This perspective clarifies the necessity of tolerances, the ill-posed nature of strict imitation, and the rationale for deviation reporting.
+
+---
+
+## Appendix F. Comparison with Fine-Tuning, LoRA, and Latent Style Embedding Approaches
+
+This appendix places Stylometric-Transfer in the context of existing approaches to author-style modelling and controlled generation, with emphasis on transparency and editorial control.
+
+---
+
+## F.1 Taxonomy of Style Modelling Approaches
+
+Four main paradigms can be distinguished:
 
 | Paradigm | Representation | Training | Interpretability | Editability |
 |----------|----------------|----------|------------------|-------------|
@@ -1099,31 +1072,31 @@ We distinguish four dominant paradigms:
 
 ### Mechanism
 
-Fine-tuning learns:
+Fine-tuning learns
 
 $$p_{\theta'}(y\mid x) \approx p(y\mid x,\text{author})$$
 
-by modifying base parameters $\theta \to \theta'$.
+by adjusting base parameters $\theta \to \theta'$.
 
 ### Limitations
 
-- Style representation is **entirely implicit**  
-- No inspection of learned stylistic features  
-- No partial control (cannot weight sentence rhythm vs lexicon)  
-- Catastrophic forgetting risk  
-- Expensive retraining for each author  
+- Style representation is entirely implicit.
+- Learned stylistic features cannot be inspected.
+- No partial control; sentence rhythm and lexicon cannot be weighted separately.
+- Catastrophic forgetting is a risk.
+- Retraining is expensive for each author.
 
 ### Contrast
 
-Stylometric-Transfer instead solves:
+Stylometric-Transfer instead solves
 
 $$\max_{y \in \mathcal{M}_{style}} p_\theta(y\mid x)$$
 
-with:
+with
 
-- no parameter updates  
-- explicit admissible region  
-- post-hoc auditing  
+- no parameter updates,
+- an explicit admissible region,
+- post-hoc auditing.
 
 ---
 
@@ -1131,31 +1104,31 @@ with:
 
 ### Mechanism
 
-Learn low-rank matrices $\Delta W$ such that:
+Low-rank matrices $\Delta W$ are learned so that
 
 $$h' = h + \Delta W h$$
 
-encoding author-specific modulation.
+encode author-specific modulation.
 
 ### Advantages
 
-- Efficient  
-- Modular  
+- Efficient.
+- Modular.
 
 ### Limitations
 
-- Style encoded in **latent linear subspace**  
-- Not interpretable  
-- No direct mapping to stylometric features  
-- Difficult to combine multiple styles  
+- Style is encoded in a latent linear subspace.
+- Not interpretable.
+- No direct mapping to stylometric features.
+- Combining multiple styles is difficult.
 
 ### Contrast
 
-Stylometric-Transfer:
+Stylometric-Transfer
 
-- exposes every control dimension  
-- allows continuous interpolation via tolerances  
-- supports manual editing and versioning  
+- exposes every control dimension,
+- allows continuous interpolation via tolerances,
+- supports manual editing and versioning.
 
 ---
 
@@ -1163,47 +1136,47 @@ Stylometric-Transfer:
 
 ### Mechanism
 
-Learn a vector:
+A vector
 
 $$z_{style} \in \mathbb{R}^d$$
 
-and condition generation:
+is learned, and generation is conditioned as
 
 $$p(y\mid x,z_{style})$$
 
-via cross-alignment, VAEs, or conditional decoders.
+using cross-alignment, VAEs, or conditional decoders.
 
 ### Advantages
 
-- Compact  
-- Differentiable  
+- Compact.
+- Differentiable.
 
 ### Limitations
 
-- Entangled dimensions  
-- No semantic interpretation of coordinates  
-- No guarantee that $z_{style}$ corresponds to human-meaningful features  
-- No auditability  
+- Dimensions are entangled.
+- Coordinates lack semantic interpretation.
+- No guarantee that $z_{style}$ corresponds to human-meaningful features.
+- No auditability.
 
 ### Contrast
 
-Stylometric-Transfer replaces:
+Stylometric-Transfer replaces
 
 $$z_{style}
 \quad \longrightarrow \quad
 \mathcal{F} = \{(\psi_j,\mathcal{C}_j,w_j)\}$$
 
-yielding:
+yielding
 
-- explicit axes of variation  
-- measurable compliance  
-- verifiable reproduction  
+- explicit axes of variation,
+- measurable compliance,
+- verifiable reproduction.
 
 ---
 
 ## F.5 Control Granularity and Editorial Authority
 
-A key distinction is **who controls style**.
+A central distinction is who controls style.
 
 | Property | Fine-tune | LoRA | Embedding | Stylometric-Transfer |
 |----------|-----------|------|-----------|----------------------|
@@ -1213,85 +1186,72 @@ A key distinction is **who controls style**.
 | Version control | ✗ | ✗ | ✗ | **✓** |
 | Deviation reporting | ✗ | ✗ | ✗ | **✓** |
 
-Stylometric-Transfer treats style as an **editorial object**, not merely a training artifact.
+Stylometric-Transfer treats style as an editorial object, rather than a byproduct of training.
 
 ---
 
 ## F.6 Data Efficiency
 
-Fine-tuning and embedding methods require:
+Fine-tuning and embedding methods require
 
 $$N \gg 10^4 \text{ tokens}$$
 
-to stabilize latent style representations.
+to stabilise latent style representations.
 
-Stylometric-Transfer requires:
-
-- only sufficient data to estimate low-variance statistics  
-- often $N \approx 10^3-10^4$ tokens  
-- robust even on heterogeneous corpora  
+Stylometric-Transfer requires only enough data to estimate low-variance statistics, often $N \approx 10^3-10^4$ tokens, and remains robust on heterogeneous corpora.
 
 ---
 
 ## F.7 Transferability and Compositionality
 
-Latent methods struggle with:
+Latent methods encounter difficulties when
 
-- combining multiple authors  
-- interpolating interpretable features  
-- transferring style across domains  
+- combining multiple authors,
+- interpolating interpretable features,
+- transferring style across domains.
 
-Stylometric-Transfer supports:
+Stylometric-Transfer supports
 
-- convex combinations of fingerprints  
-- selective inheritance of features  
-- domain-specific constraint relaxation  
+- convex combinations of fingerprints,
+- selective inheritance of features,
+- domain-specific constraint relaxation.
 
-Formally, fingerprints compose as:
+Formally, fingerprints compose as
 
 $$\mathcal{F}_\lambda = \lambda \mathcal{F}_1 + (1-\lambda)\mathcal{F}_2$$
 
-at the level of:
-
-- histogram mixtures  
-- range interpolation  
-- lexicon unions  
+at the level of histogram mixtures, range interpolation, and lexicon unions.
 
 ---
 
 ## F.8 Interpretability and Scientific Value
 
-From a scientific standpoint:
+From a scientific perspective:
 
-- fine-tuning learns *unknown* features  
-- embeddings encode *unlabeled* dimensions  
-- Stylometric-Transfer recovers **measurable linguistic variables**  
+- Fine-tuning learns unknown features.
+- Embeddings encode unlabeled dimensions.
+- Stylometric-Transfer recovers measurable linguistic variables.
 
-This enables:
-
-- hypothesis testing  
-- ablation studies  
-- stylistic causality analysis  
-- reproducible experiments  
+This enables hypothesis testing, ablation studies, stylistic causality analysis, and reproducible experiments.
 
 ---
 
 ## F.9 Summary
 
-Stylometric-Transfer differs fundamentally from existing approaches by:
+Stylometric-Transfer differs fundamentally from existing approaches by
 
-1. Externalizing style into explicit constraints  
-2. Avoiding training and latent embeddings  
-3. Enabling auditability and editorial control  
-4. Supporting theoretical analysis of feasibility and convergence  
+1. externalising style as explicit constraints,
+2. avoiding training and latent embeddings,
+3. enabling auditability and editorial control,
+4. supporting theoretical analysis of feasibility and convergence.
 
-Rather than learning *what* style is, it defines *where* style is allowed to live in feature space.
+Rather than learning what style is, it defines where style may reside in feature space.
 
 ---
 
 ## Appendix G. JSON schema
-   
-```json
+
+``` json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://stylometric-transfer/schema/style_fingerprint.schema.json",
@@ -1652,13 +1612,14 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
     }
   }
 }
+
 ```
 
 ---
 
 ## Appendix H. Tunables schema (config.tunables.json)
 
-`config.tunables.json` allows deterministic tuning of humanizer conflict thresholds and lightweight sanity checks (e.g., line-count change warnings) used during style application. The schema below defines the supported keys and types:
+`config.tunables.json` provides deterministic control over humanizer conflict thresholds and basic sanity checks, such as line-count change warnings, during style application. The following schema outlines the supported keys and types:
 
 ```json
 {
@@ -1700,22 +1661,22 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
 
 ### H.1 Tunable definitions (interpretation)
 
-- `em_dash_keep_rate`: if the fingerprint’s em‑dash rate (per 1000 words) is at or above this value, the “avoid em dashes” rule is dropped as conflicting.
-- `hedge_keep_rate`: if the fingerprint’s hedging rate (per 1000 words) is at or above this value, “avoid hedging” rules are dropped.
-- `first_person_keep_rate`: if the fingerprint’s first‑person rate (per 1000 words) is below this value (or pronoun preferences avoid first‑person), “use I/first‑person” rules are dropped.
-- `contractions_avoid_threshold`: if the fingerprint’s contraction rate (per 1000 words) is at or above this value, “avoid contractions” rules are dropped.
-- `contractions_use_threshold`: if the fingerprint’s contraction rate (per 1000 words) is below this value, “use contractions” rules are dropped.
-- `heading_title_case_keep_rate`: if the input Markdown’s heading Title Case ratio is at or above this value, “avoid Title Case headings” rules are dropped.
-- `boldface_keep_per_1000w`: if boldface density (per 1000 words) is at or above this value, “avoid boldface” rules are dropped.
-- `inline_header_list_keep_rate`: if the ratio of inline‑header list items (e.g., `- **Label:**`) is at or above this value, “avoid inline‑header lists” rules are dropped.
-- `line_count_warn_pct`: if output line count changes by this percent or more, emit a warning for potential missing/expanded content.
-- `word_count_warn_pct`: if output word count changes by this percent or more, emit a warning for potential missing/expanded content.
-- `paragraph_count_warn_pct`: if output paragraph count changes by this percent or more, emit a warning for potential missing/expanded content.
+- `em_dash_keep_rate`: if the fingerprint’s em dash rate (per 1000 words) meets or exceeds this value, the rule to avoid em dashes is set aside as conflicting.
+- `hedge_keep_rate`: if the fingerprint’s hedging rate (per 1000 words) meets or exceeds this value, rules discouraging hedging are set aside.
+- `first_person_keep_rate`: if the fingerprint’s first person rate (per 1000 words) is below this value (or pronoun preferences avoid first person), rules requiring first person are set aside.
+- `contractions_avoid_threshold`: if the fingerprint’s contraction rate (per 1000 words) meets or exceeds this value, the rule to avoid contractions is set aside.
+- `contractions_use_threshold`: if the fingerprint’s contraction rate (per 1000 words) is below this value, the rule to use contractions is set aside.
+- `heading_title_case_keep_rate`: if the input Markdown’s heading Title Case ratio meets or exceeds this value, the rule to avoid Title Case headings is set aside.
+- `boldface_keep_per_1000w`: if boldface density (per 1000 words) meets or exceeds this value, the rule to avoid boldface is set aside.
+- `inline_header_list_keep_rate`: if the ratio of inline-header list items (such as `- **Label:**`) meets or exceeds this value, the rule to avoid inline-header lists is set aside.
+- `line_count_warn_pct`: if the output line count changes by this percentage or more, a warning is issued for possible missing or expanded content.
+- `word_count_warn_pct`: if the output word count changes by this percentage or more, a warning is issued for possible missing or expanded content.
+- `paragraph_count_warn_pct`: if the output paragraph count changes by this percentage or more, a warning is issued for possible missing or expanded content.
 
 ---
 
-## License Notice
+## Licence Notice
 
-Licensed under the PolyForm Noncommercial License 1.0.0.  
+This work is licensed under the PolyForm Noncommercial Licence 1.0.0.  
 Copyright (c) 2026 Nicolas Pepin (npepin@umiquity.com).  
-See `LICENSE.md` for full license text and terms.
+See `LICENSE.md` for the full licence text and terms.
