@@ -84,7 +84,7 @@ start
 :Read corpus files;
 :Normalize OCR artifacts;
 :Filter non-author voice text;
-:Compute measurements;
+:Compute measurements (sentence/paragraph rhythm, rare words);
 
 if (Phrase validation enabled?) then (yes)
   :Validate common phrases via LLM;
@@ -135,4 +135,3 @@ FS -> FSYS : write style_fingerprint.json
 FS --> User : done
 @enduml
 ```
-

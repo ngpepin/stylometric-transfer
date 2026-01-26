@@ -245,6 +245,7 @@ Current measurements include:
 - Dash / ellipsis counts
 - Frequent bigrams / trigrams
 - Function‑word profile
+- Rare‑word signals (words the author rarely uses)
 - Stance signals (hedging/boosting/pronouns)
 - Sentence‑opener and transition templates
 

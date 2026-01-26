@@ -9,6 +9,8 @@
 
 We present **Stylometric-Transfer**, a practical method for (i) **stylometric profiling** of an author's writing corpus into an explicit, interpretable JSON artifact (a *style fingerprint*) and (ii) **meaning-preserving style transfer** that rewrites new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement--e.g., punctuation rates and sentence-length distributions--with LLM-mediated synthesis into human-editable constraints (ranges, histograms, lexicon rules, rhetorical templates). We formalize the fingerprint as a constraint set and provide a constraint-satisfaction decoding view for LLM rewriting, together with compliance scoring based on distributional divergences. A novel contribution is the unification of stylometric transfer and humanization in a single framework by formalizing and quantifying a conflict-resolution layer that filters humanization guidelines against fingerprint constraints. This hybrid design offers an auditable alternative to purely latent "style embeddings" while remaining consistent with established stylometry and text style transfer literature.
 
+**Reader’s guide (plain language):** Sections 1–3 explain what the system does and why; Section 4 explains the measurements using simple examples; Sections 5–6 explain how those measurements become constraints for rewriting; Section 7 connects the ideas to the actual code; the appendices provide deeper mathematical and algorithmic detail for expert readers.
+
 <div class="page-footer">
   <span class="footer-left">(c) 2026 Nicolas Pepin</span>
 </div>
@@ -21,20 +23,28 @@ We present **Stylometric-Transfer**, a practical method for (i) **stylometric pr
 
 Separately, **text style transfer (TST)** aims to transform text so stylistic properties match a target style while preserving style-independent content. A recurring challenge is separating "content" from "style" without parallel data, motivating methods such as cross-alignment approaches and ongoing evaluation/ethical discussions. ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com))
 
+In plain terms, stylometry treats an author’s style like a set of measurable habits—how long sentences are, how often certain punctuation appears, which transitions recur, and which words are almost never used. Style transfer then tries to write new text *as if* those habits were followed, without changing the meaning. The tension is that a model can easily sound “stylish” while drifting away from the facts or introducing artifacts; this paper is about making that tension measurable and manageable.
+
 This paper motivates a hybrid approach: represent style explicitly as a **stylometric style fingerprint** (JSON) and use an LLM as a constrained rewriter guided by (a) the fingerprint and (b) locally measured statistics of both the author corpus and the candidate text. **We further show how humanization guidelines can be integrated without violating voice constraints by defining a conflict-resolution layer that deterministically filters guideline rules when they contradict fingerprint signals or the input’s stylistic scaffolding.**
 
 ---
 
 ## 2. Related Work
 
+This section gives non‑specialists a quick map of the landscape and gives specialists enough pointers to compare assumptions. The key takeaway is that we keep the **measurements** interpretable and put the LLM in a **constraint‑following** role rather than a hidden style‑embedding role.
+
 ### 2.1 Stylometry and Distance-Based Measures
 
 Stylometric authorship attribution typically uses robust, interpretable features (e.g., word frequency profiles) and distance measures. Burrows's Delta and its variants are widely used; more recent work provides detailed explanations that decompose feature selection, feature scaling (e.g., z-transformation), and distance metrics, clarifying why Delta-style measures can be effective. ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com))
+
+For newcomers: these methods are simple by design—they rely on counts and distributions rather than opaque neural features—making them a good match for an interpretable fingerprint.
 
 ### 2.2 Text Style Transfer and Evaluation
 
 Non-parallel TST methods such as **cross-alignment** demonstrate the feasibility of changing certain stylistic attributes without parallel sentence pairs. ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com))  
 Recent surveys highlight broad application scenarios alongside open challenges in evaluation and ethical risk (e.g., misuse for impersonation), supporting explicit safeguards and transparency in TST pipelines. ([arxiv.org](https://arxiv.org/abs/2407.16737?utm_source=chatgpt.com))
+
+For newcomers: the literature shows that “style” is slippery—so we make style **explicit** and **auditable** instead of learned and hidden.
 
 ### 2.3 Humanization-Aware Stylometric Transfer
 
@@ -60,9 +70,13 @@ $$y = \mathcal{R}_\theta(x \mid \mathcal{F}).$$
 
 **Primary constraint:** meaning preservation (no new facts, claims, or examples; preserve entities and numerals unless explicitly permitted).
 
+Intuitively: we measure the author’s writing habits, compress those habits into a JSON “fingerprint,” and then ask the LLM to rewrite new text so those habits are respected while the underlying meaning stays unchanged.
+
 ---
 
 ## 4. Stylometric Measurements
+
+This section explains the simple, interpretable statistics that the system measures. The goal is not to be linguistically perfect; it is to be **stable, explainable, and easy to audit**. These measurements are the “ground truth” the LLM must follow.
 
 ### 4.1 Rate and Density Features
 
@@ -84,7 +98,21 @@ $$\mathbf{h} \in \Delta^{B-1}, \quad h_b = \frac{1}{m}\sum_{i=1}^m \mathbf{1}[\e
 
 where $\Delta^{B-1}$ is the probability simplex and bins are ordinal intervals (e.g., $<10$, 10-17, 18-25, ...).
 
-### 4.3 Delta-Style Diagnostics (Optional)
+We also capture **paragraph rhythm** with a one‑sentence paragraph rate:
+
+$$\rho_{1}(d) = \frac{\#\{\text{paragraphs with exactly one sentence}\}}{\max(1,\ \#\{\text{paragraphs}\})}.$$
+
+This rate is treated as a stylistic baseline: excessive one‑sentence paragraphs are only flagged as an AI tell if they exceed the author’s $\rho_1$ range.
+
+### 4.3 Rare-Word Signals
+
+Let $f(w)$ be the corpus frequency of a token $w$ after filtering stopwords, numerals, and short tokens. We record a **rare‑word list**:
+
+$$\mathcal{R} = \{w : f(w) \le c_{\max}\},$$
+
+where $c_{\max}$ is a small threshold (e.g., 2–5 occurrences). These terms can be surfaced as **avoid‑lexicon hints** so the rewriter does not overuse words the author rarely employs.
+
+### 4.4 Delta-Style Diagnostics (Optional)
 
 While Stylometric-Transfer is not an authorship attribution system, Delta-style distances can serve as *diagnostic* measures of stylistic proximity. Following standardization and Manhattan-style aggregation:
 
@@ -109,14 +137,18 @@ Typical constraint types:
 
 1. **Range constraints**: $\psi_j(y) \in [a,b]$  
 2. **Histogram constraints**: $D(\mathbf{h}^*, \mathbf{h}(y)) \le \tau$  
-3. **Lexicon constraints**: forbidden phrases/words; preferred synonyms  
+3. **Lexicon constraints**: forbidden phrases/words; preferred synonyms; avoid‑rare words $\mathcal{R}$  
 4. **Template constraints**: rhetorical move frequency bounds  
 
 The JSON representation adds practical control fields such as `priority_order` and `strictness` to determine constraint precedence.
 
+**Plain‑language view:** think of the fingerprint as a checklist with weights. Some items are strict (“never use em‑dashes”), others are soft (“prefer shorter sentences”), and the system records how closely the output satisfies each item.
+
 ---
 
 ## 6. Constraint Satisfaction Decoding and Compliance Scoring
+
+At generation time, the LLM produces a candidate rewrite, and we immediately *measure it* the same way we measured the author’s corpus. This closes the loop: if the output diverges, we can tell the model exactly which metrics drifted and ask for a correction.
 
 This section expands the mathematical view of rewriting as a **constraint satisfaction** problem.
 
@@ -203,6 +235,8 @@ This compliance score supports:
 
 ## 7. Implementation Notes (Stylometric-Transfer)
 
+This section links the theory to the actual code paths. Readers looking for a practical understanding can treat it as an annotated “how it works,” while experts can treat it as an implementation‑level specification.
+
 The repository implements:
 
 1. **Local measurement stage**
@@ -227,6 +261,8 @@ These design choices align with stylometric traditions emphasizing interpretable
 
 ## 8. Ethical Considerations
 
+We emphasize transparency and non‑impersonation. The system is designed for personal writing, editing assistance, and self‑modeling; it is not a tool for mimicking living authors without consent.
+
 TST can be misused for impersonation-like behaviors; recent surveys explicitly highlight ethical considerations and the need for safeguards. ([arxiv.org](https://arxiv.org/abs/2407.16737?utm_source=chatgpt.com))
 
 Stylometric-Transfer is intended for:
@@ -242,6 +278,8 @@ Recommended safeguards:
 ---
 
 ## 9. Conclusion
+
+For newcomers: the take‑home is that you can combine classic stylometry with modern LLMs without losing interpretability. For experts: the contribution is a concrete, auditable constraint model and a measurable conflict‑resolution layer that unifies stylometric transfer and humanization.
 
 Stylometric-Transfer bridges **classic stylometry** and **LLM-based rewriting** by pairing interpretable, versionable style models with constraint-guided generation. The explicit JSON fingerprint improves auditability and editorial control while drawing on well-established stylometric measurement and style transfer insights. ([press.uchicago.edu](https://press.uchicago.edu/ucp/books/book/distributed/I/bo5667096.html?utm_source=chatgpt.com))
 
@@ -259,7 +297,7 @@ Stylometric-Transfer bridges **classic stylometry** and **LLM-based rewriting** 
 
 ## Appendix A. Methods (Pseudocode)
 
-This appendix provides pseudocode for the **fingerprinter** (extractor) and **rewriter** stages.
+This appendix provides pseudocode for the **fingerprinter** (extractor) and **rewriter** stages. It is meant to be readable even if you are new to stylometry; treat it as a procedural summary of the system.
 
 ### A.1 Fingerprint Extraction (Corpus → Style Fingerprint JSON)
 
@@ -310,14 +348,6 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
     return F
 end procedure
 ```
-
----
-
-## License Notice
-
-Licensed under the PolyForm Noncommercial License 1.0.0.  
-Copyright (c) 2026 Nicolas Pepin (npepin@umiquity.com).  
-See `LICENSE.md` for full license text and terms.
 
 ### A.2 Rewrite (Fingerprint + Draft → Styled Draft)
 
@@ -387,7 +417,7 @@ end procedure
 
 ## Appendix B. Formal Constrained Decoding Framing
 
-This appendix tightens the decoding formulation into a standard constrained optimization / constrained MDP view.
+This appendix tightens the decoding formulation into a standard constrained optimization / constrained MDP view. Readers unfamiliar with the formalism can focus on the intuition: the LLM is guided by measurable constraints rather than hidden embeddings.
 
 ### B.1 Constrained Maximum A Posteriori Decoding
 
@@ -447,7 +477,7 @@ This clarifies that the system approximates **policy optimization under global s
 
 ## Appendix C. Evaluation and Acceptance Criteria
 
-This appendix defines concrete divergence metrics and acceptance thresholds mapped directly to the fingerprint JSON fields.
+This appendix defines concrete divergence metrics and acceptance thresholds mapped directly to the fingerprint JSON fields. For a quick read, focus on how each metric corresponds to a specific JSON field.
 
 ### C.1 Metric Families
 
@@ -566,6 +596,7 @@ Else continue up to $T_{max}$ repair passes.
 ## Appendix D. Mechanism of Fingerprint-Conditioned Rewriting
 
 This appendix provides a detailed account of **how an explicit stylometric fingerprint guides an LLM to rewrite text in the target author style**, despite the LLM's internal representations being latent and opaque. We formalize the process as *externalized style conditioning* through instruction embedding, constraint activation, and iterative projection.
+For non‑experts, the key idea is simple: the fingerprint acts like a checklist the model must satisfy, and the audit loop enforces that checklist.
 
 ---
 
@@ -1047,7 +1078,7 @@ This yields a controllable, auditable, and theoretically grounded mechanism for 
    
 ## Appendix F. Comparison with Fine-Tuning, LoRA, and Latent Style Embedding Approaches
 
-This appendix situates Stylometric-Transfer among existing approaches to author-style modeling and controlled generation.
+This appendix situates Stylometric-Transfer among existing approaches to author-style modeling and controlled generation, emphasizing transparency and editorial control.
 
 ---
 
@@ -1446,6 +1477,15 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
             "transition_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } }
           }
         },
+        "lexical_signals": {
+          "type": "object",
+          "description": "Lexical statistics such as rare-word lists",
+          "properties": {
+            "rare_words": { "type": "array", "items": { "$ref": "#/definitions/word_count" } },
+            "rare_word_max_count": { "type": "integer" },
+            "rare_word_min_length": { "type": "integer" }
+          }
+        },
         "common_phrases": {
           "type": "object",
           "properties": {
@@ -1606,7 +1646,8 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
       "type": "object",
       "properties": {
         "word": { "type": "string" },
-        "count": { "type": "integer", "minimum": 0 }
+        "count": { "type": "integer", "minimum": 0 },
+        "rate_per_1000w": { "type": "number" }
       }
     }
   }
@@ -1658,3 +1699,11 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
 - `heading_title_case_keep_rate`: if the input Markdown’s heading Title Case ratio is at or above this value, “avoid Title Case headings” rules are dropped.
 - `boldface_keep_per_1000w`: if boldface density (per 1000 words) is at or above this value, “avoid boldface” rules are dropped.
 - `inline_header_list_keep_rate`: if the ratio of inline‑header list items (e.g., `- **Label:**`) is at or above this value, “avoid inline‑header lists” rules are dropped.
+
+---
+
+## License Notice
+
+Licensed under the PolyForm Noncommercial License 1.0.0.  
+Copyright (c) 2026 Nicolas Pepin (npepin@umiquity.com).  
+See `LICENSE.md` for full license text and terms.

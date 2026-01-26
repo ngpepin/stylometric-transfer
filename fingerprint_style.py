@@ -766,6 +766,33 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
     ])
 
     toks = [t.lower() for t in w]
+    token_counts = collections.Counter(toks)
+
+    # Rare-word signals: low-frequency tokens that the author rarely uses.
+    def is_candidate_rare(token: str) -> bool:
+        if token in stop:
+            return False
+        if len(token) < 4:
+            return False
+        if any(ch.isdigit() for ch in token):
+            return False
+        return token.isalpha()
+
+    max_count = max(2, int(total_words * 0.0001))
+    max_count = min(5, max_count)
+    rare_candidates = [
+        (token, count) for token, count in token_counts.items()
+        if count <= max_count and is_candidate_rare(token)
+    ]
+    rare_candidates.sort(key=lambda x: (x[1], x[0]))
+    rare_words = [
+        {
+            "word": token,
+            "count": count,
+            "rate_per_1000w": approx_rate_per_1000_words(count, total_words)
+        }
+        for token, count in rare_candidates[:40]
+    ]
     def ngrams(n: int) -> Iterable[str]:
         for i in range(0, len(toks) - n + 1):
             chunk = toks[i:i+n]
@@ -785,7 +812,7 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
         "i","we","you","he","she","they","me","us","him","her","them","my","our","your","their",
         "not","no","nor","very","also","even","only","just","rather","however","therefore"
     ]
-    fw_counts = collections.Counter(toks)
+    fw_counts = token_counts
     fw_rates = {fw: approx_rate_per_1000_words(fw_counts.get(fw, 0), total_words) for fw in function_words}
     fw_top = sorted(
         [{"word": fw, "count": fw_counts.get(fw, 0)} for fw in function_words],
@@ -887,6 +914,11 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
         "templates_signals": {
             "sentence_openers_top": [{"phrase": p, "count": c} for p, c in sent_openers.most_common(20)],
             "transition_openers_top": [{"phrase": p, "count": c} for p, c in transition_hits.most_common(15)]
+        },
+        "lexical_signals": {
+            "rare_words": rare_words,
+            "rare_word_max_count": max_count,
+            "rare_word_min_length": 4
         },
         "common_phrases": {
             "bigrams_top": [{"phrase": p, "count": c} for p, c in big],

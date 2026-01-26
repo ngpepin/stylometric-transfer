@@ -104,6 +104,8 @@ In research terms, this system implements:
   - Common n‑grams
   - Function‑word profile and stance signals (hedging/boosting/pronouns)
   - Sentence‑opener and transition templates (top patterns)
+  - Rare‑word signals (words the author rarely uses)
+  - One‑sentence paragraph rate / paragraph rhythm
 - Produces a **comprehensive JSON style profile**
 - Rewrites Markdown with:
   - Meaning preservation
@@ -316,7 +318,7 @@ Contains:
 - `metadata` — corpus and extraction info  
   - `metadata.corpus.document_count` — number of corpus documents  
 - `metadata.corpus.documents` — per-document metadata (path, title when available, size, language/locale, genres, time range)  
-- `measurements` — raw statistical signals (includes `orthography_signals.spelling_variant` for US vs Canadian spelling)  
+- `measurements` — raw statistical signals (includes `orthography_signals.spelling_variant`, paragraph rhythm, and `lexical_signals.rare_words`)  
 - `targets` — stylistic constraints and distributions (including optional persona pronoun preferences)  
 - `lexicon` — preferred / avoided words and phrases  
 - `templates` — syntactic and rhetorical patterns  

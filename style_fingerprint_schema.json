@@ -183,6 +183,15 @@
             "transition_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } }
           }
         },
+        "lexical_signals": {
+          "type": "object",
+          "description": "Lexical statistics such as rare-word lists",
+          "properties": {
+            "rare_words": { "type": "array", "items": { "$ref": "#/definitions/word_count" } },
+            "rare_word_max_count": { "type": "integer" },
+            "rare_word_min_length": { "type": "integer" }
+          }
+        },
         "common_phrases": {
           "type": "object",
           "properties": {
@@ -343,7 +352,8 @@
       "type": "object",
       "properties": {
         "word": { "type": "string" },
-        "count": { "type": "integer", "minimum": 0 }
+        "count": { "type": "integer", "minimum": 0 },
+        "rate_per_1000w": { "type": "number" }
       }
     }
   }

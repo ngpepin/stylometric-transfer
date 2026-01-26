@@ -94,6 +94,7 @@ class TestV110Regression(unittest.TestCase):
         self.assertIn("function_words", meas)
         self.assertIn("stance_signals", meas)
         self.assertIn("templates_signals", meas)
+        self.assertIn("lexical_signals", meas)
 
     def test_measurements_include_new_signals_apply(self) -> None:
         meas = af.compute_measurements("We therefore argue that this is likely.")
