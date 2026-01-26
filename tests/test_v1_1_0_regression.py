@@ -44,6 +44,28 @@ class TestV110Regression(unittest.TestCase):
         norm = af.normalize_humanizer_rules(raw, "llm")
         self.assertEqual(norm[0]["words_to_watch"], ["alpha", "beta"])
 
+    def test_extract_heading_blocks(self) -> None:
+        md = "## Appendix C\nAlpha\n\n## Appendix D\nBeta\n"
+        blocks = af.extract_heading_blocks(md)
+        keys = af.extract_heading_keys(md)
+        self.assertEqual(len(blocks), 2)
+        self.assertIn("appendix c", keys)
+        self.assertIn("appendix d", keys)
+
+    def test_section_signature_similarity(self) -> None:
+        a = "## Appendix C\nAlpha beta gamma\nMore text."
+        b = "## Renamed Section\nAlpha beta gamma\nMore text."
+        sig_a = af.section_signature(a)
+        sig_b = af.section_signature(b)
+        self.assertGreater(af.jaccard_similarity(sig_a, sig_b), 0.4)
+
+    def test_default_tunables_include_sanity_checks(self) -> None:
+        tunables = af.DEFAULT_TUNABLES
+        self.assertIn("sanity_checks", tunables)
+        self.assertIn("line_count_warn_pct", tunables["sanity_checks"])
+        self.assertIn("word_count_warn_pct", tunables["sanity_checks"])
+        self.assertIn("paragraph_count_warn_pct", tunables["sanity_checks"])
+
     def test_filter_author_voice_text_removes_non_voice(self) -> None:
         text = (
             "Intro paragraph.\n\n"

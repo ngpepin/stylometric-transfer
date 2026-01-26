@@ -18,6 +18,15 @@
         "inline_header_list_keep_rate": { "type": "number", "minimum": 0 }
       },
       "additionalProperties": false
+    },
+    "sanity_checks": {
+      "type": "object",
+      "properties": {
+        "line_count_warn_pct": { "type": "number", "minimum": 0 },
+        "word_count_warn_pct": { "type": "number", "minimum": 0 },
+        "paragraph_count_warn_pct": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

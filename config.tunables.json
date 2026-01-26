@@ -8,5 +8,10 @@
     "heading_title_case_keep_rate": 0.6,
     "boldface_keep_per_1000w": 3.0,
     "inline_header_list_keep_rate": 0.2
+  },
+  "sanity_checks": {
+    "line_count_warn_pct": 10.0,
+    "word_count_warn_pct": 10.0,
+    "paragraph_count_warn_pct": 10.0
   }
 }

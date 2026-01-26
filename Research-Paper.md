@@ -1658,7 +1658,7 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
 
 ## Appendix H. Tunables schema (config.tunables.json)
 
-`config.tunables.json` allows deterministic tuning of humanizer conflict thresholds used during style application. The schema below defines the supported keys and types:
+`config.tunables.json` allows deterministic tuning of humanizer conflict thresholds and lightweight sanity checks (e.g., line-count change warnings) used during style application. The schema below defines the supported keys and types:
 
 ```json
 {
@@ -1681,6 +1681,15 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
         "inline_header_list_keep_rate": { "type": "number", "minimum": 0 }
       },
       "additionalProperties": false
+    },
+    "sanity_checks": {
+      "type": "object",
+      "properties": {
+        "line_count_warn_pct": { "type": "number", "minimum": 0 },
+        "word_count_warn_pct": { "type": "number", "minimum": 0 },
+        "paragraph_count_warn_pct": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
@@ -1699,6 +1708,9 @@ Rather than learning *what* style is, it defines *where* style is allowed to liv
 - `heading_title_case_keep_rate`: if the input Markdown’s heading Title Case ratio is at or above this value, “avoid Title Case headings” rules are dropped.
 - `boldface_keep_per_1000w`: if boldface density (per 1000 words) is at or above this value, “avoid boldface” rules are dropped.
 - `inline_header_list_keep_rate`: if the ratio of inline‑header list items (e.g., `- **Label:**`) is at or above this value, “avoid inline‑header lists” rules are dropped.
+- `line_count_warn_pct`: if output line count changes by this percent or more, emit a warning for potential missing/expanded content.
+- `word_count_warn_pct`: if output word count changes by this percent or more, emit a warning for potential missing/expanded content.
+- `paragraph_count_warn_pct`: if output paragraph count changes by this percent or more, emit a warning for potential missing/expanded content.
 
 ---
 

@@ -205,6 +205,11 @@ Example (defaults shown):
     "heading_title_case_keep_rate": 0.6,
     "boldface_keep_per_1000w": 3.0,
     "inline_header_list_keep_rate": 0.2
+  },
+  "sanity_checks": {
+    "line_count_warn_pct": 10.0,
+    "word_count_warn_pct": 10.0,
+    "paragraph_count_warn_pct": 10.0
   }
 }
 ```
@@ -218,6 +223,9 @@ Example (defaults shown):
 - `heading_title_case_keep_rate` (0–1): if the input Markdown’s headings are **mostly Title Case** (ratio at/above this value), the “avoid Title Case” guideline is dropped.
 - `boldface_keep_per_1000w` (per 1000 words): if the input uses boldface **at or above** this density, “avoid boldface” guidance is dropped.
 - `inline_header_list_keep_rate` (0–1): if the input uses inline‑header list style (e.g., `- **Label:** text`) **at or above** this ratio, the “avoid inline‑header lists” guideline is dropped.
+- `line_count_warn_pct` (%): if the output line count changes by this percentage or more, emit a console warning to review for missing/expanded content.
+- `word_count_warn_pct` (%): if the output word count changes by this percentage or more, emit a console warning to review for missing/expanded content.
+- `paragraph_count_warn_pct` (%): if the output paragraph count changes by this percentage or more, emit a console warning to review for missing/expanded content.
 
 All thresholds are conservative defaults. Lowering a threshold makes a conflict more likely (i.e., more rules dropped). Raising a threshold makes the humanizer rules more permissive.
 

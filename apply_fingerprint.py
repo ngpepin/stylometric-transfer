@@ -52,6 +52,9 @@ HUMANIZER_GUIDELINES_FILENAME = "general-guidelines.md"
 TUNABLES_FILENAME = "config.tunables.json"
 AVOID_LIST_FILENAME = "config.avoid.txt"
 EM_DASH_CHAR = "—"
+ANSI_RED = "\x1b[31m"
+ANSI_YELLOW = "\x1b[33m"
+ANSI_RESET = "\x1b[0m"
 DEFAULT_TUNABLES = {
     "humanizer_conflicts": {
         "em_dash_keep_rate": 0.5,
@@ -62,6 +65,11 @@ DEFAULT_TUNABLES = {
         "heading_title_case_keep_rate": 0.6,
         "boldface_keep_per_1000w": 3.0,
         "inline_header_list_keep_rate": 0.2
+    },
+    "sanity_checks": {
+        "line_count_warn_pct": 10.0,
+        "word_count_warn_pct": 10.0,
+        "paragraph_count_warn_pct": 10.0
     }
 }
 
@@ -102,6 +110,20 @@ def load_prompts() -> Dict[str, Any]:
     if not PROMPTS_PATH.exists():
         raise FileNotFoundError(f"prompts.json not found at {PROMPTS_PATH}")
     return json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))
+
+
+def colorize(text: str, color: str, stream: Any) -> str:
+    if hasattr(stream, "isatty") and stream.isatty():
+        return f"{color}{text}{ANSI_RESET}"
+    return text
+
+
+def print_warn(msg: str) -> None:
+    print(colorize(msg, ANSI_YELLOW, sys.stderr), file=sys.stderr)
+
+
+def print_error(msg: str) -> None:
+    print(colorize(msg, ANSI_RED, sys.stderr), file=sys.stderr)
 
 
 def deep_merge_dict(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
@@ -592,6 +614,74 @@ def restore_placeholders(text: str, mapping: Dict[str, str]) -> str:
 
 def find_placeholders(text: str, pattern: re.Pattern[str]) -> List[str]:
     return pattern.findall(text)
+
+
+def normalize_heading(text: str) -> str:
+    # Normalize heading text for loose matching (case/punct insensitive).
+    lowered = text.lower()
+    lowered = re.sub(r"[^a-z0-9\s]", " ", lowered)
+    return re.sub(r"\s+", " ", lowered).strip()
+
+
+def extract_heading_blocks(markdown: str) -> List[Dict[str, str]]:
+    # Extract heading-based section blocks for completeness checks.
+    lines = markdown.splitlines()
+    headings: List[tuple[int, int, str]] = []
+    for idx, line in enumerate(lines):
+        m = ATX_HEADING_RE.match(line)
+        if not m:
+            continue
+        level = len(m.group(1))
+        title = m.group(2).strip()
+        headings.append((idx, level, title))
+
+    blocks: List[Dict[str, str]] = []
+    for i, (start, _level, title) in enumerate(headings):
+        end = headings[i + 1][0] if i + 1 < len(headings) else len(lines)
+        block = "\n".join(lines[start:end]).strip()
+        key = normalize_heading(title)
+        if key and block:
+            blocks.append({"title": title, "key": key, "block": block, "start_line": start, "end_line": end})
+    return blocks
+
+
+def extract_heading_keys(markdown: str) -> set[str]:
+    keys: set[str] = set()
+    for line in markdown.splitlines():
+        m = ATX_HEADING_RE.match(line)
+        if not m:
+            continue
+        key = normalize_heading(m.group(2))
+        if key:
+            keys.add(key)
+    return keys
+
+
+def section_signature(block: str, max_lines: int = 3) -> set[str]:
+    # Build a small content signature from the first few non-empty lines after the heading.
+    lines = block.splitlines()
+    if lines and ATX_HEADING_RE.match(lines[0]):
+        lines = lines[1:]
+    tokens: List[str] = []
+    used_lines = 0
+    for line in lines:
+        if not line.strip():
+            continue
+        used_lines += 1
+        for tok in words(line.lower()):
+            if len(tok) >= 4 and tok.isalpha():
+                tokens.append(tok)
+        if used_lines >= max_lines:
+            break
+    return set(tokens)
+
+
+def jaccard_similarity(a: set[str], b: set[str]) -> float:
+    if not a or not b:
+        return 0.0
+    inter = len(a & b)
+    union = len(a | b)
+    return inter / max(1, union)
 
 
 def parse_humanizer_guidelines(text: str) -> List[Dict[str, Any]]:
@@ -1680,10 +1770,10 @@ def main() -> int:
         if script_fp.exists():
             args.fingerprint = script_fp
         else:
-            print(f"Fingerprint not found: {args.fingerprint}", file=sys.stderr)
+            print_error(f"Fingerprint not found: {args.fingerprint}")
             return 2
     if not args.inp.exists():
-        print(f"Input markdown not found: {args.inp}", file=sys.stderr)
+        print_error(f"Input markdown not found: {args.inp}")
         return 2
 
     vprint("Loading fingerprint and input...")
@@ -1693,6 +1783,7 @@ def main() -> int:
         fingerprint = merge_avoid_list_into_fingerprint(fingerprint, avoid_list)
     forbid_em_dashes = should_forbid_em_dashes(fingerprint, avoid_list)
     input_md = args.inp.read_text(encoding="utf-8")
+    original_input_md = input_md
     # Strip base64 images to keep prompts within token limits.
     input_md, base64_map = strip_base64_images(input_md)
     if base64_map:
@@ -1750,6 +1841,22 @@ def main() -> int:
     # Mask non-voice blocks and inline citations so they are preserved verbatim.
     input_md, frozen_blocks = mask_non_voice_blocks(input_md)
     input_md, citation_map = mask_inline_citations(input_md)
+    section_blocks = extract_heading_blocks(input_md)
+    section_blocks_restored: List[Dict[str, Any]] = []
+    for block in section_blocks:
+        restored = block["block"]
+        restored = restore_placeholders(restored, html_map)
+        restored = restore_placeholders(restored, math_map)
+        restored = restore_placeholders(restored, entity_map)
+        restored = restore_placeholders(restored, inline_code_map)
+        restored = restore_placeholders(restored, frozen_blocks)
+        restored = restore_placeholders(restored, citation_map)
+        restored = restore_base64_images(restored, base64_map, find_base64_placeholders(restored))
+        section_blocks_restored.append({
+            **block,
+            "block": restored,
+            "signature": section_signature(restored)
+        })
 
     all_deviations: List[Any] = []
     outputs: List[str] = []
@@ -1783,7 +1890,7 @@ def main() -> int:
 
             final_md = out_obj.get("final_markdown")
             if not isinstance(final_md, str) or not final_md.strip():
-                print("LLM did not return final_markdown.", file=sys.stderr)
+                print_error("LLM did not return final_markdown.")
                 print(raw)
                 raise RuntimeError("LLM did not return final_markdown")
 
@@ -2026,6 +2133,128 @@ def main() -> int:
 
     # Stitch chunks back together, preserving the original order.
     final_md = "\n\n".join(s.strip() for s in outputs if s.strip()).strip()
+    # Ensure all input sections are present; restore missing sections verbatim.
+    output_blocks = extract_heading_blocks(final_md)
+    output_blocks_with_sig: List[Dict[str, Any]] = []
+    for block in output_blocks:
+        output_blocks_with_sig.append({
+            **block,
+            "signature": section_signature(block["block"])
+        })
+    output_keys = {b["key"] for b in output_blocks_with_sig}
+
+    used_output_idx: set[int] = set()
+    matched_start_by_input: List[int | None] = []
+    similarity_threshold = 0.45
+
+    for block in section_blocks_restored:
+        if block["key"] in output_keys:
+            out_idx = next((i for i, b in enumerate(output_blocks_with_sig) if b["key"] == block["key"]), None)
+            if out_idx is not None:
+                used_output_idx.add(out_idx)
+                matched_start_by_input.append(output_blocks_with_sig[out_idx]["start_line"])
+                continue
+        # Fallback: content similarity matching
+        best_idx = None
+        best_score = 0.0
+        for i, out_block in enumerate(output_blocks_with_sig):
+            if i in used_output_idx:
+                continue
+            score = jaccard_similarity(block.get("signature", set()), out_block.get("signature", set()))
+            if score > best_score:
+                best_score = score
+                best_idx = i
+        if best_idx is not None and best_score >= similarity_threshold:
+            used_output_idx.add(best_idx)
+            matched_start_by_input.append(output_blocks_with_sig[best_idx]["start_line"])
+        else:
+            matched_start_by_input.append(None)
+
+    missing_sections = [b for idx, b in enumerate(section_blocks_restored) if matched_start_by_input[idx] is None]
+    if missing_sections:
+        titles = ", ".join(b["title"] for b in missing_sections[:10])
+        suffix = "..." if len(missing_sections) > 10 else ""
+        print_warn(f"Restoring {len(missing_sections)} missing section(s) in original order: {titles}{suffix}")
+        lines = final_md.splitlines()
+        offset = 0
+        for idx, block in enumerate(section_blocks_restored):
+            if matched_start_by_input[idx] is not None:
+                continue
+            # Find next matched section to anchor insertion.
+            insertion_line = None
+            for j in range(idx + 1, len(section_blocks_restored)):
+                if matched_start_by_input[j] is not None:
+                    insertion_line = matched_start_by_input[j]
+                    break
+            if insertion_line is None:
+                insertion_line = len(lines)
+            insertion_line += offset
+            block_lines = block["block"].strip().splitlines()
+            if insertion_line < 0:
+                insertion_line = 0
+            lines[insertion_line:insertion_line] = [""] + block_lines + [""]
+            offset += len(block_lines) + 2
+            all_deviations.append({
+                "rule_or_field": "missing_section",
+                "heading": block["title"],
+                "reason": "Section missing from LLM output; restored at original position."
+            })
+        final_md = "\n".join(lines).strip()
+    line_count_in = len(original_input_md.splitlines())
+    line_count_out = len(final_md.splitlines())
+    line_change_pct = ((line_count_out - line_count_in) / max(1, line_count_in)) * 100.0
+    print(f"Line count change: {line_count_in} -> {line_count_out} ({line_change_pct:+.1f}%).")
+
+    word_count_in = len(words(original_input_md))
+    word_count_out = len(words(final_md))
+    word_change_pct = ((word_count_out - word_count_in) / max(1, word_count_in)) * 100.0
+    print(f"Word count change: {word_count_in} -> {word_count_out} ({word_change_pct:+.1f}%).")
+
+    para_count_in = len(split_paragraphs(original_input_md))
+    para_count_out = len(split_paragraphs(final_md))
+    para_change_pct = ((para_count_out - para_count_in) / max(1, para_count_in)) * 100.0
+    print(f"Paragraph count change: {para_count_in} -> {para_count_out} ({para_change_pct:+.1f}%).")
+
+    sanity = tunables.get("sanity_checks", {}) if isinstance(tunables, dict) else {}
+    line_warn = float(sanity.get("line_count_warn_pct", 10.0))
+    word_warn = float(sanity.get("word_count_warn_pct", 10.0))
+    para_warn = float(sanity.get("paragraph_count_warn_pct", 10.0))
+
+    if abs(line_change_pct) >= line_warn:
+        print_warn(
+            f"Warning: line count changed by {line_change_pct:+.1f}% (threshold {line_warn:.1f}%). "
+            "Review output for potential missing or expanded content."
+        )
+    if abs(word_change_pct) >= word_warn:
+        print_warn(
+            f"Warning: word count changed by {word_change_pct:+.1f}% (threshold {word_warn:.1f}%). "
+            "Review output for potential missing or expanded content."
+        )
+    if abs(para_change_pct) >= para_warn:
+        print_warn(
+            f"Warning: paragraph count changed by {para_change_pct:+.1f}% (threshold {para_warn:.1f}%). "
+            "Review output for potential missing or expanded content."
+        )
+
+    all_deviations.append({
+        "rule_or_field": "line_count_change",
+        "input_lines": line_count_in,
+        "output_lines": line_count_out,
+        "percent_change": line_change_pct
+    })
+    all_deviations.append({
+        "rule_or_field": "word_count_change",
+        "input_words": word_count_in,
+        "output_words": word_count_out,
+        "percent_change": word_change_pct
+    })
+    all_deviations.append({
+        "rule_or_field": "paragraph_count_change",
+        "input_paragraphs": para_count_in,
+        "output_paragraphs": para_count_out,
+        "percent_change": para_change_pct
+    })
+
     out_path = args.out or args.inp.with_suffix(args.inp.suffix + ".styled.md")
     vprint(f"Writing output: {out_path}")
     out_path.write_text(final_md, encoding="utf-8")
