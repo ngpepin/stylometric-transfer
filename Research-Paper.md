@@ -38,7 +38,7 @@ Recent surveys highlight broad application scenarios alongside open challenges i
 
 ### 2.3 Humanization-Aware Stylometric Transfer
 
-Most style-transfer pipelines treat "humanization" as a separate editing pass. Stylometric-Transfer integrates humanization directly into constraint-guided rewriting by formalizing a **conflict-resolution layer**: humanization guidelines are applied only when they do not violate fingerprint-derived constraints or the input's structural scaffold (e.g., heading case, inline-header lists). This yields a single, auditable framework that balances stylistic fidelity with de-AI artifacts, rather than layering post-hoc edits that can drift away from the author's voice.
+Most style-transfer pipelines treat "humanization" as a separate editing pass. Stylometric-Transfer integrates humanization directly into constraint-guided rewriting by formalizing a **conflict-resolution layer**: humanization guidelines are applied only when they do not violate fingerprint-derived constraints or the input's structural scaffold (e.g., heading case, inline-header lists). The guideline list is parsed into structured rules by an LLM (with deterministic fallback), then filtered against fingerprint signals before any rewrite prompt is constructed. This yields a single, auditable framework that balances stylistic fidelity with de-AI artifacts, rather than layering post-hoc edits that can drift away from the author's voice.
 
 ---
 
@@ -331,7 +331,10 @@ procedure APPLY_FINGERPRINT(fingerprint F, markdown_path in, output_path out, ll
     x ← mask_non_voice_blocks(x)  # blockquotes, references, footnotes
     x ← mask_inline_citations(x)
     Mx ← compute_measurements(filter_non_voice(x))
-    H ← load_humanizer_guidelines(optional)
+    Hraw ← load_humanizer_guidelines(optional)
+    H ← parse_humanizer_rules_llm(Hraw)  # default
+    if H is empty:
+        H ← parse_humanizer_rules_regex(Hraw)
     H ← filter_conflicting(H, F.measurements, F.targets)
 
     style_feedback ← null

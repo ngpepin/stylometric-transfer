@@ -670,6 +670,64 @@ def parse_humanizer_guidelines(text: str) -> List[Dict[str, Any]]:
     return rules
 
 
+def normalize_humanizer_rules(rules: List[Dict[str, Any]], source: str) -> List[Dict[str, Any]]:
+    normalized: List[Dict[str, Any]] = []
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        title = rule.get("title")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        problem = rule.get("problem")
+        problem = problem if isinstance(problem, str) else None
+        words_raw = rule.get("words_to_watch", [])
+        if isinstance(words_raw, str):
+            words = [w.strip() for w in words_raw.split(",") if w.strip()]
+        elif isinstance(words_raw, list):
+            words = [w.strip() for w in words_raw if isinstance(w, str) and w.strip()]
+        else:
+            words = []
+        normalized.append({
+            "title": title.strip(),
+            "problem": problem,
+            "words_to_watch": words,
+            "source": source,
+            "category": rule.get("category")
+        })
+    return normalized
+
+
+def build_humanizer_parse_prompt(prompts: Dict[str, Any], raw_guidelines: str) -> List[Dict[str, str]]:
+    system = get_prompt_value(prompts, "humanizer_parse", "system")
+    user_template = get_prompt_value(prompts, "humanizer_parse", "user")
+    if not isinstance(user_template, dict):
+        raise TypeError("prompts.humanizer_parse.user must be an object")
+    user = copy.deepcopy(user_template)
+    user["raw_guidelines"] = raw_guidelines
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": json.dumps(user, ensure_ascii=False)}
+    ]
+
+
+def parse_humanizer_guidelines_llm(
+    cfg: LLMConfig,
+    prompts: Dict[str, Any],
+    raw_guidelines: str
+) -> List[Dict[str, Any]]:
+    messages = build_humanizer_parse_prompt(prompts, raw_guidelines)
+    raw = chat_completions(cfg, messages)
+    try:
+        out_obj = parse_json_strict(raw)
+    except Exception:
+        out_obj = repair_json_with_llm(cfg, raw, prompts)
+
+    rules_obj: Any = out_obj.get("rules") if isinstance(out_obj, dict) else out_obj
+    if not isinstance(rules_obj, list):
+        return []
+    return normalize_humanizer_rules(rules_obj, "llm")
+
+
 def analyze_markdown_style(text: str) -> Dict[str, Any]:
     # Estimate heading case, boldface density, and inline-header list usage.
     headings_total = 0
@@ -1541,6 +1599,11 @@ def main() -> int:
         help="Disable applying general-guidelines.md humanizer rules"
     )
     ap.add_argument(
+        "--no-humanizer-llm-parse",
+        action="store_true",
+        help="Disable LLM-based parsing of humanizer guidelines (fallback to regex parser)"
+    )
+    ap.add_argument(
         "--tunables",
         type=Path,
         default=None,
@@ -1626,12 +1689,23 @@ def main() -> int:
     if not args.no_humanizer_guidelines:
         raw_guidelines = load_general_guidelines()
         if raw_guidelines:
-            parsed_rules = parse_humanizer_guidelines(raw_guidelines)
+            parsed_rules: List[Dict[str, Any]] = []
+            parser_used = "regex"
+            if not args.no_humanizer_llm_parse:
+                try:
+                    parsed_rules = parse_humanizer_guidelines_llm(cfg, prompts, raw_guidelines)
+                    if parsed_rules:
+                        parser_used = "llm"
+                except Exception:
+                    parsed_rules = []
+            if not parsed_rules:
+                parsed_rules = normalize_humanizer_rules(parse_humanizer_guidelines(raw_guidelines), "regex")
             input_style = analyze_markdown_style(input_md)
             input_style_signals = input_style
             humanizer_rules, dropped_rules = filter_humanizer_rules(parsed_rules, fingerprint, input_style, tunables)
             humanizer_debug = {
                 "rule_or_field": "humanizer_guidelines",
+                "parser": parser_used,
                 "kept": humanizer_rules,
                 "dropped": dropped_rules
             }

@@ -295,7 +295,7 @@ Or use the wrapper script:
 
 Pass `-c/--config` to use a non-default config path. Use `-v/--verbose` for progress logging. `-f/--fingerprint` adds `.json` if no extension is provided. Long inputs are automatically chunked based on `max_prompt_tokens` (override with `--max-prompt-tokens`).
 Style compliance is scored locally; if the score is below the threshold, the system retries once by default with a delta report (disable with `--no-style-retry`, adjust with `--style-retry-threshold` or `--max-style-retries`).
-If `general-guidelines.md` is present in the repo root or next to the scripts, its humanization rules (adapted from softaworks/agent-toolkit by @leonardocouy) are parsed and any deterministically conflicting guidance (based on fingerprint signals like em‑dash rate, hedging, or first‑person use) is dropped before prompting. Disable via `--no-humanizer-guidelines`.
+If `general-guidelines.md` is present in the repo root or next to the scripts, its humanization rules (adapted from softaworks/agent-toolkit by @leonardocouy) are parsed with an LLM by default, then any deterministically conflicting guidance (based on fingerprint signals like em‑dash rate, hedging, or first‑person use) is dropped before prompting. Disable the LLM parsing via `--no-humanizer-llm-parse` or disable the guidelines entirely via `--no-humanizer-guidelines`.
 
 Embedded BASE64 images are stripped from prompts to avoid token blowups and re-inserted into the rewritten output.
 Blockquotes, reference sections, footnotes, and inline citations are preserved verbatim and excluded from style transfer.

@@ -70,7 +70,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Call LLM with fingerprint + measurements
     - Enforce preservation of meaning
     - Score style compliance locally and retry once by default with delta feedback (disable with `--no-style-retry`)
-    - Apply `general-guidelines.md` humanizer rules when available, parsing and deterministically filtering out conflicts using fingerprint signals (disable with `--no-humanizer-guidelines`)
+    - Apply `general-guidelines.md` humanizer rules when available, using an LLM parser by default then deterministically filtering out conflicts (disable with `--no-humanizer-llm-parse` or `--no-humanizer-guidelines`)
     - Return rewritten text and deviations
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold

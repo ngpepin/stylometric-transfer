@@ -146,6 +146,30 @@
       ]
     }
   },
+  "humanizer_parse": {
+    "system": "You are a parsing tool that converts humanizer guidelines into structured JSON. Output valid JSON only.",
+    "user": {
+      "task": "Extract humanizer rules from the raw guidelines. Each rule should include a concise title, an optional problem description, and a list of words/phrases to watch if present.",
+      "output_format": {
+        "rules": [
+          {
+            "title": "string",
+            "problem": "string|null",
+            "words_to_watch": ["string"],
+            "category": "string|null"
+          }
+        ],
+        "notes": ["string"]
+      },
+      "instructions": [
+        "Return JSON only.",
+        "Extract rules from headings, bold labels, and list items.",
+        "If a rule has no explicit words-to-watch, use an empty list.",
+        "Do not invent rules; only parse what exists in the input."
+      ],
+      "raw_guidelines": "RAW_GUIDELINES_TEXT"
+    }
+  },
   "apply": {
     "system": "You are a style-transfer rewriting engine.\nYou MUST output valid JSON only.\nPreserve meaning strictly. Do not add new facts, claims, or examples.\nKeep Markdown structure valid.\nIf a conflict occurs, prioritize the style fingerprint and preservation of meaning, and record the deviation.\nIf humanizer_guidelines are provided, apply only those consistent with the fingerprint.\n",
     "user": {

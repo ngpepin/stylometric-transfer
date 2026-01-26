@@ -39,6 +39,11 @@ class TestV110Regression(unittest.TestCase):
         self.assertEqual(count, 1)
         self.assertNotIn("—", out)
 
+    def test_normalize_humanizer_rules(self) -> None:
+        raw = [{"title": "Test Rule", "problem": "Prob", "words_to_watch": "alpha, beta"}]
+        norm = af.normalize_humanizer_rules(raw, "llm")
+        self.assertEqual(norm[0]["words_to_watch"], ["alpha", "beta"])
+
     def test_filter_author_voice_text_removes_non_voice(self) -> None:
         text = (
             "Intro paragraph.\n\n"

@@ -40,6 +40,8 @@ class ApplyPipeline {
 
 class HumanizerGuidelines {
   +parse_humanizer_guidelines()
+  +parse_humanizer_guidelines_llm()
+  +normalize_humanizer_rules()
   +filter_humanizer_rules()
 }
 
@@ -91,7 +93,10 @@ start
 
 if (Humanizer guidelines enabled?) then (yes)
   :Load general-guidelines.md;
-  :Parse humanizer rules;
+  :Parse humanizer rules via LLM;
+  if (No rules returned?) then (yes)
+    :Fallback to regex parser;
+  endif
   :Filter rules by fingerprint + input style;
 endif
 
@@ -132,7 +137,10 @@ AF -> FS : read input.md
 AF -> AF : mask non-voice blocks & placeholders
 AF -> AF : compute input measurements
 AF -> FS : read general-guidelines.md (optional)
-AF -> AF : parse/filter humanizer rules
+AF -> LLM : parse humanizer guidelines (optional)
+LLM --> AF : rules JSON
+AF -> AF : fallback regex parse if needed
+AF -> AF : filter humanizer rules
 AF -> LLM : rewrite request (fingerprint + measurements + rules)
 LLM --> AF : JSON with final_markdown
 AF -> AF : restore placeholders
@@ -143,4 +151,3 @@ AF -> FS : write output.md and deviations.json
 AF --> User : done
 @enduml
 ```
-
