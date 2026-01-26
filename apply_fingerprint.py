@@ -836,6 +836,20 @@ def filter_humanizer_rules(
     avoid_sets = pronouns.get("avoid_sets", []) if isinstance(pronouns, dict) else []
     avoid_first_person = isinstance(avoid_sets, list) and any("i" in s.lower() for s in avoid_sets if isinstance(s, str))
 
+    em_dash_forbidden = False
+    targets = fingerprint.get("targets", {}) if isinstance(fingerprint, dict) else {}
+    punctuation_targets = targets.get("punctuation", {}) if isinstance(targets, dict) else {}
+    em_target = punctuation_targets.get("em_dashes_per_1000w", {}) if isinstance(punctuation_targets, dict) else {}
+    target_range = em_target.get("target") if isinstance(em_target, dict) else None
+    if isinstance(target_range, list) and len(target_range) >= 2:
+        try:
+            em_dash_forbidden = float(target_range[1]) <= 0.0
+        except (TypeError, ValueError):
+            em_dash_forbidden = False
+    if not em_dash_forbidden and avoid_words:
+        if EM_DASH_CHAR in avoid_words or "em dash" in avoid_words or "em-dash" in avoid_words:
+            em_dash_forbidden = True
+
     def collect_style_context() -> str:
         parts: List[str] = []
         for path in ("notes",):
@@ -879,7 +893,9 @@ def filter_humanizer_rules(
         tokens = expand_words(rule.get("words_to_watch", []))
 
         if "em dash" in title or "em dash" in words:
-            if em_dash_rate >= em_dash_keep_rate:
+            if em_dash_forbidden:
+                drop_reason = "Em dashes forbidden by fingerprint/avoid list."
+            elif em_dash_rate >= em_dash_keep_rate:
                 drop_reason = "Author uses em dashes frequently."
         if "hedging" in title or "hedging" in words:
             if hedge_rate >= hedge_keep_rate:
@@ -1689,16 +1705,20 @@ def main() -> int:
     if not args.no_humanizer_guidelines:
         raw_guidelines = load_general_guidelines()
         if raw_guidelines:
+            if forbid_em_dashes:
+                print("Hard constraint active: em dashes are forbidden.")
             parsed_rules: List[Dict[str, Any]] = []
             parser_used = "regex"
             if not args.no_humanizer_llm_parse:
                 try:
+                    print("Parsing humanizer guidelines via LLM...")
                     parsed_rules = parse_humanizer_guidelines_llm(cfg, prompts, raw_guidelines)
                     if parsed_rules:
                         parser_used = "llm"
                 except Exception:
                     parsed_rules = []
             if not parsed_rules:
+                vprint("LLM parsing returned no rules; falling back to regex parser.")
                 parsed_rules = normalize_humanizer_rules(parse_humanizer_guidelines(raw_guidelines), "regex")
             input_style = analyze_markdown_style(input_md)
             input_style_signals = input_style
@@ -1709,6 +1729,22 @@ def main() -> int:
                 "kept": humanizer_rules,
                 "dropped": dropped_rules
             }
+            if dropped_rules:
+                drop_labels: List[str] = []
+                for rule in dropped_rules:
+                    if not isinstance(rule, dict):
+                        continue
+                    title = rule.get("title")
+                    if not title:
+                        continue
+                    reason = rule.get("drop_reason")
+                    if isinstance(reason, str) and reason.strip():
+                        drop_labels.append(f"{title} — {reason}")
+                    else:
+                        drop_labels.append(str(title))
+                preview = ", ".join(drop_labels[:10])
+                suffix = "..." if len(drop_labels) > 10 else ""
+                print(f"Dropped {len(drop_labels)} humanizer rule(s): {preview}{suffix}")
             if args.verbose:
                 print(f"Humanizer rules loaded: {len(humanizer_rules)} kept, {len(dropped_rules)} dropped")
     # Mask non-voice blocks and inline citations so they are preserved verbatim.
