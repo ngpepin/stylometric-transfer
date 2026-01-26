@@ -631,7 +631,7 @@ def normalize_heading(text: str) -> str:
     return re.sub(r"\s+", " ", lowered).strip()
 
 
-def extract_heading_blocks(markdown: str) -> List[Dict[str, str]]:
+def extract_heading_blocks(markdown: str) -> List[Dict[str, Any]]:
     # Extract heading-based section blocks for completeness checks.
     lines = markdown.splitlines()
     headings: List[tuple[int, int, str]] = []
@@ -643,13 +643,20 @@ def extract_heading_blocks(markdown: str) -> List[Dict[str, str]]:
         title = m.group(2).strip()
         headings.append((idx, level, title))
 
-    blocks: List[Dict[str, str]] = []
+    blocks: List[Dict[str, Any]] = []
     for i, (start, _level, title) in enumerate(headings):
         end = headings[i + 1][0] if i + 1 < len(headings) else len(lines)
         block = "\n".join(lines[start:end]).strip()
         key = normalize_heading(title)
         if key and block:
-            blocks.append({"title": title, "key": key, "block": block, "start_line": start, "end_line": end})
+            blocks.append({
+                "title": title,
+                "key": key,
+                "block": block,
+                "start_line": start,
+                "end_line": end,
+                "level": _level
+            })
     return blocks
 
 
@@ -1134,8 +1141,8 @@ def mask_inline_code(text: str) -> tuple[str, Dict[str, str]]:
         counter += 1
         return placeholder
 
-    # Handle single and double backticks.
-    pattern = re.compile(r"(``[^`]+``|`[^`]+`)")
+    # Handle single and double backticks without crossing lines.
+    pattern = re.compile(r"(``[^`\n]+``|`[^`\n]+`)")
     stripped = pattern.sub(repl, text)
     return stripped, mapping
 
@@ -2204,7 +2211,11 @@ def main() -> int:
 
     for block in section_blocks_restored:
         if block["key"] in output_keys:
-            out_idx = next((i for i, b in enumerate(output_blocks_with_sig) if b["key"] == block["key"]), None)
+            out_idx = next(
+                (i for i, b in enumerate(output_blocks_with_sig)
+                 if b["key"] == block["key"] and b.get("level") == block.get("level")),
+                None
+            )
             if out_idx is not None:
                 used_output_idx.add(out_idx)
                 matched_start_by_input.append(output_blocks_with_sig[out_idx]["start_line"])
@@ -2214,6 +2225,8 @@ def main() -> int:
         best_score = 0.0
         for i, out_block in enumerate(output_blocks_with_sig):
             if i in used_output_idx:
+                continue
+            if out_block.get("level") != block.get("level"):
                 continue
             score = jaccard_similarity(block.get("signature", set()), out_block.get("signature", set()))
             if score > best_score:

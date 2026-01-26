@@ -382,7 +382,7 @@ def strip_fenced_code_blocks(text: str) -> str:
 
 def strip_inline_code(text: str) -> str:
     # Remove inline code spans delimited by backticks.
-    return re.sub(r"(``[^`]+``|`[^`]+`)", "", text)
+    return re.sub(r"(``[^`\n]+``|`[^`\n]+`)", "", text)
 
 
 def strip_latex_math(text: str) -> str:

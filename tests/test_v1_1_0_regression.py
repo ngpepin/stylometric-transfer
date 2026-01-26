@@ -146,6 +146,13 @@ class TestV110Regression(unittest.TestCase):
         restored = af.restore_placeholders(masked, mapping)
         self.assertEqual(restored, md)
 
+    def test_inline_code_does_not_cross_lines(self) -> None:
+        md = "Line one with `code\n## Heading\nLine two` tail"
+        masked, mapping = af.mask_inline_code(md)
+        # Backticks across lines should not be masked
+        self.assertFalse(mapping)
+        self.assertIn("## Heading", masked)
+
     def test_mask_and_restore_html(self) -> None:
         md = "Inline <span>HTML</span> and <div>block</div> and <math>x^2</math>."
         masked, mapping = af.mask_html(md)
