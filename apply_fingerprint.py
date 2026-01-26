@@ -26,6 +26,7 @@ import re
 import sys
 import collections
 import os
+import datetime
 from pathlib import Path
 import copy
 from typing import Any, Dict, List
@@ -50,6 +51,7 @@ BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\
 BASE64_PLACEHOLDER_RE = re.compile(r"\[\[BASE64_IMAGE_\d+\]\]")
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
 HUMANIZER_GUIDELINES_FILENAME = "general-guidelines.md"
+HUMANIZER_CACHE_FILENAME = "humanizer_rules.cache.json"
 TUNABLES_FILENAME = "config.tunables.json"
 AVOID_LIST_FILENAME = "config.avoid.txt"
 EM_DASH_CHAR = "—"
@@ -257,14 +259,19 @@ def enforce_no_em_dashes(text: str) -> tuple[str, int]:
     text = re.sub(r"\s*—\s*", " - ", text)
     return text, count
 
-def load_general_guidelines() -> str | None:
-    # Load optional humanizer guidelines from CWD or script directory.
+def resolve_general_guidelines_path() -> Path | None:
+    # Resolve optional humanizer guidelines from CWD or script directory.
     cwd_path = Path.cwd() / HUMANIZER_GUIDELINES_FILENAME
     script_path = Path(__file__).resolve().parent / HUMANIZER_GUIDELINES_FILENAME
     path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    return path
+
+
+def load_general_guidelines() -> tuple[str | None, Path | None]:
+    path = resolve_general_guidelines_path()
     if not path:
-        return None
-    return path.read_text(encoding="utf-8")
+        return None, None
+    return path.read_text(encoding="utf-8"), path
 
 def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
     # Traverse a nested dict safely and fail fast if a key is missing.
@@ -815,6 +822,32 @@ def parse_humanizer_guidelines_llm(
     if not isinstance(rules_obj, list):
         return []
     return normalize_humanizer_rules(rules_obj, "llm")
+
+
+def load_humanizer_rules_cache(cache_path: Path) -> Dict[str, Any] | None:
+    if not cache_path.exists():
+        return None
+    try:
+        data = json.loads(cache_path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def write_humanizer_rules_cache(
+    cache_path: Path,
+    rules: List[Dict[str, Any]],
+    parser: str,
+    source_path: Path | None
+) -> None:
+    payload = {
+        "rules": rules,
+        "parser": parser,
+        "generated_at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "source_path": str(source_path) if source_path else None,
+        "source_mtime": source_path.stat().st_mtime if source_path and source_path.exists() else None
+    }
+    cache_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def analyze_markdown_style(text: str) -> Dict[str, Any]:
@@ -1793,23 +1826,45 @@ def main() -> int:
     input_md, entity_map = mask_html_entities(input_md)
     input_md, inline_code_map = mask_inline_code(input_md)
     if not args.no_humanizer_guidelines:
-        raw_guidelines = load_general_guidelines()
+        raw_guidelines, guidelines_path = load_general_guidelines()
         if raw_guidelines:
             if forbid_em_dashes:
                 print("Hard constraint active: em dashes are forbidden.")
             parsed_rules: List[Dict[str, Any]] = []
             parser_used = "regex"
-            if not args.no_humanizer_llm_parse:
+            cache_path = Path(__file__).resolve().parent / HUMANIZER_CACHE_FILENAME
+            cache = load_humanizer_rules_cache(cache_path)
+            cache_used = False
+            if cache and guidelines_path and cache.get("source_mtime") is not None:
                 try:
-                    print("Parsing humanizer guidelines via LLM...")
-                    parsed_rules = parse_humanizer_guidelines_llm(cfg, prompts, raw_guidelines)
-                    if parsed_rules:
-                        parser_used = "llm"
+                    cache_mtime = float(cache.get("source_mtime"))
+                    src_mtime = guidelines_path.stat().st_mtime
+                    if cache_mtime >= src_mtime and isinstance(cache.get("rules"), list):
+                        parsed_rules = normalize_humanizer_rules(cache.get("rules", []), "cache")
+                        parser_used = str(cache.get("parser", "cache"))
+                        cache_used = True
+                        vprint(f"Loaded cached humanizer rules from {cache_path.name}.")
                 except Exception:
-                    parsed_rules = []
-            if not parsed_rules:
-                vprint("LLM parsing returned no rules; falling back to regex parser.")
-                parsed_rules = normalize_humanizer_rules(parse_humanizer_guidelines(raw_guidelines), "regex")
+                    cache_used = False
+
+            if not cache_used:
+                if not args.no_humanizer_llm_parse:
+                    try:
+                        print("Parsing humanizer guidelines via LLM...")
+                        parsed_rules = parse_humanizer_guidelines_llm(cfg, prompts, raw_guidelines)
+                        if parsed_rules:
+                            parser_used = "llm"
+                    except Exception:
+                        parsed_rules = []
+                if not parsed_rules:
+                    vprint("LLM parsing returned no rules; falling back to regex parser.")
+                    parsed_rules = normalize_humanizer_rules(parse_humanizer_guidelines(raw_guidelines), "regex")
+                    parser_used = "regex"
+                try:
+                    write_humanizer_rules_cache(cache_path, parsed_rules, parser_used, guidelines_path)
+                    vprint(f"Wrote humanizer rules cache to {cache_path.name}.")
+                except Exception:
+                    pass
             input_style = analyze_markdown_style(input_md)
             input_style_signals = input_style
             humanizer_rules, dropped_rules = filter_humanizer_rules(parsed_rules, fingerprint, input_style, tunables)

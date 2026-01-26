@@ -1,0 +1,318 @@
+{
+  "rules": [
+    {
+      "title": "Soulless Writing",
+      "problem": "Writing that is technically clean but lacks personality, opinions, rhythm, or human voice.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "personality"
+    },
+    {
+      "title": "Undue Emphasis on Significance, Legacy, and Broader Trends",
+      "problem": "LLM writing puffs up importance by adding statements about how arbitrary aspects represent or contribute to a broader topic.",
+      "words_to_watch": [
+        "stands as",
+        "serves as",
+        "is a testament",
+        "is a reminder",
+        "a vital role",
+        "a significant role",
+        "a crucial role",
+        "a pivotal role",
+        "a key role",
+        "a vital moment",
+        "a significant moment",
+        "a crucial moment",
+        "a pivotal moment",
+        "a key moment",
+        "underscores its importance",
+        "highlights its importance",
+        "underscores its significance",
+        "highlights its significance",
+        "reflects broader",
+        "symbolizing its ongoing",
+        "symbolizing its enduring",
+        "symbolizing its lasting",
+        "contributing to the",
+        "setting the stage for",
+        "marking the",
+        "shaping the",
+        "represents a shift",
+        "marks a shift",
+        "key turning point",
+        "evolving landscape",
+        "focal point",
+        "indelible mark",
+        "deeply rooted"
+      ],
+      "source": "llm",
+      "category": "content"
+    },
+    {
+      "title": "Undue Emphasis on Notability and Media Coverage",
+      "problem": "LLMs hit readers over the head with claims of notability, often listing sources without context.",
+      "words_to_watch": [
+        "independent coverage",
+        "local media outlets",
+        "regional media outlets",
+        "national media outlets",
+        "written by a leading expert",
+        "active social media presence"
+      ],
+      "source": "llm",
+      "category": "content"
+    },
+    {
+      "title": "Superficial Analyses with -ing Endings",
+      "problem": "AI chatbots tack present participle (\"-ing\") phrases onto sentences to add fake depth.",
+      "words_to_watch": [
+        "highlighting",
+        "underscoring",
+        "emphasizing",
+        "ensuring",
+        "reflecting",
+        "symbolizing",
+        "contributing to",
+        "cultivating",
+        "fostering",
+        "encompassing",
+        "showcasing"
+      ],
+      "source": "llm",
+      "category": "content"
+    },
+    {
+      "title": "Promotional and Advertisement-like Language",
+      "problem": "LLMs have serious problems keeping a neutral tone, especially for \"cultural heritage\" topics.",
+      "words_to_watch": [
+        "boasts a",
+        "vibrant",
+        "rich",
+        "profound",
+        "enhancing its",
+        "showcasing",
+        "exemplifies",
+        "commitment to",
+        "natural beauty",
+        "nestled",
+        "in the heart of",
+        "groundbreaking",
+        "renowned",
+        "breathtaking",
+        "must-visit",
+        "stunning"
+      ],
+      "source": "llm",
+      "category": "content"
+    },
+    {
+      "title": "Vague Attributions and Weasel Words",
+      "problem": "AI chatbots attribute opinions to vague authorities without specific sources.",
+      "words_to_watch": [
+        "Industry reports",
+        "Observers have cited",
+        "Experts argue",
+        "Some critics argue",
+        "several sources",
+        "several publications"
+      ],
+      "source": "llm",
+      "category": "content"
+    },
+    {
+      "title": "Outline-like \"Challenges and Future Prospects\" Sections",
+      "problem": "Many LLM-generated articles include formulaic \"Challenges\" sections.",
+      "words_to_watch": [
+        "Despite its",
+        "faces several challenges",
+        "Despite these challenges",
+        "Challenges and Legacy",
+        "Future Outlook"
+      ],
+      "source": "llm",
+      "category": "content"
+    },
+    {
+      "title": "Overused \"AI Vocabulary\" Words",
+      "problem": "These words appear far more frequently in post-2023 text. They often co-occur.",
+      "words_to_watch": [
+        "Additionally",
+        "align with",
+        "crucial",
+        "delve",
+        "emphasizing",
+        "enduring",
+        "enhance",
+        "fostering",
+        "garner",
+        "highlight",
+        "interplay",
+        "intricate",
+        "intricacies",
+        "key",
+        "landscape",
+        "pivotal",
+        "showcase",
+        "tapestry",
+        "testament",
+        "underscore",
+        "valuable",
+        "vibrant"
+      ],
+      "source": "llm",
+      "category": "language"
+    },
+    {
+      "title": "Avoidance of \"is\"/\"are\" (Copula Avoidance)",
+      "problem": "LLMs substitute elaborate constructions for simple copulas.",
+      "words_to_watch": [
+        "serves as",
+        "stands as",
+        "marks",
+        "represents",
+        "boasts",
+        "features",
+        "offers"
+      ],
+      "source": "llm",
+      "category": "language"
+    },
+    {
+      "title": "Negative Parallelisms",
+      "problem": "Constructions like \"Not only...but...\" or \"It's not just about..., it's...\" are overused.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "language"
+    },
+    {
+      "title": "Rule of Three Overuse",
+      "problem": "LLMs force ideas into groups of three to appear comprehensive.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "language"
+    },
+    {
+      "title": "Elegant Variation (Synonym Cycling)",
+      "problem": "AI has repetition-penalty code causing excessive synonym substitution.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "language"
+    },
+    {
+      "title": "False Ranges",
+      "problem": "LLMs use \"from X to Y\" constructions where X and Y aren't on a meaningful scale.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "language"
+    },
+    {
+      "title": "Em Dash Overuse",
+      "problem": "LLMs use em dashes (—) more than humans, mimicking \"punchy\" sales writing.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "style"
+    },
+    {
+      "title": "Overuse of Boldface",
+      "problem": "AI chatbots emphasize phrases in boldface mechanically.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "style"
+    },
+    {
+      "title": "Inline-Header Vertical Lists",
+      "problem": "AI outputs lists where items start with bolded headers followed by colons.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "style"
+    },
+    {
+      "title": "Title Case in Headings",
+      "problem": "AI chatbots capitalize all main words in headings.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "style"
+    },
+    {
+      "title": "Emojis",
+      "problem": "AI chatbots often decorate headings or bullet points with emojis.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "style"
+    },
+    {
+      "title": "Curly Quotation Marks",
+      "problem": "ChatGPT uses curly quotes (“...”) instead of straight quotes (\"...\").",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "style"
+    },
+    {
+      "title": "Collaborative Communication Artifacts",
+      "problem": "Text meant as chatbot correspondence gets pasted as content.",
+      "words_to_watch": [
+        "I hope this helps",
+        "Of course!",
+        "Certainly!",
+        "You're absolutely right!",
+        "Would you like",
+        "let me know",
+        "here is a"
+      ],
+      "source": "llm",
+      "category": "communication"
+    },
+    {
+      "title": "Knowledge-Cutoff Disclaimers",
+      "problem": "AI disclaimers about incomplete information get left in text.",
+      "words_to_watch": [
+        "as of",
+        "Up to my last training update",
+        "While specific details are limited",
+        "While specific details are scarce",
+        "based on available information"
+      ],
+      "source": "llm",
+      "category": "communication"
+    },
+    {
+      "title": "Sycophantic/Servile Tone",
+      "problem": "Overly positive, people-pleasing language.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "communication"
+    },
+    {
+      "title": "Filler Phrases",
+      "problem": null,
+      "words_to_watch": [
+        "In order to achieve this goal",
+        "Due to the fact that it was raining",
+        "At this point in time",
+        "In the event that you need help",
+        "The system has the ability to process",
+        "It is important to note that the data shows"
+      ],
+      "source": "llm",
+      "category": "filler"
+    },
+    {
+      "title": "Excessive Hedging",
+      "problem": "Over-qualifying statements.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "filler"
+    },
+    {
+      "title": "Generic Positive Conclusions",
+      "problem": "Vague upbeat endings.",
+      "words_to_watch": [],
+      "source": "llm",
+      "category": "filler"
+    }
+  ],
+  "parser": "llm",
+  "generated_at": "2026-01-26T17:52:07Z",
+  "source_path": "/home/npepin/Projects/stylometric-transfer/general-guidelines.md",
+  "source_mtime": 1769376456.8600194
+}
