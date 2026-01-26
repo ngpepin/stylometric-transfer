@@ -88,6 +88,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Stores API configuration
   - OpenAI‑compatible
   - `max_prompt_tokens` controls chunking for large prompts (defaults to `max_tokens`)
+  - `max_retries` / `backoff_*` control exponential backoff on transient LLM failures
   - Optional `lexicon_hints.json` can be used to inject preferred/avoided phrases into fingerprinting
 - `config.tunables.json`
   - Overrides humanizer conflict thresholds for `apply_fingerprint.py`

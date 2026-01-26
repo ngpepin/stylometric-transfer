@@ -173,7 +173,10 @@ Create `config.llm.json` in the project root (used by default):
   "max_tokens": 6000,
   "max_prompt_tokens": 6000,
   "temperature": 0.2,
-  "timeout_seconds": 120
+  "timeout_seconds": 120,
+  "max_retries": 2,
+  "backoff_base_seconds": 1.0,
+  "backoff_max_seconds": 8.0
 }
 ```
 
@@ -181,6 +184,7 @@ Notes:
 - Default lookup for `config.llm.json`: current working directory first, then the directory containing the Python scripts
 - `config.tunables.json` can override humanizer conflict thresholds (same search path as config.llm.json)
 - `max_prompt_tokens` controls chunking for large inputs (defaults to `max_tokens`; override per run with `--max-prompt-tokens`)
+- `max_retries`, `backoff_base_seconds`, and `backoff_max_seconds` control exponential backoff retries for transient LLM errors/timeouts
 - `base_url` should be the API root (no `/chat/completions`)
 - Any OpenAI‑compatible endpoint can be used
 - Lower temperature is recommended for consistency

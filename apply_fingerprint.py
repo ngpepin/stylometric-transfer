@@ -27,6 +27,8 @@ import sys
 import collections
 import os
 import datetime
+import time
+import random
 from pathlib import Path
 import copy
 from typing import Any, Dict, List
@@ -1613,7 +1615,10 @@ class LLMConfig:
         temperature: float,
         timeout_seconds: int,
         extra_headers: Dict[str, str],
-        max_prompt_tokens: int
+        max_prompt_tokens: int,
+        max_retries: int,
+        backoff_base_seconds: float,
+        backoff_max_seconds: float
     ):
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
@@ -1623,6 +1628,9 @@ class LLMConfig:
         self.timeout_seconds = timeout_seconds
         self.extra_headers = extra_headers
         self.max_prompt_tokens = max_prompt_tokens
+        self.max_retries = max_retries
+        self.backoff_base_seconds = backoff_base_seconds
+        self.backoff_max_seconds = backoff_max_seconds
 
 def load_config(path: Path) -> LLMConfig:
     # Load the API config JSON and apply defaults.
@@ -1636,7 +1644,10 @@ def load_config(path: Path) -> LLMConfig:
         temperature=float(data.get("temperature", 0.2)),
         timeout_seconds=int(data.get("timeout_seconds", 120)),
         extra_headers=dict(data.get("extra_headers", {})),
-        max_prompt_tokens=int(data.get("max_prompt_tokens", max_tokens))
+        max_prompt_tokens=int(data.get("max_prompt_tokens", max_tokens)),
+        max_retries=int(data.get("max_retries", 2)),
+        backoff_base_seconds=float(data.get("backoff_base_seconds", 1.0)),
+        backoff_max_seconds=float(data.get("backoff_max_seconds", 8.0))
     )
 
 def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
@@ -1653,11 +1664,26 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
         "max_tokens": cfg.max_tokens,
         "temperature": cfg.temperature
     }
-    r = requests.post(url, headers=headers, json=payload, timeout=cfg.timeout_seconds)
-    if r.status_code >= 400:
-        raise RuntimeError(f"LLM call failed ({r.status_code}): {r.text[:2000]}")
-    data = r.json()
-    return data["choices"][0]["message"]["content"]
+    last_err: Exception | None = None
+    for attempt in range(cfg.max_retries + 1):
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=cfg.timeout_seconds)
+            if r.status_code in (429, 500, 502, 503, 504):
+                raise RuntimeError(f"LLM call failed ({r.status_code}): {r.text[:2000]}")
+            if r.status_code >= 400:
+                raise RuntimeError(f"LLM call failed ({r.status_code}): {r.text[:2000]}")
+            data = r.json()
+            return data["choices"][0]["message"]["content"]
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, RuntimeError) as exc:
+            last_err = exc
+            if attempt >= cfg.max_retries:
+                break
+            backoff = min(cfg.backoff_max_seconds, cfg.backoff_base_seconds * (2 ** attempt))
+            jitter = random.uniform(0, backoff * 0.2)
+            sleep_s = backoff + jitter
+            print_warn(f"LLM request failed (attempt {attempt + 1}/{cfg.max_retries + 1}); retrying in {sleep_s:.1f}s.")
+            time.sleep(sleep_s)
+    raise RuntimeError(f"LLM call failed after {cfg.max_retries + 1} attempts: {last_err}")
 
 def parse_json_strict(s: str) -> Dict[str, Any]:
     # Strip code fences if present and parse strictly as JSON.

@@ -43,6 +43,7 @@ import tarfile
 import tempfile
 import textwrap
 import time
+import random
 import zipfile
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -1016,6 +1017,9 @@ class LLMConfig:
     timeout_seconds: int = 120
     extra_headers: Dict[str, str] = dataclasses.field(default_factory=dict)
     max_prompt_tokens: int = 100000
+    max_retries: int = 2
+    backoff_base_seconds: float = 1.0
+    backoff_max_seconds: float = 8.0
 
 def load_config(path: Path) -> LLMConfig:
     # Load API configuration and apply defaults.
@@ -1030,6 +1034,9 @@ def load_config(path: Path) -> LLMConfig:
         timeout_seconds=int(data.get("timeout_seconds", 120)),
         extra_headers=dict(data.get("extra_headers", {})),
         max_prompt_tokens=int(data.get("max_prompt_tokens", max_tokens)),
+        max_retries=int(data.get("max_retries", 2)),
+        backoff_base_seconds=float(data.get("backoff_base_seconds", 1.0)),
+        backoff_max_seconds=float(data.get("backoff_max_seconds", 8.0)),
     )
 
 def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
@@ -1046,14 +1053,29 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
         "max_tokens": cfg.max_tokens,
         "temperature": cfg.temperature
     }
-    r = requests.post(url, headers=headers, json=payload, timeout=cfg.timeout_seconds)
-    if r.status_code >= 400:
-        raise RuntimeError(f"LLM call failed ({r.status_code}): {r.text[:2000]}")
-    data = r.json()
-    try:
-        return data["choices"][0]["message"]["content"]
-    except Exception:
-        raise RuntimeError(f"Unexpected LLM response shape: {json.dumps(data)[:2000]}")
+    last_err: Exception | None = None
+    for attempt in range(cfg.max_retries + 1):
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=cfg.timeout_seconds)
+            if r.status_code in (429, 500, 502, 503, 504):
+                raise RuntimeError(f"LLM call failed ({r.status_code}): {r.text[:2000]}")
+            if r.status_code >= 400:
+                raise RuntimeError(f"LLM call failed ({r.status_code}): {r.text[:2000]}")
+            data = r.json()
+            try:
+                return data["choices"][0]["message"]["content"]
+            except Exception:
+                raise RuntimeError(f"Unexpected LLM response shape: {json.dumps(data)[:2000]}")
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, RuntimeError) as exc:
+            last_err = exc
+            if attempt >= cfg.max_retries:
+                break
+            backoff = min(cfg.backoff_max_seconds, cfg.backoff_base_seconds * (2 ** attempt))
+            jitter = random.uniform(0, backoff * 0.2)
+            sleep_s = backoff + jitter
+            print(f"LLM request failed (attempt {attempt + 1}/{cfg.max_retries + 1}); retrying in {sleep_s:.1f}s.", file=sys.stderr)
+            time.sleep(sleep_s)
+    raise RuntimeError(f"LLM call failed after {cfg.max_retries + 1} attempts: {last_err}")
 
 
 # ----------------------------
