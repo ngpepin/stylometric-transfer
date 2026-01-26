@@ -27,6 +27,17 @@
       },
       "additionalProperties": false
     },
+    "section_restore": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "max_restore_sections": { "type": "integer", "minimum": 0 },
+        "heading_similarity_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "signature_similarity_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "signature_min_overlap": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "sanity_checks": {
       "type": "object",
       "properties": {

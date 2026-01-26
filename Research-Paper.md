@@ -1651,6 +1651,17 @@ Rather than learning what style is, it defines where style may reside in feature
       },
       "additionalProperties": false
     },
+    "section_restore": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "max_restore_sections": { "type": "integer", "minimum": 0 },
+        "heading_similarity_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "signature_similarity_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "signature_min_overlap": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "sanity_checks": {
       "type": "object",
       "properties": {
@@ -1679,6 +1690,11 @@ Rather than learning what style is, it defines where style may reside in feature
 - `inline_header_list_keep_rate`: if the ratio of inline-header list items (such as `- **Label:**`) meets or exceeds this value, the rule to avoid inline-header lists is set aside.
 - `avoid_em_dashes`: when true, em dashes are always removed in the final output (mandatory humanizer control).
 - `emoji_policy`: `remove`, `replace`, or `none`. `replace` swaps emojis with conventional monochrome symbols when possible, otherwise removes them.
+- `section_restore.enabled`: enable/disable restoring missing sections after rewrite.
+- `section_restore.max_restore_sections`: maximum number of missing sections to restore (0 disables restoration).
+- `section_restore.heading_similarity_threshold`: fuzzy heading match threshold for considering a rewritten heading “present”.
+- `section_restore.signature_similarity_threshold`: content‑signature similarity threshold for matching a section by its opening content.
+- `section_restore.signature_min_overlap`: minimum number of overlapping signature tokens required for a content match.
 - `line_count_warn_pct`: if the output line count changes by this percentage or more, a warning is issued for possible missing or expanded content.
 - `word_count_warn_pct`: if the output word count changes by this percentage or more, a warning is issued for possible missing or expanded content.
 - `paragraph_count_warn_pct`: if the output paragraph count changes by this percentage or more, a warning is issued for possible missing or expanded content.

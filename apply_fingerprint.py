@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import difflib
 import re
 import sys
 import collections
@@ -82,6 +83,13 @@ DEFAULT_TUNABLES = {
     "humanizer_mandatory": {
         "avoid_em_dashes": False,
         "emoji_policy": "remove"
+    },
+    "section_restore": {
+        "enabled": True,
+        "max_restore_sections": 20,
+        "heading_similarity_threshold": 0.85,
+        "signature_similarity_threshold": 0.6,
+        "signature_min_overlap": 6
     },
     "sanity_checks": {
         "line_count_warn_pct": 10.0,
@@ -747,6 +755,11 @@ def find_placeholders(text: str, pattern: re.Pattern[str]) -> List[str]:
 def normalize_heading(text: str) -> str:
     # Normalize heading text for loose matching (case/punct insensitive).
     lowered = text.lower()
+    lowered = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", lowered)
+    lowered = lowered.replace(EMOJI_REMOVED_MARKER.lower(), " ")
+    lowered = EMOJI_RE.sub(" ", lowered)
+    lowered = lowered.replace("`", " ")
+    lowered = re.sub(r"[*_~]", " ", lowered)
     lowered = re.sub(r"[^a-z0-9\s]", " ", lowered)
     return re.sub(r"\s+", " ", lowered).strip()
 
@@ -815,6 +828,12 @@ def jaccard_similarity(a: set[str], b: set[str]) -> float:
     inter = len(a & b)
     union = len(a | b)
     return inter / max(1, union)
+
+
+def heading_similarity(a: str, b: str) -> float:
+    if not a or not b:
+        return 0.0
+    return difflib.SequenceMatcher(None, a, b).ratio()
 
 
 def parse_humanizer_guidelines(text: str) -> List[Dict[str, Any]]:
@@ -2357,21 +2376,48 @@ def main() -> int:
     # Stitch chunks back together, preserving the original order.
     final_md = "\n\n".join(s.strip() for s in outputs if s.strip()).strip()
     # Ensure all input sections are present; restore missing sections verbatim.
+    section_conf = tunables.get("section_restore", {}) if isinstance(tunables, dict) else {}
+    restore_enabled = bool(section_conf.get("enabled", True))
+    max_restore_sections = int(section_conf.get("max_restore_sections", 20))
+    heading_similarity_threshold = float(section_conf.get("heading_similarity_threshold", 0.85))
+    signature_similarity_threshold = float(section_conf.get("signature_similarity_threshold", 0.6))
+    signature_min_overlap = int(section_conf.get("signature_min_overlap", 6))
+    if max_restore_sections < 0:
+        max_restore_sections = 0
+    if heading_similarity_threshold < 0:
+        heading_similarity_threshold = 0.0
+    if signature_similarity_threshold < 0:
+        signature_similarity_threshold = 0.0
+    if signature_min_overlap < 0:
+        signature_min_overlap = 0
+
     output_blocks = extract_heading_blocks(final_md)
     output_blocks_with_sig: List[Dict[str, Any]] = []
     for block in output_blocks:
         output_blocks_with_sig.append({
             **block,
-            "signature": section_signature(block["block"])
+            "signature": section_signature(block["block"]),
+            "norm_title": normalize_heading(block["title"])
         })
     output_keys = {b["key"] for b in output_blocks_with_sig}
 
     used_output_idx: set[int] = set()
     matched_start_by_input: List[int | None] = []
-    similarity_threshold = 0.55
-    min_overlap = 6
+    match_diagnostics: List[Dict[str, Any]] = []
 
     for block in section_blocks_restored:
+        best_heading_idx = None
+        best_heading_score = 0.0
+        best_signature_idx = None
+        best_signature_score = 0.0
+        best_signature_overlap = 0
+        for i, out_block in enumerate(output_blocks_with_sig):
+            if out_block.get("level") != block.get("level"):
+                continue
+            score = heading_similarity(block.get("key", ""), out_block.get("key", ""))
+            if score > best_heading_score:
+                best_heading_score = score
+                best_heading_idx = i
         if block["key"] in output_keys:
             out_idx = next(
                 (i for i, b in enumerate(output_blocks_with_sig)
@@ -2381,7 +2427,27 @@ def main() -> int:
             if out_idx is not None:
                 used_output_idx.add(out_idx)
                 matched_start_by_input.append(output_blocks_with_sig[out_idx]["start_line"])
+                match_diagnostics.append({
+                    "method": "heading_exact",
+                    "best_heading_score": best_heading_score,
+                    "best_heading_title": output_blocks_with_sig[best_heading_idx]["title"] if best_heading_idx is not None else None,
+                    "best_signature_score": best_signature_score,
+                    "best_signature_overlap": best_signature_overlap,
+                    "best_signature_title": None
+                })
                 continue
+        if best_heading_idx is not None and best_heading_score >= heading_similarity_threshold:
+            used_output_idx.add(best_heading_idx)
+            matched_start_by_input.append(output_blocks_with_sig[best_heading_idx]["start_line"])
+            match_diagnostics.append({
+                "method": "heading_fuzzy",
+                "best_heading_score": best_heading_score,
+                "best_heading_title": output_blocks_with_sig[best_heading_idx]["title"],
+                "best_signature_score": best_signature_score,
+                "best_signature_overlap": best_signature_overlap,
+                "best_signature_title": None
+            })
+            continue
         # Fallback: content similarity matching
         best_idx = None
         best_score = 0.0
@@ -2397,14 +2463,70 @@ def main() -> int:
         overlap = 0
         if best_idx is not None:
             overlap = len(block.get("signature", set()) & output_blocks_with_sig[best_idx].get("signature", set()))
-        if best_idx is not None and best_score >= similarity_threshold and overlap >= min_overlap:
+        if best_idx is not None:
+            best_signature_idx = best_idx
+            best_signature_score = best_score
+            best_signature_overlap = overlap
+        if best_idx is not None and best_score >= signature_similarity_threshold and overlap >= signature_min_overlap:
             used_output_idx.add(best_idx)
             matched_start_by_input.append(output_blocks_with_sig[best_idx]["start_line"])
+            match_diagnostics.append({
+                "method": "signature",
+                "best_heading_score": best_heading_score,
+                "best_heading_title": output_blocks_with_sig[best_heading_idx]["title"] if best_heading_idx is not None else None,
+                "best_signature_score": best_signature_score,
+                "best_signature_overlap": best_signature_overlap,
+                "best_signature_title": output_blocks_with_sig[best_idx]["title"]
+            })
         else:
             matched_start_by_input.append(None)
+            match_diagnostics.append({
+                "method": "missing",
+                "best_heading_score": best_heading_score,
+                "best_heading_title": output_blocks_with_sig[best_heading_idx]["title"] if best_heading_idx is not None else None,
+                "best_signature_score": best_signature_score,
+                "best_signature_overlap": best_signature_overlap,
+                "best_signature_title": output_blocks_with_sig[best_signature_idx]["title"] if best_signature_idx is not None else None
+            })
 
     missing_sections = [b for idx, b in enumerate(section_blocks_restored) if matched_start_by_input[idx] is None]
     if missing_sections:
+        if not restore_enabled:
+            print_warn(
+                f"Missing {len(missing_sections)} section(s); restoration disabled by tunables."
+            )
+            for idx, block in enumerate(section_blocks_restored):
+                if matched_start_by_input[idx] is not None:
+                    continue
+                diag = match_diagnostics[idx] if idx < len(match_diagnostics) else {}
+                all_deviations.append({
+                    "rule_or_field": "missing_section",
+                    "heading": block["title"],
+                    "reason": "Section missing from LLM output; restoration disabled.",
+                    "diagnostics": diag
+                })
+            missing_sections = []
+        elif max_restore_sections == 0:
+            print_warn(
+                f"Missing {len(missing_sections)} section(s); restoration cap is 0."
+            )
+            for idx, block in enumerate(section_blocks_restored):
+                if matched_start_by_input[idx] is not None:
+                    continue
+                diag = match_diagnostics[idx] if idx < len(match_diagnostics) else {}
+                all_deviations.append({
+                    "rule_or_field": "missing_section",
+                    "heading": block["title"],
+                    "reason": "Section missing from LLM output; restoration cap is 0.",
+                    "diagnostics": diag
+                })
+            missing_sections = []
+    if missing_sections:
+        if len(missing_sections) > max_restore_sections:
+            print_warn(
+                f"Missing {len(missing_sections)} section(s); restoring first {max_restore_sections} due to cap."
+            )
+            missing_sections = missing_sections[:max_restore_sections]
         titles = ", ".join(b["title"] for b in missing_sections[:10])
         suffix = "..." if len(missing_sections) > 10 else ""
         print_warn(f"Restoring {len(missing_sections)} missing section(s) in original order: {titles}{suffix}")
@@ -2412,6 +2534,15 @@ def main() -> int:
         offset = 0
         for idx, block in enumerate(section_blocks_restored):
             if matched_start_by_input[idx] is not None:
+                continue
+            if block not in missing_sections:
+                diag = match_diagnostics[idx] if idx < len(match_diagnostics) else {}
+                all_deviations.append({
+                    "rule_or_field": "missing_section",
+                    "heading": block["title"],
+                    "reason": "Section missing from LLM output; restoration cap exceeded.",
+                    "diagnostics": diag
+                })
                 continue
             # Find next matched section to anchor insertion.
             insertion_line = None
@@ -2427,10 +2558,12 @@ def main() -> int:
                 insertion_line = 0
             lines[insertion_line:insertion_line] = [""] + block_lines + [""]
             offset += len(block_lines) + 2
+            diag = match_diagnostics[idx] if idx < len(match_diagnostics) else {}
             all_deviations.append({
                 "rule_or_field": "missing_section",
                 "heading": block["title"],
-                "reason": "Section missing from LLM output; restored at original position."
+                "reason": "Section missing from LLM output; restored at original position.",
+                "diagnostics": diag
             })
         final_md = "\n".join(lines).strip()
     line_count_in = len(original_input_md.splitlines())

@@ -94,6 +94,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Overrides humanizer conflict thresholds for `apply_fingerprint.py`
   - See README for per‑field explanations and defaults
   - Includes mandatory humanizer controls (em‑dash ban, emoji policy)
+  - Includes section‑restore controls (fuzzy heading match + restoration caps)
   - Includes optional sanity checks such as line/word/paragraph count change warnings
 - `config.avoid.txt`
   - Optional global avoid list (one word/phrase per line)

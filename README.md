@@ -213,6 +213,13 @@ Example (defaults shown):
     "avoid_em_dashes": false,
     "emoji_policy": "remove"
   },
+  "section_restore": {
+    "enabled": true,
+    "max_restore_sections": 20,
+    "heading_similarity_threshold": 0.85,
+    "signature_similarity_threshold": 0.6,
+    "signature_min_overlap": 6
+  },
   "sanity_checks": {
     "line_count_warn_pct": 10.0,
     "word_count_warn_pct": 10.0,
@@ -232,6 +239,11 @@ Example (defaults shown):
 - `inline_header_list_keep_rate` (0–1): if the input uses inline-header list style (e.g., `- **Label:** text`) **at or above** this ratio, the “avoid inline-header lists” guideline is dropped.
 - `avoid_em_dashes` (boolean): when true, em‑dashes are always removed in the output regardless of other signals.
 - `emoji_policy` (`remove`, `replace`, or `none`): remove emojis, replace common ones with conventional monochrome symbols, or disable emoji handling.
+- `section_restore.enabled` (boolean): enable/disable restoration of missing sections detected after rewriting.
+- `section_restore.max_restore_sections` (integer): maximum number of missing sections to restore (0 disables restoration).
+- `section_restore.heading_similarity_threshold` (0–1): fuzzy heading match threshold for considering a rewritten heading “present”.
+- `section_restore.signature_similarity_threshold` (0–1): content‑signature similarity threshold for matching a section by its opening content.
+- `section_restore.signature_min_overlap` (integer): minimum number of overlapping signature tokens required for a content match.
 - `line_count_warn_pct` (%): if the output line count changes by this percentage or more, a console warning is emitted to review for missing or expanded content.
 - `word_count_warn_pct` (%): if the output word count changes by this percentage or more, a console warning is emitted to review for missing or expanded content.
 - `paragraph_count_warn_pct` (%): if the output paragraph count changes by this percentage or more, a console warning is emitted to review for missing or expanded content.
