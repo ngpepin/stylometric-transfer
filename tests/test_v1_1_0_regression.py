@@ -58,6 +58,7 @@ class TestV110Regression(unittest.TestCase):
         sig_a = af.section_signature(a)
         sig_b = af.section_signature(b)
         self.assertGreater(af.jaccard_similarity(sig_a, sig_b), 0.4)
+        self.assertGreaterEqual(len(sig_a & sig_b), 3)
 
     def test_default_tunables_include_sanity_checks(self) -> None:
         tunables = af.DEFAULT_TUNABLES

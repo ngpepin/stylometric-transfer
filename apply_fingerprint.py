@@ -25,6 +25,7 @@ import json
 import re
 import sys
 import collections
+import os
 from pathlib import Path
 import copy
 from typing import Any, Dict, List
@@ -113,9 +114,9 @@ def load_prompts() -> Dict[str, Any]:
 
 
 def colorize(text: str, color: str, stream: Any) -> str:
-    if hasattr(stream, "isatty") and stream.isatty():
-        return f"{color}{text}{ANSI_RESET}"
-    return text
+    if os.getenv("NO_COLOR") or os.getenv("CLICOLOR") == "0":
+        return text
+    return f"{color}{text}{ANSI_RESET}"
 
 
 def print_warn(msg: str) -> None:
@@ -657,11 +658,9 @@ def extract_heading_keys(markdown: str) -> set[str]:
     return keys
 
 
-def section_signature(block: str, max_lines: int = 3) -> set[str]:
-    # Build a small content signature from the first few non-empty lines after the heading.
+def section_signature(block: str, max_lines: int = 6) -> set[str]:
+    # Build a content signature from the heading + first few non-empty lines.
     lines = block.splitlines()
-    if lines and ATX_HEADING_RE.match(lines[0]):
-        lines = lines[1:]
     tokens: List[str] = []
     used_lines = 0
     for line in lines:
@@ -2145,7 +2144,8 @@ def main() -> int:
 
     used_output_idx: set[int] = set()
     matched_start_by_input: List[int | None] = []
-    similarity_threshold = 0.45
+    similarity_threshold = 0.55
+    min_overlap = 6
 
     for block in section_blocks_restored:
         if block["key"] in output_keys:
@@ -2164,7 +2164,10 @@ def main() -> int:
             if score > best_score:
                 best_score = score
                 best_idx = i
-        if best_idx is not None and best_score >= similarity_threshold:
+        overlap = 0
+        if best_idx is not None:
+            overlap = len(block.get("signature", set()) & output_blocks_with_sig[best_idx].get("signature", set()))
+        if best_idx is not None and best_score >= similarity_threshold and overlap >= min_overlap:
             used_output_idx.add(best_idx)
             matched_start_by_input.append(output_blocks_with_sig[best_idx]["start_line"])
         else:
