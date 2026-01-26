@@ -346,7 +346,9 @@ def enforce_emoji_policy(text: str, policy: str) -> tuple[str, int, int]:
     # Remove or replace emoji glyphs with conventional monochrome symbols.
     removed = 0
     replaced = 0
-    if policy not in ("remove", "replace"):
+    if policy not in ("remove", "replace", "none"):
+        return text, removed, replaced
+    if policy == "none":
         return text, removed, replaced
     substitutions = get_emoji_substitutions()
 
@@ -1084,10 +1086,12 @@ def filter_humanizer_rules(
     avoid_first_person = isinstance(avoid_sets, list) and any("i" in s.lower() for s in avoid_sets if isinstance(s, str))
 
     em_dash_forbidden = False
+    emoji_policy = None
     if isinstance(tunables, dict):
         mandatory = tunables.get("humanizer_mandatory", {})
         if isinstance(mandatory, dict):
             em_dash_forbidden = bool(mandatory.get("avoid_em_dashes", False))
+            emoji_policy = mandatory.get("emoji_policy")
 
     def collect_style_context() -> str:
         parts: List[str] = []
@@ -1136,6 +1140,8 @@ def filter_humanizer_rules(
                 drop_reason = "Em dashes forbidden by humanizer_mandatory."
             elif em_dash_rate >= em_dash_keep_rate:
                 drop_reason = "Author uses em dashes frequently."
+        if ("emoji" in title or "emoji" in words) and emoji_policy in ("remove", "replace"):
+            drop_reason = "Emoji handling is deterministic via humanizer_mandatory."
         if "hedging" in title or "hedging" in words:
             if hedge_rate >= hedge_keep_rate:
                 drop_reason = "Author uses hedging at a high rate."
@@ -1976,7 +1982,7 @@ def main() -> int:
         if raw_guidelines:
             if forbid_em_dashes:
                 print("Hard constraint active: em dashes are forbidden (humanizer_mandatory).")
-            if emoji_policy:
+            if emoji_policy and str(emoji_policy) != "none":
                 print(f"Hard constraint active: emoji policy = {emoji_policy}.")
             parsed_rules: List[Dict[str, Any]] = []
             parser_used = "regex"
@@ -2105,7 +2111,7 @@ def main() -> int:
                         "count": removed
                     })
 
-            if emoji_policy:
+            if emoji_policy and str(emoji_policy) != "none":
                 final_md, removed_emoji, replaced_emoji = enforce_emoji_policy(final_md, str(emoji_policy))
                 if removed_emoji or replaced_emoji:
                     out_obj.setdefault("deviations", []).append({

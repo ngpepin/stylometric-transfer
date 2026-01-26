@@ -1647,7 +1647,7 @@ Rather than learning what style is, it defines where style may reside in feature
       "type": "object",
       "properties": {
         "avoid_em_dashes": { "type": "boolean" },
-        "emoji_policy": { "type": "string", "enum": ["remove", "replace"] }
+        "emoji_policy": { "type": "string", "enum": ["remove", "replace", "none"] }
       },
       "additionalProperties": false
     },
@@ -1678,7 +1678,7 @@ Rather than learning what style is, it defines where style may reside in feature
 - `boldface_keep_per_1000w`: if boldface density (per 1000 words) meets or exceeds this value, the rule to avoid boldface is set aside.
 - `inline_header_list_keep_rate`: if the ratio of inline-header list items (such as `- **Label:**`) meets or exceeds this value, the rule to avoid inline-header lists is set aside.
 - `avoid_em_dashes`: when true, em dashes are always removed in the final output (mandatory humanizer control).
-- `emoji_policy`: either `remove` or `replace`. `replace` swaps emojis with conventional monochrome symbols when possible, otherwise removes them.
+- `emoji_policy`: `remove`, `replace`, or `none`. `replace` swaps emojis with conventional monochrome symbols when possible, otherwise removes them.
 - `line_count_warn_pct`: if the output line count changes by this percentage or more, a warning is issued for possible missing or expanded content.
 - `word_count_warn_pct`: if the output word count changes by this percentage or more, a warning is issued for possible missing or expanded content.
 - `paragraph_count_warn_pct`: if the output paragraph count changes by this percentage or more, a warning is issued for possible missing or expanded content.

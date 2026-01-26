@@ -23,7 +23,7 @@
       "type": "object",
       "properties": {
         "avoid_em_dashes": { "type": "boolean" },
-        "emoji_policy": { "type": "string", "enum": ["remove", "replace"] }
+        "emoji_policy": { "type": "string", "enum": ["remove", "replace", "none"] }
       },
       "additionalProperties": false
     },
