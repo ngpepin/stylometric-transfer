@@ -51,6 +51,7 @@ PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
 HUMANIZER_GUIDELINES_FILENAME = "general-guidelines.md"
 TUNABLES_FILENAME = "config.tunables.json"
 AVOID_LIST_FILENAME = "config.avoid.txt"
+EM_DASH_CHAR = "—"
 DEFAULT_TUNABLES = {
     "humanizer_conflicts": {
         "em_dash_keep_rate": 0.5,
@@ -198,6 +199,40 @@ def merge_avoid_list_into_fingerprint(
     if merged:
         lexicon["avoid_words"] = merged
     return fingerprint
+
+
+def should_forbid_em_dashes(fingerprint: Dict[str, Any], avoid_list: List[str]) -> bool:
+    # Forbid if targets explicitly set em-dash rate to zero or avoid list includes em-dash tokens.
+    if not isinstance(fingerprint, dict):
+        return False
+    targets = fingerprint.get("targets", {}) if isinstance(fingerprint, dict) else {}
+    punctuation = targets.get("punctuation", {}) if isinstance(targets, dict) else {}
+    em_target = punctuation.get("em_dashes_per_1000w", {}) if isinstance(punctuation, dict) else {}
+    target_range = em_target.get("target") if isinstance(em_target, dict) else None
+    if isinstance(target_range, list) and len(target_range) >= 2:
+        try:
+            if float(target_range[1]) <= 0.0:
+                return True
+        except (TypeError, ValueError):
+            pass
+
+    lexicon = fingerprint.get("lexicon", {}) if isinstance(fingerprint, dict) else {}
+    avoid_words = [w.lower() for w in lexicon.get("avoid_words", []) if isinstance(w, str)]
+    avoid_phrases = [w.lower() for w in lexicon.get("avoid_phrases", []) if isinstance(w, str)]
+    avoid_list_lower = [w.lower() for w in avoid_list if isinstance(w, str)]
+    avoid_tokens = set(avoid_words + avoid_phrases + avoid_list_lower)
+    if EM_DASH_CHAR in avoid_tokens or "em dash" in avoid_tokens or "em-dash" in avoid_tokens:
+        return True
+    return False
+
+
+def enforce_no_em_dashes(text: str) -> tuple[str, int]:
+    # Replace em dashes with a spaced hyphen to preserve readability without em-dash glyphs.
+    if EM_DASH_CHAR not in text:
+        return text, 0
+    count = text.count(EM_DASH_CHAR)
+    text = re.sub(r"\s*—\s*", " - ", text)
+    return text, count
 
 def load_general_guidelines() -> str | None:
     # Load optional humanizer guidelines from CWD or script directory.
@@ -1577,6 +1612,7 @@ def main() -> int:
     avoid_list = load_avoid_list()
     if avoid_list:
         fingerprint = merge_avoid_list_into_fingerprint(fingerprint, avoid_list)
+    forbid_em_dashes = should_forbid_em_dashes(fingerprint, avoid_list)
     input_md = args.inp.read_text(encoding="utf-8")
     # Strip base64 images to keep prompts within token limits.
     input_md, base64_map = strip_base64_images(input_md)
@@ -1640,6 +1676,15 @@ def main() -> int:
                 print("LLM did not return final_markdown.", file=sys.stderr)
                 print(raw)
                 raise RuntimeError("LLM did not return final_markdown")
+
+            if forbid_em_dashes:
+                final_md, removed = enforce_no_em_dashes(final_md)
+                if removed:
+                    out_obj.setdefault("deviations", []).append({
+                        "rule_or_field": "punctuation.em_dashes",
+                        "reason": "Em dashes removed to satisfy hard constraint.",
+                        "count": removed
+                    })
 
             compliance = compute_style_compliance(fingerprint, filter_author_voice_text(final_md))
             if not args.no_style_retry and attempts < args.max_style_retries and compliance["score"] < args.style_retry_threshold:

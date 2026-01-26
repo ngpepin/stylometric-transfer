@@ -31,6 +31,14 @@ class TestV110Regression(unittest.TestCase):
         merged = af.merge_avoid_list_into_fingerprint(fingerprint, ["beta", "alpha"])
         self.assertEqual(merged["lexicon"]["avoid_words"], ["alpha", "beta"])
 
+    def test_enforce_no_em_dashes(self) -> None:
+        fingerprint = {"targets": {"punctuation": {"em_dashes_per_1000w": {"target": [0.0, 0.0]}}}}
+        self.assertTrue(af.should_forbid_em_dashes(fingerprint, []))
+        text = "Alpha—beta."
+        out, count = af.enforce_no_em_dashes(text)
+        self.assertEqual(count, 1)
+        self.assertNotIn("—", out)
+
     def test_filter_author_voice_text_removes_non_voice(self) -> None:
         text = (
             "Intro paragraph.\n\n"
