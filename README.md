@@ -2,35 +2,34 @@
 
 > **Stylometric profiling + controllable author-style transfer for personal writing**
 
-`stylometric-transfer` builds an explicit, interpretable **stylometric style profile** from an author’s corpus and then applies that profile to rewrite or generate new text in the same voice.
+`stylometric-transfer` constructs an explicit, interpretable **stylometric style profile** from an author’s corpus, then applies that profile to rewrite or generate new text in the same voice.
 
-Or, in plain language: Get an LLM to apply your writing style to any text input. Performs stylometric profiling and humanization on writing samples and constraint-guided author-style transfer to a target document. Builds a style "fingerprint" from your writing corpus using classic stylometric measurements graph structure and applies that fingerprint via an LLM to rewrite any text. 
+In practical terms, the system enables an LLM to apply a specified writing style to any text input. It performs stylometric profiling and humanization on writing samples, then uses constraint-guided author-style transfer for a target document. A style "fingerprint" is built from the writing corpus using classic stylometric measurements and graph structure, and that fingerprint is applied via an LLM to rewrite any text.
 
-It really works but comments most welcome ;)!
+The approach is effective; comments are encouraged.
 
-For more information, see `Article-Teaching-Machines-to-Write-Like-You.md` and `Research-Paper.md`.
+Further details are available in `Article-Teaching-Machines-to-Write-Like-You.md` and `Research-Paper.md`.
 
-This repository provides:
-- `fingerprint_style.py` — extract a **style fingerprint (stylometric profile)** from an archive of writing
-- `apply_fingerprint.py` — rewrite Markdown to match that fingerprint
-- `prompts.json` — externalized prompt templates used by both scripts (edit here to adjust behavior)
-- `scripts/` — bash wrappers for invoking the Python entry points
+This repository includes:
+- `fingerprint_style.py`: extracts a **style fingerprint (stylometric profile)** from a writing archive
+- `apply_fingerprint.py`: rewrites Markdown to match the fingerprint
+- `prompts.json`: externalized prompt templates used by both scripts (edit here to adjust behaviour)
+- `scripts/`: bash wrappers for invoking the Python entry points
 
-Unlike fine‑tuning or opaque embeddings, this system uses an **explicit, versionable JSON style model** that you can inspect, edit, audit, and reuse.
-It also provides a **humanization-aware conflict‑resolution layer** that integrates humanizer guidelines directly into the rewrite step without violating the fingerprint’s style constraints.
+Unlike fine-tuning or opaque embeddings, the system uses an **explicit, versionable JSON style model** that can be inspected, edited, audited, and reused.
+A **humanization-aware conflict-resolution layer** integrates humanizer guidelines directly into the rewrite step, without violating the fingerprint’s style constraints.
 
 ---
 ## License
 
-PolyForm Noncommercial License 1.0.0. See This project is licensed under the **PolyForm Noncommercial License 1.0.0** (see `LICENSE.md`).
+PolyForm Noncommercial License 1.0.0. This project is licensed under the **PolyForm Noncommercial License 1.0.0** (see `LICENSE.md`).
 
 **Key points (plain English):**
-- **Noncommercial only**: You may use, modify, and redistribute this project for **noncommercial purposes**.
-- **Commercial use requires permission**: Any **commercial** use (including offering a paid product/service that includes this code) requires **explicit permission from the author**.
-- **Attribution required**: If you redistribute or use substantial portions of this project, you must **include clear credit** and preserve the license/notice requirements described in `LICENSE.md`.
+- **Noncommercial only**: Use, modification, and redistribution are permitted for **noncommercial purposes**.
+- **Commercial use requires permission**: Any **commercial** use (including paid products or services incorporating this code) requires **explicit permission from the author**.
+- **Attribution required**: Redistribution or use of substantial portions of this project must include **clear credit** and preserve the license/notice requirements described in `LICENSE.md`.
 
-If you want to use this project commercially, please contact the author to discuss licensing.
-
+For commercial use, contact the author to discuss licensing.
 
 ---
 ## Table of Contents
@@ -55,18 +54,18 @@ If you want to use this project commercially, please contact the author to discu
 
 ## Overview
 
-This project implements a two‑stage pipeline:
+The project implements a two-stage pipeline:
 
 1. **Stylometric profiling**  
-   Quantitatively analyze an author’s corpus and construct a structured **style fingerprint** (JSON)
+   Quantitative analysis of an author’s corpus to construct a structured **style fingerprint** (JSON)
 
-2. **Author‑conditioned style transfer**  
-   Rewrite new text so it conforms to that fingerprint while preserving meaning
+2. **Author-conditioned style transfer**  
+   Rewriting new text to conform to that fingerprint while preserving meaning
 
-The system combines:
+The system integrates:
 - Local statistical measurement (sentence length, punctuation rates, paragraph structure, etc.)
-- LLM‑based synthesis into an explicit style model
-- Constraint‑driven rewriting using that model
+- LLM-based synthesis into an explicit style model
+- Constraint-driven rewriting using that model
 
 This is a practical implementation of:
 
@@ -79,15 +78,15 @@ This is a practical implementation of:
 | Term | Meaning |
 |------|---------|
 | **Stylometry** | Quantitative analysis of writing style |
-| **Stylometric profile** | Feature‑based representation of an author’s style |
+| **Stylometric profile** | Feature-based representation of an author’s style |
 | **Style fingerprint** | Explicit JSON encoding of stylistic constraints |
 | **Style transfer** | Rewriting text while preserving meaning but altering style |
-| **Author‑conditioned generation** | Text generation guided by an author profile |
+| **Author-conditioned generation** | Text generation guided by an author profile |
 
-In research terms, this system implements:
-- Feature‑based stylometric profiling
+In research terms, the system performs:
+- Feature-based stylometric profiling
 - Interpretable controllable text generation
-- Constraint‑augmented author style transfer
+- Constraint-augmented author style transfer
 
 ---
 
@@ -101,20 +100,20 @@ In research terms, this system implements:
   - Punctuation rates
   - Contraction and dash usage
   - US vs Canadian spelling heuristic (English-only)
-  - Common n‑grams
-  - Function‑word profile and stance signals (hedging/boosting/pronouns)
-  - Sentence‑opener and transition templates (top patterns)
-  - Rare‑word signals (words the author rarely uses)
-  - One‑sentence paragraph rate / paragraph rhythm
+  - Common n-grams
+  - Function-word profile and stance signals (hedging/boosting/pronouns)
+  - Sentence-opener and transition templates (top patterns)
+  - Rare-word signals (words the author rarely uses)
+  - One-sentence paragraph rate / paragraph rhythm
 - Produces a **comprehensive JSON style profile**
 - Rewrites Markdown with:
   - Meaning preservation
   - Structural fidelity
   - Deviation reporting
-  - Optional style‑compliance retry with delta feedback
-- Filters out blockquotes, reference sections, footnotes, and citation markers from style measurements and excerpts, and preserves them verbatim during rewrite
+  - Optional style-compliance retry with delta feedback
+- Filters out blockquotes, reference sections, footnotes, and citation markers from style measurements and excerpts, preserving them verbatim during rewrite
 - Strips embedded BASE64 images before sending prompts to the LLM and re-embeds them in output
-- OpenAI‑compatible (works with OpenAI, Azure OpenAI, vLLM, etc.)
+- Compatible with OpenAI (works with OpenAI, Azure OpenAI, vLLM, etc.)
 - Interpretable, editable, versionable style models
 
 ---
@@ -138,7 +137,7 @@ style_fingerprint.json
 [apply_fingerprint.py]
       │
       ├─ local measurement of input
-      ├─ constraint‑driven rewriting
+      ├─ constraint-driven rewriting
       └─ deviation audit
       │
       ▼
@@ -184,17 +183,17 @@ Notes:
 - Default lookup for `config.llm.json`: current working directory first, then the directory containing the Python scripts
 - `config.tunables.json` can override humanizer conflict thresholds (same search path as config.llm.json)
 - `max_prompt_tokens` controls chunking for large inputs (defaults to `max_tokens`; override per run with `--max-prompt-tokens`)
-- `max_retries`, `backoff_base_seconds`, and `backoff_max_seconds` control exponential backoff retries for transient LLM errors/timeouts
+- `max_retries`, `backoff_base_seconds`, and `backoff_max_seconds` control exponential backoff retries for transient LLM errors or timeouts
 - `base_url` should be the API root (no `/chat/completions`)
-- Any OpenAI‑compatible endpoint can be used
+- Any OpenAI-compatible endpoint can be used
 - Lower temperature is recommended for consistency
-- Prompt templates are stored in `prompts.json` next to the Python scripts and are loaded at runtime (includes the `validate_phrases` template used for common‑phrase validation)
-- Optional `lexicon_hints.json` (in repo root or next to the scripts) can provide preferred/avoided phrases for fingerprinting
-- Optional `config.avoid.txt` (in repo root or next to the scripts) lists words/phrases to always avoid; it is merged into the fingerprint lexicon and enforced during style application
+- Prompt templates are stored in `prompts.json` next to the Python scripts and are loaded at runtime (includes the `validate_phrases` template used for common-phrase validation)
+- Optional `lexicon_hints.json` (in repo root or next to the scripts) can provide preferred or avoided phrases for fingerprinting
+- Optional `config.avoid.txt` (in repo root or next to the scripts) lists words or phrases to always avoid; it is merged into the fingerprint lexicon and enforced during style application
 
 ### Tunables: `config.tunables.json`
 
-`apply_fingerprint.py` uses `config.tunables.json` to decide which humanizer guidelines conflict with the fingerprint or the input Markdown style. Any rule that conflicts is dropped before prompting.
+`apply_fingerprint.py` uses `config.tunables.json` to determine which humanizer guidelines conflict with the fingerprint or the input Markdown style. Any rule that conflicts is dropped before prompting.
 
 Example (defaults shown):
 
@@ -218,45 +217,45 @@ Example (defaults shown):
 }
 ```
 
-**What each tunable does**
-- `em_dash_keep_rate` (per 1000 words): if the fingerprint’s em‑dash rate is **at or above** this value, the “avoid em dashes” guideline is treated as conflicting and removed.
+**Explanation of each tunable**
+- `em_dash_keep_rate` (per 1000 words): if the fingerprint’s em-dash rate is **at or above** this value, the “avoid em dashes” guideline is considered conflicting and removed.
 - `hedge_keep_rate` (per 1000 words): if the fingerprint’s hedging rate is **at or above** this value, “avoid hedging” guidance is dropped.
-- `first_person_keep_rate` (per 1000 words): if the fingerprint’s first‑person rate is **below** this value (or pronoun preferences avoid first‑person), “use I/first‑person” guidance is dropped.
+- `first_person_keep_rate` (per 1000 words): if the fingerprint’s first-person rate is **below** this value (or pronoun preferences avoid first-person), “use I/first-person” guidance is dropped.
 - `contractions_avoid_threshold` (per 1000 words): if the fingerprint’s contraction rate is **at or above** this value, any “avoid contractions” guideline is dropped.
 - `contractions_use_threshold` (per 1000 words): if the fingerprint’s contraction rate is **below** this value, any “use contractions” guideline is dropped.
-- `heading_title_case_keep_rate` (0–1): if the input Markdown’s headings are **mostly Title Case** (ratio at/above this value), the “avoid Title Case” guideline is dropped.
+- `heading_title_case_keep_rate` (0–1): if the input Markdown’s headings are **mostly Title Case** (ratio at or above this value), the “avoid Title Case” guideline is dropped.
 - `boldface_keep_per_1000w` (per 1000 words): if the input uses boldface **at or above** this density, “avoid boldface” guidance is dropped.
-- `inline_header_list_keep_rate` (0–1): if the input uses inline‑header list style (e.g., `- **Label:** text`) **at or above** this ratio, the “avoid inline‑header lists” guideline is dropped.
-- `line_count_warn_pct` (%): if the output line count changes by this percentage or more, emit a console warning to review for missing/expanded content.
-- `word_count_warn_pct` (%): if the output word count changes by this percentage or more, emit a console warning to review for missing/expanded content.
-- `paragraph_count_warn_pct` (%): if the output paragraph count changes by this percentage or more, emit a console warning to review for missing/expanded content.
+- `inline_header_list_keep_rate` (0–1): if the input uses inline-header list style (e.g., `- **Label:** text`) **at or above** this ratio, the “avoid inline-header lists” guideline is dropped.
+- `line_count_warn_pct` (%): if the output line count changes by this percentage or more, a console warning is emitted to review for missing or expanded content.
+- `word_count_warn_pct` (%): if the output word count changes by this percentage or more, a console warning is emitted to review for missing or expanded content.
+- `paragraph_count_warn_pct` (%): if the output paragraph count changes by this percentage or more, a console warning is emitted to review for missing or expanded content.
 
-All thresholds are conservative defaults. Lowering a threshold makes a conflict more likely (i.e., more rules dropped). Raising a threshold makes the humanizer rules more permissive.
+All thresholds are conservative defaults. Lowering a threshold increases the likelihood of a conflict (more rules dropped). Raising a threshold makes the humanizer rules more permissive.
 
 ---
 
 ### Global avoid list: `config.avoid.txt`
 
-If present, `config.avoid.txt` provides a hard “never use” list. Each non‑empty line is treated as a word or short phrase to avoid. Lines can include comments after `#`, and blank lines are ignored. The list is:
+If present, `config.avoid.txt` provides a hard “never use” list. Each non-empty line is treated as a word or short phrase to avoid. Lines may include comments after `#`, and blank lines are ignored. The list is:
 
 - Injected into fingerprinting as hard lexicon avoids
 - Merged into `lexicon.avoid_words` during application (even if the fingerprint does not include them)
 
-This is useful for organization‑level bans, regulatory terms, or personal preferences that should override the author voice.
+Organizational bans, regulatory requirements or personal preferences may take precedence over the author's stylistic choices.
 
 ---
 
 ## Usage
 
-### 1. Build a Style Fingerprint
+### 1. Building a Style Fingerprint
 
-Create a compressed archive of your writing corpus:
+Begin by creating a compressed archive of your writing corpus:
 
 ```bash
 tar -czf my_corpus.tar.gz essays/ notes/ drafts/
 ```
 
-Run fingerprinting:
+Fingerprinting is performed as follows:
 
 ```bash
 python fingerprint_style.py \
@@ -266,7 +265,7 @@ python fingerprint_style.py \
   --author-name "Me"
 ```
 
-Or use the wrapper script:
+Alternatively, use the wrapper script:
 
 ```bash
 ./scripts/fingerprint_style.sh \
@@ -276,22 +275,23 @@ Or use the wrapper script:
   --author-name "Me"
 ```
 
-Pass `-c/--config` to use a non-default config path. If `--profile-id` or `--author-name` are omitted, they default to the output filename without the `.json` extension (e.g., `my_fingerprint`). Use `-v/--verbose` for progress logging.
-Common phrases are validated by default with an extra LLM pass to filter OCR glitches and citation fragments. Disable this via `--no-phrase-validation`.
+To specify a non-default configuration path, pass `-c/--config`. If `--profile-id` or `--author-name` are not provided, they default to the output filename without the `.json` extension (for example, `my_fingerprint`). Progress logging is enabled with `-v/--verbose`.
 
-Large corpora are chunked automatically based on `max_prompt_tokens` (override with `--max-prompt-tokens`).
+By default, common phrases are validated using an additional LLM pass to filter out OCR errors and citation fragments. This can be disabled via `--no-phrase-validation`.
 
-This will:
+Large corpora are automatically chunked according to `max_prompt_tokens`; override this with `--max-prompt-tokens`.
+
+The process will:
 - Extract the archive
-- Measure stylistic statistics (excluding blockquotes, reference sections, footnotes, and inline citations)
-- Send measurements + excerpts to the LLM
+- Measure stylistic statistics (excluding blockquotes, reference sections, footnotes and inline citations)
+- Send measurements and excerpts to the LLM
 - Produce `my_fingerprint.json`
 
 ---
 
-### 2. Apply a Fingerprint
+### 2. Applying a Fingerprint
 
-Rewrite a Markdown file in your style:
+To rewrite a Markdown file in your style:
 
 ```bash
 python apply_fingerprint.py \
@@ -299,7 +299,7 @@ python apply_fingerprint.py \
   -i draft.md
 ```
 
-Or use the wrapper script:
+Alternatively, use the wrapper script:
 
 ```bash
 ./scripts/apply_fingerprint.sh \
@@ -307,17 +307,18 @@ Or use the wrapper script:
   -i draft.md
 ```
 
-Pass `-c/--config` to use a non-default config path. Use `-v/--verbose` for progress logging. `-f/--fingerprint` adds `.json` if no extension is provided. Long inputs are automatically chunked based on `max_prompt_tokens` (override with `--max-prompt-tokens`).
-Style compliance is scored locally; if the score is below the threshold, the system retries once by default with a delta report (disable with `--no-style-retry`, adjust with `--style-retry-threshold` or `--max-style-retries`).
-If `general-guidelines.md` is present in the repo root or next to the scripts, its humanization rules (adapted from softaworks/agent-toolkit by @leonardocouy) are parsed with an LLM by default, then any deterministically conflicting guidance (based on fingerprint signals like em‑dash rate, hedging, or first‑person use) is dropped before prompting. This adds one extra LLM call when enabled. Parsed rules are cached in `humanizer_rules.cache.json` next to the scripts and only re‑parsed when `general-guidelines.md` changes. Disable the LLM parsing via `--no-humanizer-llm-parse` or disable the guidelines entirely via `--no-humanizer-guidelines`.
+Specify a non-default configuration path with `-c/--config`. Progress logging is enabled with `-v/--verbose`. `-f/--fingerprint` appends `.json` if no extension is given. Long inputs are chunked automatically based on `max_prompt_tokens`; override this with `--max-prompt-tokens`.
 
-Embedded BASE64 images are stripped from prompts to avoid token blowups and re-inserted into the rewritten output.
-Blockquotes, reference sections, footnotes, and inline citations are preserved verbatim and excluded from style transfer.
+Style compliance is scored locally. If the score falls below the threshold, the system retries once by default and produces a delta report (disable with `--no-style-retry`, adjust with `--style-retry-threshold` or `--max-style-retries`).
+
+If `general-guidelines.md` is present in the repository root or next to the scripts, its humanization rules (adapted from softaworks/agent-toolkit by @leonardocouy) are parsed with an LLM by default. Deterministically conflicting guidance (based on fingerprint signals such as em-dash rate, hedging or first-person use) is dropped before prompting. This introduces one additional LLM call when enabled. Parsed rules are cached in `humanizer_rules.cache.json` next to the scripts and are only re-parsed when `general-guidelines.md` changes. LLM parsing can be disabled via `--no-humanizer-llm-parse`, or the guidelines can be disabled entirely via `--no-humanizer-guidelines`.
+
+Embedded BASE64 images are removed from prompts to avoid excessive token usage and re-inserted into the rewritten output.
+Blockquotes, reference sections, footnotes and inline citations are preserved verbatim and excluded from style transfer.
 
 Outputs:
-
-- `draft.md.styled.md` — rewritten text
-- `draft.md.styled.md.deviations.json` — any rule conflicts or deviations
+- `draft.md.styled.md`: rewritten text
+- `draft.md.styled.md.deviations.json`: any rule conflicts or deviations
 
 ---
 
@@ -325,32 +326,27 @@ Outputs:
 
 ### Style Fingerprint (`*.json`)
 
-Contains:
+Contents include:
+- `metadata`: corpus and extraction information
+  - `metadata.corpus.document_count`: number of corpus documents
+- `metadata.corpus.documents`: per-document metadata (path, title when available, size, language/locale, genres, time range)
+- `measurements`: raw statistical signals (including `orthography_signals.spelling_variant`, paragraph rhythm and `lexical_signals.rare_words`)
+- `targets`: stylistic constraints and distributions (including optional persona pronoun preferences)
+- `lexicon`: preferred and avoided words and phrases
+- `templates`: syntactic and rhetorical patterns
+- `controls`: strictness and priority ordering
+- `validators`: scoring weights and checks
+- `derived_instructions`: compiled prompts for generation and rewriting
 
-- `metadata` — corpus and extraction info  
-  - `metadata.corpus.document_count` — number of corpus documents  
-- `metadata.corpus.documents` — per-document metadata (path, title when available, size, language/locale, genres, time range)  
-- `measurements` — raw statistical signals (includes `orthography_signals.spelling_variant`, paragraph rhythm, and `lexical_signals.rare_words`)  
-- `targets` — stylistic constraints and distributions (including optional persona pronoun preferences)  
-- `lexicon` — preferred / avoided words and phrases  
-- `templates` — syntactic and rhetorical patterns  
-- `controls` — strictness and priority ordering  
-- `validators` — scoring weights and checks  
-- `derived_instructions` — compiled prompts for generation and rewriting
-
-This file is:
-- Human readable
-- Editable
-- Version controllable
-- Reusable across projects
+This file is human readable, editable, version controllable and reusable across projects.
 
 ---
 
 ## Testing
 
-Lightweight smoke tests live in `tests/` and exercise the full pipeline using small fixtures. These tests call the LLM and require a valid `config.llm.json`.
+Lightweight smoke tests are located in `tests/` and exercise the full pipeline using small fixtures. These tests call the LLM and require a valid `config.llm.json`.
 
-Run the smoke test:
+To run the smoke test:
 
 ```bash
 ./tests/run_smoke.sh
@@ -358,7 +354,7 @@ Run the smoke test:
 
 Artifacts are written to `tests/_artifacts/` (gitignored).
 
-The v1.1.0 regression suite (no API calls) lives in `tests/test_v1_1_0_regression.py` and is automatically executed by `run_smoke.sh`. You can also run it directly:
+The v1.1.0 regression suite (no API calls) is found in `tests/test_v1_1_0_regression.py` and is automatically executed by `run_smoke.sh`. It can also be run directly:
 
 ```bash
 ./tests/run_v1_1_0_regression.sh
@@ -368,61 +364,56 @@ The v1.1.0 regression suite (no API calls) lives in `tests/test_v1_1_0_regressio
 
 ## Style Model Schema
 
-The schema models multiple layers:
+The schema models several layers:
+- Orthography and formatting
+- Punctuation signature
+- Sentence rhythm and clause structure
+- Paragraph architecture
+- Lexical preferences
+- Semantic tendencies
+- Rhetorical moves
+- Persona and stance (including pronoun preferences)
 
-- Orthography & formatting  
-- Punctuation signature  
-- Sentence rhythm & clause structure  
-- Paragraph architecture  
-- Lexical preferences  
-- Semantic tendencies  
-- Rhetorical moves  
-- Persona & stance (including pronoun preferences)  
+Supported features include:
+- Target values with tolerance ranges
+- Histograms rather than single averages
+- Hard versus soft constraints
+- Priority-ordered enforcement
 
-It supports:
-- Target values with tolerance ranges  
-- Histograms instead of single averages  
-- Hard vs soft constraints  
-- Priority‑ordered enforcement  
-
-This enables **interpretable controllable generation** rather than opaque imitation.
+This enables interpretable, controllable generation rather than opaque imitation.
 
 ---
 
-## Ethics & Intended Use
+## Ethics and Intended Use
 
-This project is designed for:
+The project is intended for:
+- Personal writing consistency
+- Author self-modelling
+- Editing assistance
+- Long-term voice preservation
 
-- Personal writing consistency  
-- Author self‑modeling  
-- Editing assistance  
-- Long‑term voice preservation  
-
-It is **not intended** for:
-
-- Impersonating living authors without consent  
-- Passing generated text off as another person  
+It is not intended for:
+- Impersonating living authors without consent
+- Passing generated text off as another person
 - Circumventing authorship or attribution
 
 Recommended practice:
-
-- Use only your own writing or licensed/public‑domain corpora
+- Use only your own writing or licensed/public-domain corpora
 - Set `do_not_imitate_living_author = true` in controls
-- Clearly label AI‑assisted outputs when appropriate
+- Clearly label AI-assisted outputs when appropriate
 
 ---
 
 ## Roadmap
 
 Planned extensions:
-
-- [ ] JSON Schema validation (`jsonschema`)  
-- [ ] HTML / PDF corpus ingestion  
-- [ ] Streaming + retry/backoff support  
-- [ ] Style similarity scoring CLI  
-- [ ] Batch rewriting  
-- [ ] Fine‑grained constraint toggles  
-- [ ] Visualization of stylistic distributions  
+- [ ] JSON Schema validation (`jsonschema`)
+- [ ] HTML / PDF corpus ingestion
+- [ ] Streaming and retry/backoff support
+- [ ] Style similarity scoring CLI
+- [ ] Batch rewriting
+- [ ] Fine-grained constraint toggles
+- [ ] Visualisation of stylistic distributions
 
 ---
 
@@ -444,15 +435,13 @@ Representative terms:
 
 ---
 
-
-
 ## Acknowledgments
 
 Inspired by:
 - Stylometric authorship research
 - Controllable text generation literature
-- Practical needs for long‑term personal voice consistency
+- Practical needs for long-term personal voice consistency
 
 ---
 
-*stylometric-transfer — explicit style models for interpretable author voice transfer*
+*stylometric-transfer: explicit style models for interpretable author voice transfer*
