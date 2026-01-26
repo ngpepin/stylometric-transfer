@@ -133,7 +133,13 @@
         "notes": [
           "string"
         ]
-      }
+      },
+      "rules": [
+        "If the phrase is clearly a citation fragment, drop it.",
+        "If the phrase looks like OCR noise or non-words, drop it.",
+        "Drop phrases dominated by proper nouns or named entities (e.g., person/organization names) unless they are generic or multi-author conventions.",
+        "If the phrase is a normal lexical phrase, keep it."
+      ]
     }
   },
   "merge": {
