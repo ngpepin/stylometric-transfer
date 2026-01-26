@@ -87,7 +87,7 @@ DEFAULT_TUNABLES = {
     "section_restore": {
         "enabled": True,
         "max_restore_sections": 20,
-        "heading_similarity_threshold": 0.85,
+        "heading_similarity_threshold": 0.75,
         "signature_similarity_threshold": 0.6,
         "signature_min_overlap": 6
     },
@@ -2491,6 +2491,39 @@ def main() -> int:
 
     missing_sections = [b for idx, b in enumerate(section_blocks_restored) if matched_start_by_input[idx] is None]
     if missing_sections:
+        preview_limit = 10
+        for idx, block in enumerate(section_blocks_restored):
+            if matched_start_by_input[idx] is not None:
+                continue
+            if block not in missing_sections:
+                continue
+            diag = match_diagnostics[idx] if idx < len(match_diagnostics) else {}
+            best_heading_title = diag.get("best_heading_title")
+            best_heading_score = diag.get("best_heading_score")
+            best_signature_title = diag.get("best_signature_title")
+            best_signature_score = diag.get("best_signature_score")
+            best_signature_overlap = diag.get("best_signature_overlap")
+            heading_part = (
+                f"best heading match '{best_heading_title}' ({best_heading_score:.2f})"
+                if best_heading_title and isinstance(best_heading_score, (float, int))
+                else "no heading match"
+            )
+            signature_part = (
+                f"best signature match '{best_signature_title}' ({best_signature_score:.2f}, overlap {best_signature_overlap})"
+                if best_signature_title and isinstance(best_signature_score, (float, int))
+                else "no signature match"
+            )
+            print_warn(f"Missing section '{block['title']}': {heading_part}; {signature_part}.")
+            preview_limit -= 1
+            if preview_limit <= 0:
+                remaining = sum(
+                    1
+                    for j, b in enumerate(section_blocks_restored)
+                    if matched_start_by_input[j] is None and b in missing_sections
+                ) - 10
+                if remaining > 0:
+                    print_warn(f"...and {remaining} more missing section(s).")
+                break
         if not restore_enabled:
             print_warn(
                 f"Missing {len(missing_sections)} section(s); restoration disabled by tunables."
