@@ -153,6 +153,12 @@ class TestV110Regression(unittest.TestCase):
         restored = af.restore_placeholders(masked, mapping)
         self.assertEqual(restored, md)
 
+    def test_mask_html_ignores_inequalities(self) -> None:
+        md = "Bins are <10, 10-17 and score S < 0.75."
+        masked, mapping = af.mask_html(md)
+        self.assertFalse(mapping)
+        self.assertEqual(masked, md)
+
     def test_mask_and_restore_math(self) -> None:
         md = "Inline $E=mc^2$ and $$x^2$$ plus \\(y\\) and \\[z\\] and \\begin{equation}a=b\\end{equation}."
         masked, mapping = af.mask_math_notation(md)

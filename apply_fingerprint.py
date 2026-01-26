@@ -457,9 +457,9 @@ def strip_inline_code(text: str) -> str:
 
 def strip_html(text: str) -> str:
     # Remove HTML tags and block elements to exclude HTML from profiling.
-    text = re.sub(r"(?is)<[^>]+>.*?</[^>]+>", "\n", text)
+    text = re.sub(r"(?is)<[A-Za-z][^>]*>.*?</[A-Za-z][^>]*>", "\n", text)
     text = re.sub(r"(?is)<!--.*?-->", "", text)
-    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"<[A-Za-z/][^>]*>", "", text)
     return text
 
 
@@ -1163,8 +1163,8 @@ def mask_html(text: str) -> tuple[str, Dict[str, str]]:
     text = re.sub(r"(?is)<(script|style|table|pre|code|svg|math|div|section|article|header|footer|nav|aside)[^>]*>.*?</\\1>", repl_block, text)
     # Mask HTML comments.
     text = re.sub(r"(?is)<!--.*?-->", repl_block, text)
-    # Mask any remaining tags.
-    text = re.sub(r"(?is)<[^>]+>", repl_block, text)
+    # Mask any remaining tags (avoid matching inequalities like <10).
+    text = re.sub(r"(?is)<[A-Za-z/][^>]*>", repl_block, text)
     return text, mapping
 
 

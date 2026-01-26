@@ -74,7 +74,7 @@ DOCX_EXTS = {".docx"}
 
 BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\s]+", re.IGNORECASE)
 BASE64_PLACEHOLDER_RE = re.compile(r"\[\[BASE64_IMAGE(?:_\d+)?\]\]")
-HTML_TAG_RE = re.compile(r"<[^>]+>")
+HTML_TAG_RE = re.compile(r"<[A-Za-z/][^>]*>")
 HTML_ENTITY_RE = re.compile(r"&[A-Za-z0-9#]+;")
 DEFAULT_MAX_FILES = 2000
 DEFAULT_MAX_BYTES_PER_FILE = 2_000_000  # 2 MB per file
@@ -399,7 +399,7 @@ def strip_latex_math(text: str) -> str:
 
 def strip_html(text: str) -> str:
     # Remove HTML tags and block elements to exclude HTML from profiling.
-    text = re.sub(r"(?is)<[^>]+>.*?</[^>]+>", "\n", text)
+    text = re.sub(r"(?is)<[A-Za-z][^>]*>.*?</[A-Za-z][^>]*>", "\n", text)
     text = re.sub(r"(?is)<!--.*?-->", "", text)
     text = HTML_TAG_RE.sub("", text)
     return text
