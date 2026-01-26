@@ -19,6 +19,14 @@
       },
       "additionalProperties": false
     },
+    "humanizer_mandatory": {
+      "type": "object",
+      "properties": {
+        "avoid_em_dashes": { "type": "boolean" },
+        "emoji_policy": { "type": "string", "enum": ["remove", "replace"] }
+      },
+      "additionalProperties": false
+    },
     "sanity_checks": {
       "type": "object",
       "properties": {

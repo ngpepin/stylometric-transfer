@@ -1,0 +1,110 @@
+{
+  "\ud83d\ude00": {
+    "replacement": ":)",
+    "description": "grin"
+  },
+  "\ud83d\ude03": {
+    "replacement": ":)",
+    "description": "grin"
+  },
+  "\ud83d\ude04": {
+    "replacement": ":)",
+    "description": "grin"
+  },
+  "\ud83d\ude01": {
+    "replacement": ":)",
+    "description": "grin"
+  },
+  "\ud83d\ude0a": {
+    "replacement": ":)",
+    "description": "smile"
+  },
+  "\ud83d\ude42": {
+    "replacement": ":)",
+    "description": "smile"
+  },
+  "\ud83d\ude09": {
+    "replacement": ";)",
+    "description": "wink"
+  },
+  "\ud83d\ude0e": {
+    "replacement": "8-)",
+    "description": "cool"
+  },
+  "\ud83d\ude22": {
+    "replacement": ":(",
+    "description": "cry"
+  },
+  "\ud83d\ude2d": {
+    "replacement": ":(",
+    "description": "cry"
+  },
+  "\ud83d\ude1e": {
+    "replacement": ":(",
+    "description": "sad"
+  },
+  "\ud83d\ude20": {
+    "replacement": "(!)",
+    "description": "angry"
+  },
+  "\ud83d\ude21": {
+    "replacement": "(!)",
+    "description": "angry"
+  },
+  "\ud83d\udc4d": {
+    "replacement": "[OK]",
+    "description": "thumbs_up"
+  },
+  "\ud83d\udc4e": {
+    "replacement": "[NO]",
+    "description": "thumbs_down"
+  },
+  "\u2705": {
+    "replacement": "[OK]",
+    "description": "check"
+  },
+  "\u2714": {
+    "replacement": "[OK]",
+    "description": "check"
+  },
+  "\u2716": {
+    "replacement": "[X]",
+    "description": "cross"
+  },
+  "\u2717": {
+    "replacement": "[X]",
+    "description": "cross"
+  },
+  "\u26a0": {
+    "replacement": "[!]",
+    "description": "warning"
+  },
+  "\u26a0\ufe0f": {
+    "replacement": "[!]",
+    "description": "warning"
+  },
+  "\u203c": {
+    "replacement": "!!",
+    "description": "double_exclamation"
+  },
+  "\u2757": {
+    "replacement": "!",
+    "description": "exclamation"
+  },
+  "\u2753": {
+    "replacement": "?",
+    "description": "question"
+  },
+  "\ud83d\udca1": {
+    "replacement": "[IDEA]",
+    "description": "idea"
+  },
+  "\u2b50": {
+    "replacement": "*",
+    "description": "star"
+  },
+  "\u2605": {
+    "replacement": "*",
+    "description": "star"
+  }
+}

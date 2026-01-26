@@ -56,7 +56,12 @@ HUMANIZER_GUIDELINES_FILENAME = "general-guidelines.md"
 HUMANIZER_CACHE_FILENAME = "humanizer_rules.cache.json"
 TUNABLES_FILENAME = "config.tunables.json"
 AVOID_LIST_FILENAME = "config.avoid.txt"
+EMOJI_SUBSTITUTIONS_FILENAME = "emoji-substitutions.json"
 EM_DASH_CHAR = "—"
+EMOJI_RE = re.compile(
+    r"(?:[\U0001F1E6-\U0001F1FF]{2}|[\U0001F300-\U0001FAFF]|[\u2600-\u26FF]|[\u2700-\u27BF]|\uFE0F)"
+)
+EMOJI_SUBSTITUTIONS: list[tuple[str, str]] | None = None
 ANSI_RED = "\x1b[31m"
 ANSI_YELLOW = "\x1b[33m"
 ANSI_RESET = "\x1b[0m"
@@ -70,6 +75,10 @@ DEFAULT_TUNABLES = {
         "heading_title_case_keep_rate": 0.6,
         "boldface_keep_per_1000w": 3.0,
         "inline_header_list_keep_rate": 0.2
+    },
+    "humanizer_mandatory": {
+        "avoid_em_dashes": False,
+        "emoji_policy": "remove"
     },
     "sanity_checks": {
         "line_count_warn_pct": 10.0,
@@ -139,6 +148,42 @@ def deep_merge_dict(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str,
         else:
             out[k] = v
     return out
+
+
+def load_emoji_substitutions(script_dir: Path) -> list[tuple[str, str]]:
+    path = script_dir / EMOJI_SUBSTITUTIONS_FILENAME
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        print_warn(f"Warning: failed to load {EMOJI_SUBSTITUTIONS_FILENAME}: {exc}")
+        return []
+    if not isinstance(data, dict):
+        print_warn(f"Warning: {EMOJI_SUBSTITUTIONS_FILENAME} must be a JSON object.")
+        return []
+    out: list[tuple[str, str]] = []
+    for key, value in data.items():
+        if not isinstance(key, str):
+            continue
+        replacement = None
+        if isinstance(value, dict):
+            replacement = value.get("replacement", "")
+            if replacement is None:
+                replacement = ""
+        else:
+            replacement = value if value is not None else ""
+        if not isinstance(replacement, str):
+            continue
+        out.append((key, replacement))
+    return out
+
+
+def get_emoji_substitutions() -> list[tuple[str, str]]:
+    global EMOJI_SUBSTITUTIONS
+    if EMOJI_SUBSTITUTIONS is None:
+        EMOJI_SUBSTITUTIONS = load_emoji_substitutions(Path(__file__).resolve().parent)
+    return EMOJI_SUBSTITUTIONS
 
 
 def load_tunables(path: Path | None = None) -> Dict[str, Any]:
@@ -228,29 +273,9 @@ def merge_avoid_list_into_fingerprint(
     return fingerprint
 
 
-def should_forbid_em_dashes(fingerprint: Dict[str, Any], avoid_list: List[str]) -> bool:
-    # Forbid if targets explicitly set em-dash rate to zero or avoid list includes em-dash tokens.
-    if not isinstance(fingerprint, dict):
-        return False
-    targets = fingerprint.get("targets", {}) if isinstance(fingerprint, dict) else {}
-    punctuation = targets.get("punctuation", {}) if isinstance(targets, dict) else {}
-    em_target = punctuation.get("em_dashes_per_1000w", {}) if isinstance(punctuation, dict) else {}
-    target_range = em_target.get("target") if isinstance(em_target, dict) else None
-    if isinstance(target_range, list) and len(target_range) >= 2:
-        try:
-            if float(target_range[1]) <= 0.0:
-                return True
-        except (TypeError, ValueError):
-            pass
-
-    lexicon = fingerprint.get("lexicon", {}) if isinstance(fingerprint, dict) else {}
-    avoid_words = [w.lower() for w in lexicon.get("avoid_words", []) if isinstance(w, str)]
-    avoid_phrases = [w.lower() for w in lexicon.get("avoid_phrases", []) if isinstance(w, str)]
-    avoid_list_lower = [w.lower() for w in avoid_list if isinstance(w, str)]
-    avoid_tokens = set(avoid_words + avoid_phrases + avoid_list_lower)
-    if EM_DASH_CHAR in avoid_tokens or "em dash" in avoid_tokens or "em-dash" in avoid_tokens:
-        return True
-    return False
+def should_forbid_em_dashes(tunables: Dict[str, Any] | None) -> bool:
+    mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
+    return bool(mandatory.get("avoid_em_dashes", False))
 
 
 def enforce_no_em_dashes(text: str) -> tuple[str, int]:
@@ -260,6 +285,39 @@ def enforce_no_em_dashes(text: str) -> tuple[str, int]:
     count = text.count(EM_DASH_CHAR)
     text = re.sub(r"\s*—\s*", " - ", text)
     return text, count
+
+
+def enforce_emoji_policy(text: str, policy: str) -> tuple[str, int, int]:
+    # Remove or replace emoji glyphs with conventional monochrome symbols.
+    removed = 0
+    replaced = 0
+    if policy not in ("remove", "replace"):
+        return text, removed, replaced
+    substitutions = get_emoji_substitutions()
+
+    if policy == "replace" and substitutions:
+        for emoji, replacement in substitutions:
+            if not emoji:
+                continue
+            count = text.count(emoji)
+            if count == 0:
+                continue
+            if replacement:
+                replaced += count
+            else:
+                removed += count
+            text = text.replace(emoji, replacement)
+
+    if policy == "remove":
+        removed += len(EMOJI_RE.findall(text))
+        text = EMOJI_RE.sub("", text)
+        return text, removed, replaced
+
+    leftover = len(EMOJI_RE.findall(text))
+    if leftover:
+        removed += leftover
+        text = EMOJI_RE.sub("", text)
+    return text, removed, replaced
 
 def resolve_general_guidelines_path() -> Path | None:
     # Resolve optional humanizer guidelines from CWD or script directory.
@@ -968,18 +1026,10 @@ def filter_humanizer_rules(
     avoid_first_person = isinstance(avoid_sets, list) and any("i" in s.lower() for s in avoid_sets if isinstance(s, str))
 
     em_dash_forbidden = False
-    targets = fingerprint.get("targets", {}) if isinstance(fingerprint, dict) else {}
-    punctuation_targets = targets.get("punctuation", {}) if isinstance(targets, dict) else {}
-    em_target = punctuation_targets.get("em_dashes_per_1000w", {}) if isinstance(punctuation_targets, dict) else {}
-    target_range = em_target.get("target") if isinstance(em_target, dict) else None
-    if isinstance(target_range, list) and len(target_range) >= 2:
-        try:
-            em_dash_forbidden = float(target_range[1]) <= 0.0
-        except (TypeError, ValueError):
-            em_dash_forbidden = False
-    if not em_dash_forbidden and avoid_words:
-        if EM_DASH_CHAR in avoid_words or "em dash" in avoid_words or "em-dash" in avoid_words:
-            em_dash_forbidden = True
+    if isinstance(tunables, dict):
+        mandatory = tunables.get("humanizer_mandatory", {})
+        if isinstance(mandatory, dict):
+            em_dash_forbidden = bool(mandatory.get("avoid_em_dashes", False))
 
     def collect_style_context() -> str:
         parts: List[str] = []
@@ -1025,7 +1075,7 @@ def filter_humanizer_rules(
 
         if "em dash" in title or "em dash" in words:
             if em_dash_forbidden:
-                drop_reason = "Em dashes forbidden by fingerprint/avoid list."
+                drop_reason = "Em dashes forbidden by humanizer_mandatory."
             elif em_dash_rate >= em_dash_keep_rate:
                 drop_reason = "Author uses em dashes frequently."
         if "hedging" in title or "hedging" in words:
@@ -1846,7 +1896,12 @@ def main() -> int:
     avoid_list = load_avoid_list()
     if avoid_list:
         fingerprint = merge_avoid_list_into_fingerprint(fingerprint, avoid_list)
-    forbid_em_dashes = should_forbid_em_dashes(fingerprint, avoid_list)
+    forbid_em_dashes = should_forbid_em_dashes(tunables)
+    emoji_policy = None
+    if isinstance(tunables, dict):
+        mandatory = tunables.get("humanizer_mandatory", {})
+        if isinstance(mandatory, dict):
+            emoji_policy = mandatory.get("emoji_policy")
     input_md = args.inp.read_text(encoding="utf-8")
     original_input_md = input_md
     # Strip base64 images to keep prompts within token limits.
@@ -1862,7 +1917,9 @@ def main() -> int:
         raw_guidelines, guidelines_path = load_general_guidelines()
         if raw_guidelines:
             if forbid_em_dashes:
-                print("Hard constraint active: em dashes are forbidden.")
+                print("Hard constraint active: em dashes are forbidden (humanizer_mandatory).")
+            if emoji_policy:
+                print(f"Hard constraint active: emoji policy = {emoji_policy}.")
             parsed_rules: List[Dict[str, Any]] = []
             parser_used = "regex"
             cache_path = Path(__file__).resolve().parent / HUMANIZER_CACHE_FILENAME
@@ -1986,8 +2043,18 @@ def main() -> int:
                 if removed:
                     out_obj.setdefault("deviations", []).append({
                         "rule_or_field": "punctuation.em_dashes",
-                        "reason": "Em dashes removed to satisfy hard constraint.",
+                        "reason": "Em dashes removed to satisfy humanizer_mandatory constraint.",
                         "count": removed
+                    })
+
+            if emoji_policy:
+                final_md, removed_emoji, replaced_emoji = enforce_emoji_policy(final_md, str(emoji_policy))
+                if removed_emoji or replaced_emoji:
+                    out_obj.setdefault("deviations", []).append({
+                        "rule_or_field": "emoji_policy",
+                        "policy": emoji_policy,
+                        "removed": removed_emoji,
+                        "replaced": replaced_emoji
                     })
 
             compliance = compute_style_compliance(fingerprint, filter_author_voice_text(final_md))

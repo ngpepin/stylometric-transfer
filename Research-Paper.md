@@ -1643,6 +1643,14 @@ Rather than learning what style is, it defines where style may reside in feature
       },
       "additionalProperties": false
     },
+    "humanizer_mandatory": {
+      "type": "object",
+      "properties": {
+        "avoid_em_dashes": { "type": "boolean" },
+        "emoji_policy": { "type": "string", "enum": ["remove", "replace"] }
+      },
+      "additionalProperties": false
+    },
     "sanity_checks": {
       "type": "object",
       "properties": {
@@ -1669,6 +1677,8 @@ Rather than learning what style is, it defines where style may reside in feature
 - `heading_title_case_keep_rate`: if the input Markdown’s heading Title Case ratio meets or exceeds this value, the rule to avoid Title Case headings is set aside.
 - `boldface_keep_per_1000w`: if boldface density (per 1000 words) meets or exceeds this value, the rule to avoid boldface is set aside.
 - `inline_header_list_keep_rate`: if the ratio of inline-header list items (such as `- **Label:**`) meets or exceeds this value, the rule to avoid inline-header lists is set aside.
+- `avoid_em_dashes`: when true, em dashes are always removed in the final output (mandatory humanizer control).
+- `emoji_policy`: either `remove` or `replace`. `replace` swaps emojis with conventional monochrome symbols when possible, otherwise removes them.
 - `line_count_warn_pct`: if the output line count changes by this percentage or more, a warning is issued for possible missing or expanded content.
 - `word_count_warn_pct`: if the output word count changes by this percentage or more, a warning is issued for possible missing or expanded content.
 - `paragraph_count_warn_pct`: if the output paragraph count changes by this percentage or more, a warning is issued for possible missing or expanded content.

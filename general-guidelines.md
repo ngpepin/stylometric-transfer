@@ -287,7 +287,7 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 ### 17. Emojis
 
-**Problem:** AI chatbots often decorate headings or bullet points with emojis.
+**Problem:** AI chatbots often decorate headings or bullet points with emojis. These should be removed entirely or replaced with more conventional black and white symbols used in publications.
 
 **Before:**
 > 🚀 **Launch Phase:** The product launches in Q3
