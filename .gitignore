@@ -2,3 +2,6 @@ config.llm.json
 test/
 __pycache__
 tests/_artifacts/
+dist
+build
+.venv-build
