@@ -1951,6 +1951,8 @@ def main() -> int:
 
     vprint(f"Using config: {args.config}")
 
+    print(f"Applying fingerprint {args.fingerprint.name} to {args.inp}")
+
     cfg = load_config(args.config)
     prompts = load_prompts()
     if args.tunables is None:
