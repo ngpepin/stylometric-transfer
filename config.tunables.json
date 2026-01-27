@@ -16,8 +16,8 @@
   "section_restore": {
     "enabled": true,
     "max_restore_sections": 20,
-    "heading_similarity_threshold": 0.75,
-    "signature_similarity_threshold": 0.6,
+    "heading_similarity_threshold": 0.5,
+    "signature_similarity_threshold": 0.35,
     "signature_min_overlap": 6
   },
   "sanity_checks": {

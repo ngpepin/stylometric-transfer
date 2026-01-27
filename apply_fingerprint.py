@@ -2004,9 +2004,9 @@ def main() -> int:
         raw_guidelines, guidelines_path = load_general_guidelines()
         if raw_guidelines:
             if forbid_em_dashes:
-                print("Hard constraint active: em dashes are forbidden (humanizer_mandatory).")
+                vprint("Hard constraint active: em dashes are forbidden (humanizer_mandatory).")
             if emoji_policy and str(emoji_policy) != "none":
-                print(f"Hard constraint active: emoji policy = {emoji_policy}.")
+                vprint(f"Hard constraint active: emoji policy = {emoji_policy}.")
             parsed_rules: List[Dict[str, Any]] = []
             parser_used = "regex"
             cache_path = Path(__file__).resolve().parent / HUMANIZER_CACHE_FILENAME
@@ -2067,7 +2067,7 @@ def main() -> int:
                         drop_labels.append(str(title))
                 preview = "; ".join(drop_labels[:10])
                 suffix = "..." if len(drop_labels) > 10 else ""
-                print(f"Dropped {len(drop_labels)} humanizer rule(s): {preview}{suffix}")
+                vprint(f"Dropped {len(drop_labels)} humanizer rule(s): {preview}{suffix}")
             if args.verbose:
                 print(f"Humanizer rules loaded: {len(humanizer_rules)} kept, {len(dropped_rules)} dropped")
     # Mask non-voice blocks and inline citations so they are preserved verbatim.
@@ -2607,12 +2607,12 @@ def main() -> int:
     word_count_in = len(words(original_input_md))
     word_count_out = len(words(final_md))
     word_change_pct = ((word_count_out - word_count_in) / max(1, word_count_in)) * 100.0
-    print(f"Word count change: {word_count_in} -> {word_count_out} ({word_change_pct:+.1f}%).")
+    vprint(f"Word count change: {word_count_in} -> {word_count_out} ({word_change_pct:+.1f}%).")
 
     para_count_in = len(split_paragraphs(original_input_md))
     para_count_out = len(split_paragraphs(final_md))
     para_change_pct = ((para_count_out - para_count_in) / max(1, para_count_in)) * 100.0
-    print(f"Paragraph count change: {para_count_in} -> {para_count_out} ({para_change_pct:+.1f}%).")
+    vprint(f"Paragraph count change: {para_count_in} -> {para_count_out} ({para_change_pct:+.1f}%).")
 
     sanity = tunables.get("sanity_checks", {}) if isinstance(tunables, dict) else {}
     line_warn = float(sanity.get("line_count_warn_pct", 10.0))
