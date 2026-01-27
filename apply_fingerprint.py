@@ -1990,7 +1990,7 @@ def main() -> int:
 
     vprint(f"Using config: {args.config}")
 
-    print("License: run with --license to view LICENSE.md.")
+    # print("Use --license to view licensing terms")
     print(f"Applying fingerprint {args.fingerprint.name} to {args.inp}")
 
     cfg = load_config(args.config)
