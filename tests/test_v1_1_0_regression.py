@@ -32,8 +32,8 @@ class TestV110Regression(unittest.TestCase):
         self.assertEqual(merged["lexicon"]["avoid_words"], ["alpha", "beta"])
 
     def test_enforce_no_em_dashes(self) -> None:
-        fingerprint = {"targets": {"punctuation": {"em_dashes_per_1000w": {"target": [0.0, 0.0]}}}}
-        self.assertTrue(af.should_forbid_em_dashes(fingerprint, []))
+        tunables = {"humanizer_mandatory": {"avoid_em_dashes": True}}
+        self.assertTrue(af.should_forbid_em_dashes(tunables))
         text = "Alpha—beta."
         out, count = af.enforce_no_em_dashes(text)
         self.assertEqual(count, 1)
@@ -147,6 +147,14 @@ class TestV110Regression(unittest.TestCase):
         self.assertTrue(mapping)
         restored = af.restore_placeholders(masked, mapping)
         self.assertEqual(restored, md)
+
+    def test_restore_inline_code_inside_blockquote(self) -> None:
+        md = "> Guidance for `stylometric-transfer`"
+        masked_inline, inline_map = af.mask_inline_code(md)
+        masked_frozen, frozen_map = af.mask_non_voice_blocks(masked_inline)
+        restored = af.restore_placeholders(masked_frozen, frozen_map)
+        restored = af.restore_placeholders(restored, inline_map)
+        self.assertEqual(restored.strip(), md.strip())
 
     def test_inline_code_does_not_cross_lines(self) -> None:
         md = "Line one with `code\n## Heading\nLine two` tail"

@@ -2077,11 +2077,11 @@ def main() -> int:
     section_blocks_restored: List[Dict[str, Any]] = []
     for block in section_blocks:
         restored = block["block"]
+        restored = restore_placeholders(restored, frozen_blocks)
         restored = restore_placeholders(restored, html_map)
         restored = restore_placeholders(restored, math_map)
         restored = restore_placeholders(restored, entity_map)
         restored = restore_placeholders(restored, inline_code_map)
-        restored = restore_placeholders(restored, frozen_blocks)
         restored = restore_placeholders(restored, citation_map)
         restored = restore_base64_images(restored, base64_map, find_base64_placeholders(restored))
         section_blocks_restored.append({
@@ -2238,11 +2238,11 @@ def main() -> int:
                 })
             footer = "\n".join(f"![]({base64_map[p]})" for p in missing if p in base64_map)
             final_md = final_md.rstrip() + "\n\n" + footer
+        final_md = restore_placeholders(final_md, frozen_blocks)
         final_md = restore_placeholders(final_md, html_map)
         final_md = restore_placeholders(final_md, math_map)
         final_md = restore_placeholders(final_md, entity_map)
         final_md = restore_placeholders(final_md, inline_code_map)
-        final_md = restore_placeholders(final_md, frozen_blocks)
         final_md = restore_placeholders(final_md, citation_map)
         final_md = restore_base64_images(final_md, base64_map, find_base64_placeholders(final_md))
         outputs.append(final_md)
@@ -2348,11 +2348,11 @@ def main() -> int:
                     })
                 footer = "\n".join(f"![]({base64_map[p]})" for p in missing if p in base64_map)
                 final_md = final_md.rstrip() + "\n\n" + footer
+            final_md = restore_placeholders(final_md, frozen_blocks)
             final_md = restore_placeholders(final_md, html_map)
             final_md = restore_placeholders(final_md, math_map)
             final_md = restore_placeholders(final_md, entity_map)
             final_md = restore_placeholders(final_md, inline_code_map)
-            final_md = restore_placeholders(final_md, frozen_blocks)
             final_md = restore_placeholders(final_md, citation_map)
             final_md = restore_base64_images(final_md, base64_map, find_base64_placeholders(final_md))
             outputs.append(final_md)
