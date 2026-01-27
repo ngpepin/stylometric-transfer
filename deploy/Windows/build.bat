@@ -26,11 +26,11 @@ if exist dist rmdir /s /q dist
 if exist build rmdir /s /q build
 
 REM Build fingerprint_style executable
-%VENV_PY% -m PyInstaller --clean --onefile --name fingerprint_style fingerprint_style.py
+%VENV_PY% -m PyInstaller --clean --onefile --name fingerprint_style --add-data "LICENSE.md;." fingerprint_style.py
 if errorlevel 1 exit /b 1
 
 REM Build apply_fingerprint executable
-%VENV_PY% -m PyInstaller --clean --onefile --name apply_fingerprint apply_fingerprint.py
+%VENV_PY% -m PyInstaller --clean --onefile --name apply_fingerprint --add-data "LICENSE.md;." apply_fingerprint.py
 if errorlevel 1 exit /b 1
 
 echo Build complete. Binaries are in %CD%\dist

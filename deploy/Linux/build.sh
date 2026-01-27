@@ -34,6 +34,7 @@ rm -rf "${DIST_DIR}" "${BUILD_DIR}"
   --clean \
   --onefile \
   --name fingerprint_style \
+  --add-data "${ROOT_DIR}/LICENSE.md:." \
   fingerprint_style.py
 
 # Build apply_fingerprint executable
@@ -41,6 +42,7 @@ rm -rf "${DIST_DIR}" "${BUILD_DIR}"
   --clean \
   --onefile \
   --name apply_fingerprint \
+  --add-data "${ROOT_DIR}/LICENSE.md:." \
   apply_fingerprint.py
 
 echo "Build complete. Binaries are in ${DIST_DIR}" 

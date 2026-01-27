@@ -81,6 +81,7 @@ DEFAULT_MAX_FILES = 2000
 DEFAULT_MAX_BYTES_PER_FILE = 2_000_000  # 2 MB per file
 DEFAULT_MAX_TOTAL_CHARS_FOR_LLM = 180_000  # excerpt cap; we send stats + representative excerpts
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
+LICENSE_FILENAME = "LICENSE.md"
 LEXICON_HINTS_FILENAME = "lexicon_hints.json"
 AVOID_LIST_FILENAME = "config.avoid.txt"
 
@@ -89,6 +90,36 @@ def load_prompts() -> Dict[str, Any]:
     if not PROMPTS_PATH.exists():
         raise FileNotFoundError(f"prompts.json not found at {PROMPTS_PATH}")
     return json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))
+
+def resolve_license_path() -> Path | None:
+    # Resolve LICENSE.md from CWD or script directory.
+    cwd_path = Path.cwd() / LICENSE_FILENAME
+    script_path = Path(__file__).resolve().parent / LICENSE_FILENAME
+    if cwd_path.exists():
+        return cwd_path
+    if script_path.exists():
+        return script_path
+    return None
+
+
+def render_markdown(text: str) -> None:
+    try:
+        from rich.console import Console
+        from rich.markdown import Markdown
+    except Exception:
+        print(text)
+        return
+    console = Console()
+    console.print(Markdown(text))
+
+
+def print_license_and_exit() -> int:
+    path = resolve_license_path()
+    if not path:
+        print(f"License file not found: {LICENSE_FILENAME}", file=sys.stderr)
+        return 2
+    render_markdown(path.read_text(encoding="utf-8"))
+    return 0
 
 def load_optional_lexicon_hints() -> Optional[Dict[str, Any]]:
     # Load optional lexicon hints from CWD or script directory.
@@ -1242,6 +1273,8 @@ def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any
 # ----------------------------
 
 def main() -> int:
+    if "--license" in sys.argv:
+        return print_license_and_exit()
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "-c",
@@ -1280,6 +1313,11 @@ def main() -> int:
         action="store_true",
         help="Disable the LLM pass that validates common phrases (OCR/citation noise filtering)"
     )
+    ap.add_argument(
+        "--license",
+        action="store_true",
+        help="Print LICENSE.md and exit"
+    )
     ap.add_argument("--max-files", type=int, default=DEFAULT_MAX_FILES)
     ap.add_argument("--max-bytes-per-file", type=int, default=DEFAULT_MAX_BYTES_PER_FILE)
     ap.add_argument("--excerpt-char-budget", type=int, default=DEFAULT_MAX_TOTAL_CHARS_FOR_LLM)
@@ -1300,6 +1338,7 @@ def main() -> int:
 
     vprint(f"Using config: {args.config}")
     vprint(f"Output path: {args.out}")
+    print("License: run with --license to view LICENSE.md.")
 
     cfg = load_config(args.config)
     prompts = load_prompts()

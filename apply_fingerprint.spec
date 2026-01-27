@@ -5,7 +5,7 @@ a = Analysis(
     ['apply_fingerprint.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('/home/npepin/Projects/stylometric-transfer/LICENSE.md', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

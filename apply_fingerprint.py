@@ -53,6 +53,7 @@ PARA_SPLIT_RE = re.compile(r"\n\s*\n+")
 BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\s]+", re.IGNORECASE)
 BASE64_PLACEHOLDER_RE = re.compile(r"\[\[BASE64_IMAGE_\d+\]\]")
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
+LICENSE_FILENAME = "LICENSE.md"
 HUMANIZER_GUIDELINES_FILENAME = "general-guidelines.md"
 HUMANIZER_CACHE_FILENAME = "humanizer_rules.cache.json"
 TUNABLES_FILENAME = "config.tunables.json"
@@ -400,6 +401,37 @@ def load_general_guidelines() -> tuple[str | None, Path | None]:
     if not path:
         return None, None
     return path.read_text(encoding="utf-8"), path
+
+
+def resolve_license_path() -> Path | None:
+    # Resolve LICENSE.md from CWD or script directory.
+    cwd_path = Path.cwd() / LICENSE_FILENAME
+    script_path = Path(__file__).resolve().parent / LICENSE_FILENAME
+    if cwd_path.exists():
+        return cwd_path
+    if script_path.exists():
+        return script_path
+    return None
+
+
+def render_markdown(text: str) -> None:
+    try:
+        from rich.console import Console
+        from rich.markdown import Markdown
+    except Exception:
+        print(text)
+        return
+    console = Console()
+    console.print(Markdown(text))
+
+
+def print_license_and_exit() -> int:
+    path = resolve_license_path()
+    if not path:
+        print_error(f"License file not found: {LICENSE_FILENAME}")
+        return 2
+    render_markdown(path.read_text(encoding="utf-8"))
+    return 0
 
 def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
     # Traverse a nested dict safely and fail fast if a key is missing.
@@ -1877,6 +1909,8 @@ def build_apply_prompt(
 
 
 def main() -> int:
+    if "--license" in sys.argv:
+        return print_license_and_exit()
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "-c",
@@ -1934,6 +1968,11 @@ def main() -> int:
         default=1,
         help="Maximum number of style retry passes (default: 1)"
     )
+    ap.add_argument(
+        "--license",
+        action="store_true",
+        help="Print LICENSE.md and exit"
+    )
     args = ap.parse_args()
 
     if args.fingerprint.suffix == "":
@@ -1951,6 +1990,7 @@ def main() -> int:
 
     vprint(f"Using config: {args.config}")
 
+    print("License: run with --license to view LICENSE.md.")
     print(f"Applying fingerprint {args.fingerprint.name} to {args.inp}")
 
     cfg = load_config(args.config)
