@@ -5,3 +5,4 @@ tests/_artifacts/
 dist
 build
 .venv-build
+db-priv
