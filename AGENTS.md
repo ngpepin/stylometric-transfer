@@ -54,6 +54,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Strip embedded BASE64 images from prompts
     - Select representative excerpts
     - Call LLM to synthesise fingerprint JSON
+    - If chunking excerpts, merge partial fingerprints via a dedicated LLM merge prompt
     - Validate common phrases via a separate LLM pass to remove OCR/citation noise (disable with `--no-phrase-validation`)
     - Repair invalid JSON if necessary
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-a` (archive), `-o` (out), `-v` (verbose)

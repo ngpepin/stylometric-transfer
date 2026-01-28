@@ -2197,7 +2197,10 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
             if r.status_code >= 400:
                 raise RuntimeError(f"LLM call failed ({r.status_code}): {r.text[:2000]}")
             data = r.json()
-            return data["choices"][0]["message"]["content"]
+            content = data["choices"][0]["message"]["content"]
+            if attempt > 0:
+                print_warn(f"LLM request succeeded after {attempt} retry(ies).")
+            return content
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, RuntimeError) as exc:
             last_err = exc
             if attempt >= cfg.max_retries:

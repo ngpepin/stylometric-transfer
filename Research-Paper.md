@@ -359,6 +359,20 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
 
     prompt ← build_fingerprint_prompt(schema=S, measurements=M, excerpts=E,
                                       lexicon_hints=L, model=C.model)
+    if prompt_too_large(prompt, C.max_prompt_tokens):
+        batches ← chunk_excerpts(E, budget=C.max_prompt_tokens)
+        partials ← []
+        for b in batches:
+            prompt_b ← build_fingerprint_prompt(schema=S, measurements=M, excerpts=b,
+                                                lexicon_hints=L, model=C.model)
+            raw_b ← call_llm_chat_completions(prompt_b, C)
+            partials.append(parse_or_repair(raw_b))
+        F ← partials[0]
+        for p in partials[1:]:
+            merge_prompt ← build_merge_prompt(F, p, schema=S, measurements=M)
+            raw_m ← call_llm_chat_completions(merge_prompt, C)
+            F ← parse_or_repair(raw_m)
+        goto enforce_invariants
     raw ← call_llm_chat_completions(prompt, C)
 
     if is_valid_json(raw):
@@ -368,6 +382,7 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
         raw2 ← call_llm_chat_completions(repair_prompt, C)
         F ← parse_json(raw2)
 
+    enforce_invariants:
     # enforce invariants
     F.schema_version ← default_if_missing(F.schema_version, "1.0.0")
     F.measurements ← M  # embed verbatim

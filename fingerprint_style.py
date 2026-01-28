@@ -1246,7 +1246,13 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
                 raise RuntimeError(f"LLM call failed ({r.status_code}): {r.text[:2000]}")
             data = r.json()
             try:
-                return data["choices"][0]["message"]["content"]
+                content = data["choices"][0]["message"]["content"]
+                if attempt > 0:
+                    print(
+                        f"LLM request succeeded after {attempt} retry(ies).",
+                        file=sys.stderr
+                    )
+                return content
             except Exception:
                 raise RuntimeError(f"Unexpected LLM response shape: {json.dumps(data)[:2000]}")
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, RuntimeError) as exc:
