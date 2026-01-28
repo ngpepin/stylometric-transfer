@@ -8,7 +8,7 @@
 
 ## Abstract
 
-Stylometric-Transfer provides a practical method for (i) stylometric profiling of an author's writing corpus into an explicit, interpretable JSON artefact (a style fingerprint) and (ii) meaning-preserving style transfer that rewrites new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement - such as punctuation rates and sentence-length distributions - with LLM-mediated synthesis into human-editable constraints, including ranges, histograms, lexicon rules, and rhetorical templates. The fingerprint is formalized as a constraint set, and a constraint-satisfaction decoding view is provided for LLM rewriting, together with compliance scoring based on distributional divergences. Notably, the framework unifies stylometric transfer and humanization by quantifying a conflict-resolution layer that filters humanization guidelines against fingerprint constraints. This hybrid design allows for an auditable alternative to latent style embeddings, while remaining consistent with established stylometry and text style transfer research.
+Stylometric-Transfer provides a practical method for (i) stylometric profiling of an author's writing corpus into an explicit, interpretable JSON artefact (a style fingerprint) and (ii) meaning-preserving style transfer that rewrites new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement - such as punctuation rates and sentence-length distributions - with LLM-mediated synthesis into human-editable constraints, including ranges, histograms, lexicon rules, and rhetorical templates. The fingerprint is formalized as a constraint set, and a constraint-satisfaction decoding view is provided for LLM rewriting, together with compliance scoring based on distributional divergences. Notably, the framework unifies stylometric transfer and humanization by quantifying a conflict‑resolution layer that filters humanization guidelines against fingerprint constraints, and by supporting bounded stochastic variance under explicit controls. This hybrid design allows for an auditable alternative to latent style embeddings, while remaining consistent with established stylometry and text style transfer research.
 
 **Reader’s guide:** Sections 1–3 outline the system’s purpose and rationale. Section 4 explains the measurements with simple examples. Sections 5–6 describe how those measurements become constraints for rewriting. Section 7 connects the ideas to the code. The appendices provide further mathematical and algorithmic detail for expert readers.
 
@@ -22,7 +22,7 @@ Text style transfer (TST), by contrast, seeks to transform text so that stylisti
 
 In practical terms, stylometry treats an author’s style as a set of measurable habits: sentence length, punctuation frequency, recurring transitions, and words that are rarely used. Style transfer attempts to generate new text as if those habits were followed, without altering meaning. The difficulty lies in ensuring that a model does not introduce stylistic artefacts or factual drift. This paper addresses how to make that tension measurable and manageable.
 
-A hybrid approach is proposed: style is represented explicitly as a stylometric style fingerprint (in JSON), and an LLM acts as a constrained rewriter, guided by both the fingerprint and locally measured statistics from the author corpus and candidate text. Humanization guidelines are integrated by means of a conflict-resolution layer, which deterministically filters guideline rules when they contradict fingerprint signals or the input’s stylistic structure.
+A hybrid approach is proposed: style is represented explicitly as a stylometric style fingerprint (in JSON), and an LLM acts as a constrained rewriter, guided by both the fingerprint and locally measured statistics from the author corpus and candidate text. Humanization guidelines are integrated by means of a conflict‑resolution layer, which deterministically filters guideline rules when they contradict fingerprint signals or the input’s stylistic structure. Where enabled, bounded stochastic variance applies a small, seeded number of micro‑edits to reduce AI‑typical uniformity while preserving meaning and constraints.
 
 ---
 
@@ -45,6 +45,17 @@ The literature indicates that style is difficult to define precisely. The approa
 ### 2.3 Humanization-Aware Stylometric Transfer
 
 Most style-transfer pipelines treat humanization as a separate editing step. Stylometric-Transfer incorporates humanization directly into constraint-guided rewriting by formalizing a conflict-resolution layer: humanization guidelines are applied only when they do not violate fingerprint-derived constraints or the input's structural features (such as heading case or inline-header lists). The guideline list is parsed into structured rules by an LLM (with deterministic fallback), then filtered against fingerprint signals before any rewrite prompt is constructed. This produces a single, auditable framework that balances stylistic fidelity with the removal of AI artefacts, rather than relying on post-hoc edits that may diverge from the author’s voice.
+
+### 2.4 Humanization Mechanisms and Benefits
+
+Humanization in this system is not a vague “make it sound human” instruction. It is a set of explicit, inspectable mechanisms designed to target known LLM artefacts while preserving the author’s voice. These mechanisms include:
+
+- **Conflict‑filtered guidelines**: generic humanization rules are only applied when they do not contradict the fingerprint’s statistical baselines (for example, avoiding “don’t use em‑dashes” when the author’s corpus uses them frequently).
+- **Mandatory hygiene rules**: optional hard constraints (such as removing em‑dashes or replacing emojis) are enforced deterministically and recorded in the deviations log.
+- **Structural preservation**: blockquotes, citations, footnotes, and code spans are shielded from stylistic edits to prevent false “humanization” changes in non‑authorial content.
+- **Bounded stochastic variance**: when enabled, a small, seeded number of micro‑edits (e.g., swapping transition words or dropping filler terms) introduce controlled irregularity without semantic drift.
+
+The practical benefit is a *measurable reduction in AI‑typical uniformity* while keeping the transformation aligned to the author’s measurable habits. Because the humanization layer is explicit, deterministic by default, and logged, it can be audited and tuned without introducing opaque behaviour. In short, humanization is treated as a constrained post‑processing step integrated into the same interpretability framework as stylometric profiling itself.
 
 ---
 
@@ -107,6 +118,30 @@ Let $f(w)$ be the corpus frequency of a token $w$ after filtering stopwords, num
 $$\mathcal{R} = \{w : f(w) \le c_{\max}\},$$
 
 where $c_{\max}$ is a small threshold (for example, 2–5 occurrences). These terms can be surfaced as avoid-lexicon hints so the rewriter does not overuse words the author rarely employs.
+
+### 4.4 Rhetorical and Epistemic Signals
+
+Beyond surface statistics, the system tracks interpretable rhetorical moves and certainty bands. Let $\mathcal{S}$ denote sentences in the corpus. For a rhetorical marker set $\mathcal{M}_k$ (e.g., claim or concession indicators), define:
+
+$$r_k = 1000 \cdot \frac{\#\{s \in \mathcal{S} : s \text{ contains any marker in } \mathcal{M}_k\}}{\max(1, W)}.$$
+
+We compute rates for claim, evidence, counterpoint, concession, and synthesis markers. Epistemic stance bands (speculative, probabilistic, assertive, directive) are computed using simple token lists. These signals are intentionally approximate; they are used to set tolerances, not to classify sentences perfectly.
+
+### 4.5 Paragraph Cadence and Discourse Marker Position
+
+Let $s_1$ and $s_n$ be the opening and closing sentences of a paragraph. The system records distributions of opening/closing sentence lengths (means and standard deviations) to capture cadence. It also tracks the position of discourse markers (e.g., “however”, “therefore”) as start‑of‑sentence versus mid‑sentence rates:
+
+$$r_{\text{start}} = 1000 \cdot \frac{\#\{\text{markers at sentence start}\}}{\max(1, W)}, \quad r_{\text{mid}} = 1000 \cdot \frac{\#\{\text{markers mid‑sentence}\}}{\max(1, W)}.$$
+
+These features help preserve where transitions tend to appear in the author’s voice.
+
+### 4.6 Repetition Signals (Self‑Echo)
+
+AI‑generated text often repeats phrases locally. To detect this, we measure repetition rates for bigrams and trigrams:
+
+$$\rho_n = \frac{\sum_{g \in \mathcal{G}_n} \mathbf{1}[c(g) \ge c_{\min}] \cdot c(g)}{\max(1, |\mathcal{G}_n|)},$$
+
+where $\mathcal{G}_n$ is the multiset of n‑grams and $c_{\min}$ is a small repeat threshold (default 3). These rates define ceilings for acceptable self‑echo.
 
 ### 4.4 Delta-Style Diagnostics (Optional)
 
@@ -600,6 +635,7 @@ The style fingerprint $\mathcal{F}$ is not provided to the LLM as raw statistics
 2. Discrete symbolic constraints (lexicon rules, rhetorical templates, structural policies)
 3. Priority and strictness controls (ordering, hard versus soft constraints)
 4. Derived natural-language instructions (compiled in `derived_instructions.*`)
+5. Optional bounded humanizer variance (seeded micro-variations within constraints)
 
 The compiled instruction set is denoted:
 
@@ -634,6 +670,8 @@ The `controls.priority_order` field induces a partial order:
 $$\text{meaning preservation} \succ \text{lexicon} \succ \text{sentence rhythm} \succ \text{punctuation} \succ \text{templates}$$
 
 This ordering is verbalised to ensure that stylistic fidelity does not override semantic fidelity.
+
+**Bounded stochastic variance.** When enabled, `controls.humanizer_variance` allows a small number of seeded micro‑operations (e.g., transition swaps, filler drops) per 1000 words. These edits are constrained, logged, and subordinate to the fingerprint, introducing human‑like irregularity without semantic drift.
 
 ---
 
@@ -1434,7 +1472,51 @@ Rather than learning what style is, it defines where style may reside in feature
           "type": "object",
           "properties": {
             "sentence_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
-            "transition_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } }
+            "transition_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
+            "transition_marker_positions": {
+              "type": "object",
+              "properties": {
+                "start_rate_per_1000w": { "type": "number" },
+                "mid_rate_per_1000w": { "type": "number" }
+              }
+            }
+          }
+        },
+        "rhetoric_moves": {
+          "type": "object",
+          "properties": {
+            "claim_rate": { "type": "number" },
+            "evidence_rate": { "type": "number" },
+            "counterpoint_rate": { "type": "number" },
+            "concession_rate": { "type": "number" },
+            "synthesis_rate": { "type": "number" },
+            "claim_evidence_ratio": { "type": "number" }
+          }
+        },
+        "paragraph_cadence": {
+          "type": "object",
+          "properties": {
+            "opening_sentence_length_mean": { "type": "number" },
+            "opening_sentence_length_stdev": { "type": "number" },
+            "closing_sentence_length_mean": { "type": "number" },
+            "closing_sentence_length_stdev": { "type": "number" }
+          }
+        },
+        "epistemic_profile": {
+          "type": "object",
+          "properties": {
+            "speculative_rate": { "type": "number" },
+            "probabilistic_rate": { "type": "number" },
+            "assertive_rate": { "type": "number" },
+            "directive_rate": { "type": "number" }
+          }
+        },
+        "syntax_texture": {
+          "type": "object",
+          "properties": {
+            "subordinate_clause_rate": { "type": "number" },
+            "parenthetical_rate": { "type": "number" },
+            "appositive_rate": { "type": "number" }
           }
         },
         "lexical_signals": {
@@ -1444,6 +1526,21 @@ Rather than learning what style is, it defines where style may reside in feature
             "rare_words": { "type": "array", "items": { "$ref": "#/definitions/word_count" } },
             "rare_word_max_count": { "type": "integer" },
             "rare_word_min_length": { "type": "integer" }
+          }
+        },
+        "lexical_avoidance": {
+          "type": "object",
+          "properties": {
+            "category_rates_per_1000w": { "type": "object", "additionalProperties": { "type": "number" } },
+            "rare_words": { "type": "array", "items": { "$ref": "#/definitions/word_count" } }
+          }
+        },
+        "repetition": {
+          "type": "object",
+          "properties": {
+            "bigram_repeat_rate": { "type": "number" },
+            "trigram_repeat_rate": { "type": "number" },
+            "min_repeat_count": { "type": "integer" }
           }
         },
         "common_phrases": {
@@ -1480,6 +1577,57 @@ Rather than learning what style is, it defines where style may reside in feature
           "properties": {
             "pronoun_preferences": { "$ref": "#/definitions/pronoun_preferences" }
           }
+        },
+        "rhetoric_moves": {
+          "type": "object",
+          "properties": {
+            "claim_rate": { "$ref": "#/definitions/range" },
+            "evidence_rate": { "$ref": "#/definitions/range" },
+            "counterpoint_rate": { "$ref": "#/definitions/range" },
+            "concession_rate": { "$ref": "#/definitions/range" },
+            "synthesis_rate": { "$ref": "#/definitions/range" },
+            "claim_evidence_ratio": { "$ref": "#/definitions/range" }
+          }
+        },
+        "epistemic_profile": {
+          "type": "object",
+          "properties": {
+            "speculative_rate": { "$ref": "#/definitions/range" },
+            "probabilistic_rate": { "$ref": "#/definitions/range" },
+            "assertive_rate": { "$ref": "#/definitions/range" },
+            "directive_rate": { "$ref": "#/definitions/range" }
+          }
+        },
+        "paragraph_cadence": {
+          "type": "object",
+          "properties": {
+            "opening_sentence_length_mean": { "$ref": "#/definitions/range" },
+            "opening_sentence_length_stdev": { "$ref": "#/definitions/range" },
+            "closing_sentence_length_mean": { "$ref": "#/definitions/range" },
+            "closing_sentence_length_stdev": { "$ref": "#/definitions/range" }
+          }
+        },
+        "syntax_texture": {
+          "type": "object",
+          "properties": {
+            "subordinate_clause_rate": { "$ref": "#/definitions/range" },
+            "parenthetical_rate": { "$ref": "#/definitions/range" },
+            "appositive_rate": { "$ref": "#/definitions/range" }
+          }
+        },
+        "discourse_markers": {
+          "type": "object",
+          "properties": {
+            "start_rate_per_1000w": { "$ref": "#/definitions/range" },
+            "mid_rate_per_1000w": { "$ref": "#/definitions/range" }
+          }
+        },
+        "repetition": {
+          "type": "object",
+          "properties": {
+            "bigram_repeat_rate": { "$ref": "#/definitions/range" },
+            "trigram_repeat_rate": { "$ref": "#/definitions/range" }
+          }
         }
       }
     },
@@ -1490,6 +1638,7 @@ Rather than learning what style is, it defines where style may reside in feature
         "preferred_words": { "type": "array", "items": { "type": "string" } },
         "preferred_phrases": { "type": "array", "items": { "type": "string" } },
         "avoid_words": { "type": "array", "items": { "type": "string" } },
+        "avoid_words_soft": { "type": "array", "items": { "type": "string" } },
         "avoid_phrases": { "type": "array", "items": { "type": "string" } },
         "synonym_preferences": { "type": "object", "additionalProperties": { "type": "string" } },
         "notes": { "type": "string" }
@@ -1514,7 +1663,16 @@ Rather than learning what style is, it defines where style may reside in feature
       "properties": {
         "priority_order": { "type": "array", "items": { "type": "string" } },
         "strictness": { "type": ["string", "object"] },
-        "rewrite_policy": { "type": ["string", "object"] }
+        "rewrite_policy": { "type": ["string", "object"] },
+        "humanizer_variance": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "seed": { "type": "integer" },
+            "max_ops_per_1000w": { "type": "number" },
+            "allowed_ops": { "type": "array", "items": { "type": "string" } }
+          }
+        }
       }
     },
     "validators": {

@@ -875,6 +875,8 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
         "first","second","third","finally","overall"
     }
     transition_hits = collections.Counter()
+    transition_start_hits = 0
+    transition_mid_hits = 0
     for s in all_sents:
         ws = [t.lower() for t in words(s)]
         if len(ws) >= 2:
@@ -888,6 +890,94 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
                 if cand and cand in transition_terms:
                     transition_hits[cand] += 1
                     break
+        # Discourse marker position (start vs mid-sentence)
+        if ws:
+            start_candidate = None
+            if len(ws) >= 3:
+                start_candidate = " ".join(ws[:3])
+            elif len(ws) >= 2:
+                start_candidate = " ".join(ws[:2])
+            else:
+                start_candidate = ws[0]
+            if start_candidate in transition_terms:
+                transition_start_hits += 1
+            else:
+                for term in transition_terms:
+                    if term in " ".join(ws[1:]):
+                        transition_mid_hits += 1
+                        break
+
+    # Rhetorical move signals (simple, interpretable heuristics).
+    rhetoric_markers = {
+        "claim": [
+            "we argue", "we contend", "we propose", "this suggests", "this shows",
+            "this indicates", "therefore", "thus", "hence", "overall", "in sum"
+        ],
+        "evidence": [
+            "for example", "for instance", "according to", "data show", "evidence",
+            "study", "report", "survey", "as shown"
+        ],
+        "counterpoint": [
+            "however", "yet", "but", "on the other hand", "nevertheless", "nonetheless"
+        ],
+        "concession": [
+            "although", "though", "even though", "while", "granted", "admittedly"
+        ],
+        "synthesis": [
+            "overall", "in sum", "in short", "on balance", "taken together", "in conclusion"
+        ]
+    }
+
+    def sentence_has_marker(sentence: str, markers: List[str]) -> bool:
+        s = sentence.lower()
+        return any(m in s for m in markers)
+
+    claim_hits = sum(1 for s in all_sents if sentence_has_marker(s, rhetoric_markers["claim"]))
+    evidence_hits = sum(1 for s in all_sents if sentence_has_marker(s, rhetoric_markers["evidence"]))
+    counter_hits = sum(1 for s in all_sents if sentence_has_marker(s, rhetoric_markers["counterpoint"]))
+    concession_hits = sum(1 for s in all_sents if sentence_has_marker(s, rhetoric_markers["concession"]))
+    synthesis_hits = sum(1 for s in all_sents if sentence_has_marker(s, rhetoric_markers["synthesis"]))
+
+    # Paragraph cadence profile.
+    opening_lens: List[int] = []
+    closing_lens: List[int] = []
+    for t in texts:
+        for p in split_paragraphs(t):
+            sents = split_sentences(p)
+            if not sents:
+                continue
+            opening_lens.append(len(words(sents[0])))
+            closing_lens.append(len(words(sents[-1])))
+
+    # Epistemic stance bands (simple token markers).
+    speculative_terms = {"may","might","perhaps","possibly","could","seems","appears","suggests","tends"}
+    probabilistic_terms = {"likely","unlikely","probable","probably","odds","chance"}
+    assertive_terms = {"clearly","certainly","undoubtedly","indeed","surely"}
+    directive_terms = {"must","should","need","needs","ought","required"}
+
+    speculative_hits = sum(1 for t in toks if t in speculative_terms)
+    probabilistic_hits = sum(1 for t in toks if t in probabilistic_terms)
+    assertive_hits = sum(1 for t in toks if t in assertive_terms)
+    directive_hits = sum(1 for t in toks if t in directive_terms)
+
+    # Syntax texture (lightweight approximations).
+    subordinator_terms = {
+        "because","although","though","while","if","when","since","unless","whereas","after","before","once","until"
+    }
+    subordinator_hits = sum(1 for t in toks if t in subordinator_terms)
+    parenthetical_hits = combined.count("(") + combined.count(")")
+    appositive_hits = len(re.findall(r",\s+(?:a|an|the|which|who|that)\b", combined.lower()))
+
+    # Lexical avoidance categories (rarely-used / stylistic no-go zones).
+    avoidance_categories = {
+        "intensifiers": {"very","really","extremely","highly","incredibly","quite","so"},
+        "emotional_adjectives": {"happy","sad","angry","afraid","anxious","excited","terrible","wonderful","awful","lovely"},
+        "informal_slang": {"cool","awesome","yeah","ok","okay","stuff","gonna","wanna","kinda","sorta"}
+    }
+    avoidance_rates = {
+        name: approx_rate_per_1000_words(sum(1 for t in toks if t in terms), total_words)
+        for name, terms in avoidance_categories.items()
+    }
 
     sent_bins = [(0,9),(10,17),(18,25),(26,40),(41,None)]
     sent_hist = histogram(all_sent_lens, sent_bins)
@@ -900,6 +990,17 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
 
     def safe_stdev(xs: List[int]) -> float:
         return float(statistics.pstdev(xs)) if len(xs) >= 2 else 0.0
+
+    # Self-echo repetition rates (bigrams/trigrams reused above a threshold).
+    def repeat_rate(ngram_list: List[str], min_count: int = 3) -> float:
+        if not ngram_list:
+            return 0.0
+        counts = collections.Counter(ngram_list)
+        repeat_tokens = sum(c for _, c in counts.items() if c >= min_count)
+        return repeat_tokens / max(1, len(ngram_list))
+
+    bigrams_all = list(ngrams(2))
+    trigrams_all = list(ngrams(3))
 
     measurements = {
         "totals": {
@@ -945,12 +1046,50 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
         },
         "templates_signals": {
             "sentence_openers_top": [{"phrase": p, "count": c} for p, c in sent_openers.most_common(20)],
-            "transition_openers_top": [{"phrase": p, "count": c} for p, c in transition_hits.most_common(15)]
+            "transition_openers_top": [{"phrase": p, "count": c} for p, c in transition_hits.most_common(15)],
+            "transition_marker_positions": {
+                "start_rate_per_1000w": approx_rate_per_1000_words(transition_start_hits, total_words),
+                "mid_rate_per_1000w": approx_rate_per_1000_words(transition_mid_hits, total_words)
+            }
+        },
+        "rhetoric_moves": {
+            "claim_rate": approx_rate_per_1000_words(claim_hits, total_words),
+            "evidence_rate": approx_rate_per_1000_words(evidence_hits, total_words),
+            "counterpoint_rate": approx_rate_per_1000_words(counter_hits, total_words),
+            "concession_rate": approx_rate_per_1000_words(concession_hits, total_words),
+            "synthesis_rate": approx_rate_per_1000_words(synthesis_hits, total_words),
+            "claim_evidence_ratio": claim_hits / max(1, evidence_hits)
+        },
+        "paragraph_cadence": {
+            "opening_sentence_length_mean": safe_mean(opening_lens),
+            "opening_sentence_length_stdev": safe_stdev(opening_lens),
+            "closing_sentence_length_mean": safe_mean(closing_lens),
+            "closing_sentence_length_stdev": safe_stdev(closing_lens)
+        },
+        "epistemic_profile": {
+            "speculative_rate": approx_rate_per_1000_words(speculative_hits, total_words),
+            "probabilistic_rate": approx_rate_per_1000_words(probabilistic_hits, total_words),
+            "assertive_rate": approx_rate_per_1000_words(assertive_hits, total_words),
+            "directive_rate": approx_rate_per_1000_words(directive_hits, total_words)
+        },
+        "syntax_texture": {
+            "subordinate_clause_rate": approx_rate_per_1000_words(subordinator_hits, total_words),
+            "parenthetical_rate": approx_rate_per_1000_words(parenthetical_hits, total_words),
+            "appositive_rate": approx_rate_per_1000_words(appositive_hits, total_words)
         },
         "lexical_signals": {
             "rare_words": rare_words,
             "rare_word_max_count": max_count,
             "rare_word_min_length": 4
+        },
+        "lexical_avoidance": {
+            "category_rates_per_1000w": avoidance_rates,
+            "rare_words": rare_words
+        },
+        "repetition": {
+            "bigram_repeat_rate": repeat_rate(bigrams_all),
+            "trigram_repeat_rate": repeat_rate(trigrams_all),
+            "min_repeat_count": 3
         },
         "common_phrases": {
             "bigrams_top": [{"phrase": p, "count": c} for p, c in big],

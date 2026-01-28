@@ -388,6 +388,77 @@ def enforce_emoji_policy(text: str, policy: str) -> tuple[str, int, int]:
     text = apply_removed_emoji_punctuation(text)
     return text, removed, replaced
 
+
+def apply_humanizer_variance(
+    text: str,
+    seed: int,
+    max_ops_per_1000w: float,
+    allowed_ops: List[str]
+) -> tuple[str, List[Dict[str, Any]]]:
+    # Apply small, bounded stochastic edits to reduce AI-typical uniformity.
+    ops_applied: List[Dict[str, Any]] = []
+    if not allowed_ops or max_ops_per_1000w <= 0:
+        return text, ops_applied
+    total_words = len(words(text))
+    max_ops = max(0, int((total_words / 1000.0) * max_ops_per_1000w))
+    if max_ops == 0:
+        return text, ops_applied
+    rng = random.Random(seed)
+
+    # Small, meaning-preserving substitutions.
+    transition_variants = {
+        "however": ["yet", "nevertheless", "nonetheless"],
+        "therefore": ["thus", "hence"],
+        "moreover": ["furthermore"],
+        "for example": ["for instance"],
+        "in sum": ["overall", "in short"]
+    }
+    filler_terms = {"very", "really", "quite", "rather"}
+
+    def replace_transition(text_in: str, budget: int) -> tuple[str, int]:
+        if budget <= 0:
+            return text_in, 0
+        count = 0
+        for term, variants in transition_variants.items():
+            if count >= budget:
+                break
+            pattern = re.compile(rf"\\b{re.escape(term)}\\b", re.IGNORECASE)
+            matches = list(pattern.finditer(text_in))
+            rng.shuffle(matches)
+            for m in matches[: max(0, budget - count)]:
+                replacement = rng.choice(variants)
+                text_in = text_in[:m.start()] + replacement + text_in[m.end():]
+                count += 1
+        return text_in, count
+
+    def drop_fillers(text_in: str, budget: int) -> tuple[str, int]:
+        if budget <= 0:
+            return text_in, 0
+        count = 0
+        pattern = re.compile(rf"\\b({'|'.join(sorted(filler_terms))})\\b", re.IGNORECASE)
+        matches = list(pattern.finditer(text_in))
+        rng.shuffle(matches)
+        for m in matches[: max(0, budget - count)]:
+            text_in = text_in[:m.start()] + "" + text_in[m.end():]
+            count += 1
+        # Clean up extra spaces
+        text_in = re.sub(r"\\s{2,}", " ", text_in)
+        return text_in, count
+
+    remaining = max_ops
+    if "swap_transition" in allowed_ops and remaining > 0:
+        text, applied = replace_transition(text, remaining)
+        if applied:
+            ops_applied.append({"op": "swap_transition", "count": applied})
+        remaining -= applied
+    if "drop_filler" in allowed_ops and remaining > 0:
+        text, applied = drop_fillers(text, remaining)
+        if applied:
+            ops_applied.append({"op": "drop_filler", "count": applied})
+        remaining -= applied
+
+    return text, ops_applied
+
 def resolve_general_guidelines_path() -> Path | None:
     # Resolve optional humanizer guidelines from CWD or script directory.
     cwd_path = Path.cwd() / HUMANIZER_GUIDELINES_FILENAME
@@ -1611,6 +1682,8 @@ def compute_measurements(text: str) -> Dict[str, Any]:
         "first","second","third","finally","overall"
     }
     transition_hits = collections.Counter()
+    transition_start_hits = 0
+    transition_mid_hits = 0
     for s in split_sentences(text):
         ws = [t.lower() for t in words(s)]
         if len(ws) >= 2:
@@ -1624,6 +1697,124 @@ def compute_measurements(text: str) -> Dict[str, Any]:
                 if cand and cand in transition_terms:
                     transition_hits[cand] += 1
                     break
+        # Discourse marker position (start vs mid-sentence)
+        if ws:
+            start_candidate = None
+            if len(ws) >= 3:
+                start_candidate = " ".join(ws[:3])
+            elif len(ws) >= 2:
+                start_candidate = " ".join(ws[:2])
+            else:
+                start_candidate = ws[0]
+            if start_candidate in transition_terms:
+                transition_start_hits += 1
+            else:
+                for term in transition_terms:
+                    if term in " ".join(ws[1:]):
+                        transition_mid_hits += 1
+                        break
+
+    # Rhetorical move signals (simple, interpretable heuristics).
+    rhetoric_markers = {
+        "claim": [
+            "we argue", "we contend", "we propose", "this suggests", "this shows",
+            "this indicates", "therefore", "thus", "hence", "overall", "in sum"
+        ],
+        "evidence": [
+            "for example", "for instance", "according to", "data show", "evidence",
+            "study", "report", "survey", "as shown"
+        ],
+        "counterpoint": [
+            "however", "yet", "but", "on the other hand", "nevertheless", "nonetheless"
+        ],
+        "concession": [
+            "although", "though", "even though", "while", "granted", "admittedly"
+        ],
+        "synthesis": [
+            "overall", "in sum", "in short", "on balance", "taken together", "in conclusion"
+        ]
+    }
+
+    def sentence_has_marker(sentence: str, markers: List[str]) -> bool:
+        s = sentence.lower()
+        return any(m in s for m in markers)
+
+    all_sents = split_sentences(text)
+    claim_hits = sum(1 for s in all_sents if sentence_has_marker(s, rhetoric_markers["claim"]))
+    evidence_hits = sum(1 for s in all_sents if sentence_has_marker(s, rhetoric_markers["evidence"]))
+    counter_hits = sum(1 for s in all_sents if sentence_has_marker(s, rhetoric_markers["counterpoint"]))
+    concession_hits = sum(1 for s in all_sents if sentence_has_marker(s, rhetoric_markers["concession"]))
+    synthesis_hits = sum(1 for s in all_sents if sentence_has_marker(s, rhetoric_markers["synthesis"]))
+
+    # Paragraph cadence profile.
+    opening_lens: List[int] = []
+    closing_lens: List[int] = []
+    for p in paras:
+        sents = split_sentences(p)
+        if not sents:
+            continue
+        opening_lens.append(len(words(sents[0])))
+        closing_lens.append(len(words(sents[-1])))
+
+    def safe_mean(xs: List[int]) -> float:
+        return float(sum(xs) / len(xs)) if xs else 0.0
+
+    def safe_stdev(xs: List[int]) -> float:
+        if len(xs) < 2:
+            return 0.0
+        mean = safe_mean(xs)
+        return (sum((x - mean) ** 2 for x in xs) / len(xs)) ** 0.5
+
+    # Epistemic stance bands (simple token markers).
+    speculative_terms = {"may","might","perhaps","possibly","could","seems","appears","suggests","tends"}
+    probabilistic_terms = {"likely","unlikely","probable","probably","odds","chance"}
+    assertive_terms = {"clearly","certainly","undoubtedly","indeed","surely"}
+    directive_terms = {"must","should","need","needs","ought","required"}
+
+    speculative_hits = sum(1 for t in toks if t in speculative_terms)
+    probabilistic_hits = sum(1 for t in toks if t in probabilistic_terms)
+    assertive_hits = sum(1 for t in toks if t in assertive_terms)
+    directive_hits = sum(1 for t in toks if t in directive_terms)
+
+    # Syntax texture (lightweight approximations).
+    subordinator_terms = {
+        "because","although","though","while","if","when","since","unless","whereas","after","before","once","until"
+    }
+    subordinator_hits = sum(1 for t in toks if t in subordinator_terms)
+    parenthetical_hits = text.count("(") + text.count(")")
+    appositive_hits = len(re.findall(r",\s+(?:a|an|the|which|who|that)\b", text.lower()))
+
+    # Lexical avoidance categories (rarely-used / stylistic no-go zones).
+    avoidance_categories = {
+        "intensifiers": {"very","really","extremely","highly","incredibly","quite","so"},
+        "emotional_adjectives": {"happy","sad","angry","afraid","anxious","excited","terrible","wonderful","awful","lovely"},
+        "informal_slang": {"cool","awesome","yeah","ok","okay","stuff","gonna","wanna","kinda","sorta"}
+    }
+    avoidance_rates = {
+        name: approx_rate_per_1000_words(sum(1 for t in toks if t in terms), total_words)
+        for name, terms in avoidance_categories.items()
+    }
+
+    # Self-echo repetition rates (bigrams/trigrams reused above a threshold).
+    def repeat_rate(ngram_list: List[str], min_count: int = 3) -> float:
+        if not ngram_list:
+            return 0.0
+        counts = collections.Counter(ngram_list)
+        repeat_tokens = sum(c for _, c in counts.items() if c >= min_count)
+        return repeat_tokens / max(1, len(ngram_list))
+
+    def ngrams_all(n: int) -> List[str]:
+        toks_local = [t.lower() for t in w]
+        out: List[str] = []
+        for i in range(0, len(toks_local) - n + 1):
+            chunk = toks_local[i:i+n]
+            if sum(1 for x in chunk if x in {"the","a","an","and","or","but","if","then","to","of","in","on","for","with","as"}) >= n - 1:
+                continue
+            out.append(" ".join(chunk))
+        return out
+
+    bigrams_all = ngrams_all(2)
+    trigrams_all = ngrams_all(3)
 
     return {
         "totals": {
@@ -1665,7 +1856,44 @@ def compute_measurements(text: str) -> Dict[str, Any]:
         },
         "templates_signals": {
             "sentence_openers_top": [{"phrase": p, "count": c} for p, c in sent_openers.most_common(20)],
-            "transition_openers_top": [{"phrase": p, "count": c} for p, c in transition_hits.most_common(15)]
+            "transition_openers_top": [{"phrase": p, "count": c} for p, c in transition_hits.most_common(15)],
+            "transition_marker_positions": {
+                "start_rate_per_1000w": approx_rate_per_1000_words(transition_start_hits, total_words),
+                "mid_rate_per_1000w": approx_rate_per_1000_words(transition_mid_hits, total_words)
+            }
+        },
+        "rhetoric_moves": {
+            "claim_rate": approx_rate_per_1000_words(claim_hits, total_words),
+            "evidence_rate": approx_rate_per_1000_words(evidence_hits, total_words),
+            "counterpoint_rate": approx_rate_per_1000_words(counter_hits, total_words),
+            "concession_rate": approx_rate_per_1000_words(concession_hits, total_words),
+            "synthesis_rate": approx_rate_per_1000_words(synthesis_hits, total_words),
+            "claim_evidence_ratio": claim_hits / max(1, evidence_hits)
+        },
+        "paragraph_cadence": {
+            "opening_sentence_length_mean": safe_mean(opening_lens),
+            "opening_sentence_length_stdev": safe_stdev(opening_lens),
+            "closing_sentence_length_mean": safe_mean(closing_lens),
+            "closing_sentence_length_stdev": safe_stdev(closing_lens)
+        },
+        "epistemic_profile": {
+            "speculative_rate": approx_rate_per_1000_words(speculative_hits, total_words),
+            "probabilistic_rate": approx_rate_per_1000_words(probabilistic_hits, total_words),
+            "assertive_rate": approx_rate_per_1000_words(assertive_hits, total_words),
+            "directive_rate": approx_rate_per_1000_words(directive_hits, total_words)
+        },
+        "syntax_texture": {
+            "subordinate_clause_rate": approx_rate_per_1000_words(subordinator_hits, total_words),
+            "parenthetical_rate": approx_rate_per_1000_words(parenthetical_hits, total_words),
+            "appositive_rate": approx_rate_per_1000_words(appositive_hits, total_words)
+        },
+        "lexical_avoidance": {
+            "category_rates_per_1000w": avoidance_rates
+        },
+        "repetition": {
+            "bigram_repeat_rate": repeat_rate(bigrams_all),
+            "trigram_repeat_rate": repeat_rate(trigrams_all),
+            "min_repeat_count": 3
         }
     }
 
@@ -1687,17 +1915,22 @@ def compute_style_compliance(
 ) -> Dict[str, Any]:
     # Compare output measurements to fingerprint measurements and return score + deltas.
     fp_meas = fingerprint.get("measurements", {}) if isinstance(fingerprint, dict) else {}
+    validators = fingerprint.get("validators", {}) if isinstance(fingerprint, dict) else {}
+    weights = validators.get("weights", {}) if isinstance(validators, dict) else {}
     out_meas = compute_measurements(output_text)
     deltas: List[Dict[str, Any]] = []
 
-    score_parts: List[float] = []
+    section_scores: Dict[str, List[float]] = {}
+
+    def add_score(section: str, value: float) -> None:
+        section_scores.setdefault(section, []).append(value)
 
     # Sentence length histogram
     fp_sent = fp_meas.get("sentence", {}).get("length_words", {}).get("histogram_p")
     out_sent = out_meas.get("sentence", {}).get("length_words", {}).get("histogram_p")
     if isinstance(fp_sent, list) and isinstance(out_sent, list) and len(fp_sent) == len(out_sent):
         diff = l1_distance(fp_sent, out_sent) / 2.0
-        score_parts.append(max(0.0, 1.0 - min(1.0, diff)))
+        add_score("sentence", max(0.0, 1.0 - min(1.0, diff)))
         if diff > 0.15:
             deltas.append({"metric": "sentence_length_histogram", "diff": diff})
 
@@ -1706,7 +1939,7 @@ def compute_style_compliance(
     out_para = out_meas.get("paragraph", {}).get("length_sentences_histogram_p")
     if isinstance(fp_para, list) and isinstance(out_para, list) and len(fp_para) == len(out_para):
         diff = l1_distance(fp_para, out_para) / 2.0
-        score_parts.append(max(0.0, 1.0 - min(1.0, diff)))
+        add_score("paragraph", max(0.0, 1.0 - min(1.0, diff)))
         if diff > 0.15:
             deltas.append({"metric": "paragraph_length_histogram", "diff": diff})
 
@@ -1715,7 +1948,7 @@ def compute_style_compliance(
     out_one = out_meas.get("paragraph", {}).get("one_sentence_paragraph_rate")
     if isinstance(fp_one, (int, float)) and isinstance(out_one, (int, float)):
         diff = abs(fp_one - out_one)
-        score_parts.append(max(0.0, 1.0 - min(1.0, diff)))
+        add_score("paragraph", max(0.0, 1.0 - min(1.0, diff)))
         if diff > 0.1:
             deltas.append({"metric": "one_sentence_paragraph_rate", "diff": diff})
 
@@ -1732,7 +1965,7 @@ def compute_style_compliance(
                     deltas.append({"metric": f"punctuation.{k}", "diff": diff})
         if diffs:
             avg = sum(diffs) / len(diffs)
-            score_parts.append(max(0.0, 1.0 - min(1.0, avg)))
+            add_score("punctuation", max(0.0, 1.0 - min(1.0, avg)))
 
     # Contractions / Oxford comma signals
     fp_ortho = fp_meas.get("orthography_signals", {})
@@ -1740,7 +1973,7 @@ def compute_style_compliance(
     for key in ("contractions_rate", "oxford_comma_signal"):
         if isinstance(fp_ortho.get(key), (int, float)) and isinstance(out_ortho.get(key), (int, float)):
             diff = relative_diff(float(out_ortho[key]), float(fp_ortho[key]))
-            score_parts.append(max(0.0, 1.0 - min(1.0, diff)))
+            add_score("orthography", max(0.0, 1.0 - min(1.0, diff)))
             if diff > 0.5:
                 deltas.append({"metric": f"orthography.{key}", "diff": diff})
 
@@ -1757,9 +1990,135 @@ def compute_style_compliance(
                     deltas.append({"metric": f"stance.{k}", "diff": diff})
         if diffs:
             avg = sum(diffs) / len(diffs)
-            score_parts.append(max(0.0, 1.0 - min(1.0, avg)))
+            add_score("stance", max(0.0, 1.0 - min(1.0, avg)))
 
-    score = sum(score_parts) / len(score_parts) if score_parts else 1.0
+    # Rhetoric moves
+    fp_rhet = fp_meas.get("rhetoric_moves", {})
+    out_rhet = out_meas.get("rhetoric_moves", {})
+    if isinstance(fp_rhet, dict) and isinstance(out_rhet, dict) and fp_rhet:
+        diffs = []
+        for k, target in fp_rhet.items():
+            if k in out_rhet and isinstance(target, (int, float)):
+                diff = relative_diff(float(out_rhet.get(k, 0.0)), float(target))
+                diffs.append(diff)
+                if diff > 0.6:
+                    deltas.append({"metric": f"rhetoric_moves.{k}", "diff": diff})
+        if diffs:
+            avg = sum(diffs) / len(diffs)
+            add_score("rhetoric_moves", max(0.0, 1.0 - min(1.0, avg)))
+
+    # Epistemic profile
+    fp_epi = fp_meas.get("epistemic_profile", {})
+    out_epi = out_meas.get("epistemic_profile", {})
+    if isinstance(fp_epi, dict) and isinstance(out_epi, dict) and fp_epi:
+        diffs = []
+        for k, target in fp_epi.items():
+            if k in out_epi and isinstance(target, (int, float)):
+                diff = relative_diff(float(out_epi.get(k, 0.0)), float(target))
+                diffs.append(diff)
+                if diff > 0.6:
+                    deltas.append({"metric": f"epistemic_profile.{k}", "diff": diff})
+        if diffs:
+            avg = sum(diffs) / len(diffs)
+            add_score("epistemic_profile", max(0.0, 1.0 - min(1.0, avg)))
+
+    # Paragraph cadence
+    fp_cad = fp_meas.get("paragraph_cadence", {})
+    out_cad = out_meas.get("paragraph_cadence", {})
+    if isinstance(fp_cad, dict) and isinstance(out_cad, dict) and fp_cad:
+        diffs = []
+        for k, target in fp_cad.items():
+            if k in out_cad and isinstance(target, (int, float)):
+                diff = relative_diff(float(out_cad.get(k, 0.0)), float(target))
+                diffs.append(diff)
+                if diff > 0.6:
+                    deltas.append({"metric": f"paragraph_cadence.{k}", "diff": diff})
+        if diffs:
+            avg = sum(diffs) / len(diffs)
+            add_score("paragraph_cadence", max(0.0, 1.0 - min(1.0, avg)))
+
+    # Syntax texture
+    fp_tex = fp_meas.get("syntax_texture", {})
+    out_tex = out_meas.get("syntax_texture", {})
+    if isinstance(fp_tex, dict) and isinstance(out_tex, dict) and fp_tex:
+        diffs = []
+        for k, target in fp_tex.items():
+            if k in out_tex and isinstance(target, (int, float)):
+                diff = relative_diff(float(out_tex.get(k, 0.0)), float(target))
+                diffs.append(diff)
+                if diff > 0.6:
+                    deltas.append({"metric": f"syntax_texture.{k}", "diff": diff})
+        if diffs:
+            avg = sum(diffs) / len(diffs)
+            add_score("syntax_texture", max(0.0, 1.0 - min(1.0, avg)))
+
+    # Lexical avoidance category rates
+    fp_avoid = fp_meas.get("lexical_avoidance", {}).get("category_rates_per_1000w", {})
+    out_avoid = out_meas.get("lexical_avoidance", {}).get("category_rates_per_1000w", {})
+    if isinstance(fp_avoid, dict) and isinstance(out_avoid, dict) and fp_avoid:
+        diffs = []
+        for k, target in fp_avoid.items():
+            if k in out_avoid and isinstance(target, (int, float)):
+                diff = relative_diff(float(out_avoid.get(k, 0.0)), float(target))
+                diffs.append(diff)
+                if diff > 0.6:
+                    deltas.append({"metric": f"lexical_avoidance.{k}", "diff": diff})
+        if diffs:
+            avg = sum(diffs) / len(diffs)
+            add_score("lexical_avoidance", max(0.0, 1.0 - min(1.0, avg)))
+
+    # Discourse marker position rates
+    fp_disc = fp_meas.get("templates_signals", {}).get("transition_marker_positions", {})
+    out_disc = out_meas.get("templates_signals", {}).get("transition_marker_positions", {})
+    if isinstance(fp_disc, dict) and isinstance(out_disc, dict) and fp_disc:
+        diffs = []
+        for k, target in fp_disc.items():
+            if k in out_disc and isinstance(target, (int, float)):
+                diff = relative_diff(float(out_disc.get(k, 0.0)), float(target))
+                diffs.append(diff)
+                if diff > 0.6:
+                    deltas.append({"metric": f"discourse_markers.{k}", "diff": diff})
+        if diffs:
+            avg = sum(diffs) / len(diffs)
+            add_score("discourse_markers", max(0.0, 1.0 - min(1.0, avg)))
+
+    # Self-echo repetition rates
+    fp_rep = fp_meas.get("repetition", {})
+    out_rep = out_meas.get("repetition", {})
+    if isinstance(fp_rep, dict) and isinstance(out_rep, dict) and fp_rep:
+        diffs = []
+        for k in ("bigram_repeat_rate", "trigram_repeat_rate"):
+            if k in out_rep and isinstance(fp_rep.get(k), (int, float)):
+                diff = relative_diff(float(out_rep.get(k, 0.0)), float(fp_rep.get(k, 0.0)))
+                diffs.append(diff)
+                if diff > 0.6:
+                    deltas.append({"metric": f"repetition.{k}", "diff": diff})
+        if diffs:
+            avg = sum(diffs) / len(diffs)
+            add_score("repetition", max(0.0, 1.0 - min(1.0, avg)))
+
+    # Aggregate section scores with optional weighting.
+    section_avgs: Dict[str, float] = {}
+    for section, vals in section_scores.items():
+        if vals:
+            section_avgs[section] = sum(vals) / len(vals)
+
+    if isinstance(weights, dict) and section_avgs:
+        total_weight = 0.0
+        weighted_sum = 0.0
+        for section, score_val in section_avgs.items():
+            w = weights.get(section, 1.0)
+            if isinstance(w, (int, float)):
+                w = float(w)
+            else:
+                w = 1.0
+            if w <= 0:
+                continue
+            weighted_sum += score_val * w
+            total_weight += w
+        score = weighted_sum / total_weight if total_weight > 0 else 1.0
+    else:
+        score = sum(section_avgs.values()) / len(section_avgs) if section_avgs else 1.0
     return {
         "score": score,
         "deltas": deltas,
@@ -2167,6 +2526,24 @@ def main() -> int:
                 print_error("LLM did not return final_markdown.")
                 print(raw)
                 raise RuntimeError("LLM did not return final_markdown")
+
+            # Optional stochastic micro-variation layer (bounded, deterministic).
+            variance = fingerprint.get("controls", {}).get("humanizer_variance", {}) if isinstance(fingerprint, dict) else {}
+            if isinstance(variance, dict) and variance.get("enabled"):
+                seed = int(variance.get("seed", 0))
+                max_ops_per_1000w = float(variance.get("max_ops_per_1000w", 0.0))
+                allowed_ops = variance.get("allowed_ops", ["swap_transition", "drop_filler"])
+                if isinstance(allowed_ops, list):
+                    allowed_ops = [str(op) for op in allowed_ops if isinstance(op, (str, int, float))]
+                else:
+                    allowed_ops = []
+                final_md, ops_applied = apply_humanizer_variance(final_md, seed, max_ops_per_1000w, allowed_ops)
+                if ops_applied:
+                    out_obj.setdefault("deviations", []).append({
+                        "rule_or_field": "controls.humanizer_variance",
+                        "reason": "Applied bounded stochastic micro-variations.",
+                        "ops": ops_applied
+                    })
 
             if forbid_em_dashes:
                 final_md, removed = enforce_no_em_dashes(final_md)

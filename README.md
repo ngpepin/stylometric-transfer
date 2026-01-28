@@ -105,6 +105,12 @@ In research terms, the system performs:
   - Sentence-opener and transition templates (top patterns)
   - Rare-word signals (words the author rarely uses)
   - One-sentence paragraph rate / paragraph rhythm
+  - Rhetorical move rates (claim/evidence/counterpoint/concession/synthesis)
+  - Paragraph cadence (opening/closing sentence length stats)
+  - Epistemic stance bands (speculative/probabilistic/assertive/directive)
+  - Syntax texture (subordinate/parenthetical/appositive rates)
+  - Discourse marker positions (start vs mid-sentence)
+  - Repetition signals (bigram/trigram repeat rates)
 - Produces a **comprehensive JSON style profile**
 - Rewrites Markdown with:
   - Meaning preservation
@@ -350,9 +356,9 @@ Contents include:
 - `metadata.corpus.documents`: per-document metadata (path, title when available, size, language/locale, genres, time range)
 - `measurements`: raw statistical signals (including `orthography_signals.spelling_variant`, paragraph rhythm and `lexical_signals.rare_words`)
 - `targets`: stylistic constraints and distributions (including optional persona pronoun preferences)
-- `lexicon`: preferred and avoided words and phrases
+- `lexicon`: preferred and avoided words and phrases (includes soft avoid lists)
 - `templates`: syntactic and rhetorical patterns
-- `controls`: strictness and priority ordering
+- `controls`: strictness, priority ordering, and optional humanizer variance (seeded, bounded micro‑variation)
 - `validators`: scoring weights and checks
 - `derived_instructions`: compiled prompts for generation and rewriting
 
@@ -376,6 +382,12 @@ The v1.1.0 regression suite (no API calls) is found in `tests/test_v1_1_0_regres
 
 ```bash
 ./tests/run_v1_1_0_regression.sh
+```
+
+The v1.5.x regression suite (no API calls) is found in `tests/test_v1_5_X_regression.py` and is also executed by `run_smoke.sh`:
+
+```bash
+./tests/run_v1_5_X_regression.sh
 ```
 
 ---

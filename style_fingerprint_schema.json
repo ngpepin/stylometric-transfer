@@ -180,7 +180,51 @@
           "type": "object",
           "properties": {
             "sentence_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
-            "transition_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } }
+            "transition_openers_top": { "type": "array", "items": { "$ref": "#/definitions/phrase_count" } },
+            "transition_marker_positions": {
+              "type": "object",
+              "properties": {
+                "start_rate_per_1000w": { "type": "number" },
+                "mid_rate_per_1000w": { "type": "number" }
+              }
+            }
+          }
+        },
+        "rhetoric_moves": {
+          "type": "object",
+          "properties": {
+            "claim_rate": { "type": "number" },
+            "evidence_rate": { "type": "number" },
+            "counterpoint_rate": { "type": "number" },
+            "concession_rate": { "type": "number" },
+            "synthesis_rate": { "type": "number" },
+            "claim_evidence_ratio": { "type": "number" }
+          }
+        },
+        "paragraph_cadence": {
+          "type": "object",
+          "properties": {
+            "opening_sentence_length_mean": { "type": "number" },
+            "opening_sentence_length_stdev": { "type": "number" },
+            "closing_sentence_length_mean": { "type": "number" },
+            "closing_sentence_length_stdev": { "type": "number" }
+          }
+        },
+        "epistemic_profile": {
+          "type": "object",
+          "properties": {
+            "speculative_rate": { "type": "number" },
+            "probabilistic_rate": { "type": "number" },
+            "assertive_rate": { "type": "number" },
+            "directive_rate": { "type": "number" }
+          }
+        },
+        "syntax_texture": {
+          "type": "object",
+          "properties": {
+            "subordinate_clause_rate": { "type": "number" },
+            "parenthetical_rate": { "type": "number" },
+            "appositive_rate": { "type": "number" }
           }
         },
         "lexical_signals": {
@@ -190,6 +234,21 @@
             "rare_words": { "type": "array", "items": { "$ref": "#/definitions/word_count" } },
             "rare_word_max_count": { "type": "integer" },
             "rare_word_min_length": { "type": "integer" }
+          }
+        },
+        "lexical_avoidance": {
+          "type": "object",
+          "properties": {
+            "category_rates_per_1000w": { "type": "object", "additionalProperties": { "type": "number" } },
+            "rare_words": { "type": "array", "items": { "$ref": "#/definitions/word_count" } }
+          }
+        },
+        "repetition": {
+          "type": "object",
+          "properties": {
+            "bigram_repeat_rate": { "type": "number" },
+            "trigram_repeat_rate": { "type": "number" },
+            "min_repeat_count": { "type": "integer" }
           }
         },
         "common_phrases": {
@@ -226,6 +285,49 @@
           "properties": {
             "pronoun_preferences": { "$ref": "#/definitions/pronoun_preferences" }
           }
+        },
+        "rhetoric_moves": {
+          "type": "object",
+          "properties": {
+            "claim_rate": { "$ref": "#/definitions/range" },
+            "evidence_rate": { "$ref": "#/definitions/range" },
+            "counterpoint_rate": { "$ref": "#/definitions/range" },
+            "concession_rate": { "$ref": "#/definitions/range" },
+            "synthesis_rate": { "$ref": "#/definitions/range" },
+            "claim_evidence_ratio": { "$ref": "#/definitions/range" }
+          }
+        },
+        "epistemic_profile": {
+          "type": "object",
+          "properties": {
+            "speculative_rate": { "$ref": "#/definitions/range" },
+            "probabilistic_rate": { "$ref": "#/definitions/range" },
+            "assertive_rate": { "$ref": "#/definitions/range" },
+            "directive_rate": { "$ref": "#/definitions/range" }
+          }
+        },
+        "paragraph_cadence": {
+          "type": "object",
+          "properties": {
+            "opening_sentence_length_mean": { "$ref": "#/definitions/range" },
+            "opening_sentence_length_stdev": { "$ref": "#/definitions/range" },
+            "closing_sentence_length_mean": { "$ref": "#/definitions/range" },
+            "closing_sentence_length_stdev": { "$ref": "#/definitions/range" }
+          }
+        },
+        "discourse_markers": {
+          "type": "object",
+          "properties": {
+            "start_rate_per_1000w": { "$ref": "#/definitions/range" },
+            "mid_rate_per_1000w": { "$ref": "#/definitions/range" }
+          }
+        },
+        "repetition": {
+          "type": "object",
+          "properties": {
+            "bigram_repeat_rate": { "$ref": "#/definitions/range" },
+            "trigram_repeat_rate": { "$ref": "#/definitions/range" }
+          }
         }
       }
     },
@@ -236,6 +338,7 @@
         "preferred_words": { "type": "array", "items": { "type": "string" } },
         "preferred_phrases": { "type": "array", "items": { "type": "string" } },
         "avoid_words": { "type": "array", "items": { "type": "string" } },
+        "avoid_words_soft": { "type": "array", "items": { "type": "string" } },
         "avoid_phrases": { "type": "array", "items": { "type": "string" } },
         "synonym_preferences": { "type": "object", "additionalProperties": { "type": "string" } },
         "notes": { "type": "string" }
@@ -260,7 +363,16 @@
       "properties": {
         "priority_order": { "type": "array", "items": { "type": "string" } },
         "strictness": { "type": ["string", "object"] },
-        "rewrite_policy": { "type": ["string", "object"] }
+        "rewrite_policy": { "type": ["string", "object"] },
+        "humanizer_variance": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "seed": { "type": "integer" },
+            "max_ops_per_1000w": { "type": "number" },
+            "allowed_ops": { "type": "array", "items": { "type": "string" } }
+          }
+        }
       }
     },
     "validators": {

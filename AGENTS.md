@@ -253,6 +253,12 @@ Current measurements include:
 - Rare‑word signals (words the author rarely uses)
 - Stance signals (hedging/boosting/pronouns)
 - Sentence‑opener and transition templates
+- Rhetorical move signals (claim/evidence/counterpoint/concession/synthesis)
+- Paragraph cadence (opening/closing sentence length stats)
+- Epistemic profile (speculative/probabilistic/assertive/directive)
+- Syntax texture (subordinate/parenthetical/appositive rates)
+- Discourse marker position (start vs mid‑sentence rates)
+- Repetition signals (bigram/trigram repeat rates)
 
 Schema note:
 - `measurements.orthography_signals.spelling_variant` records the spelling heuristic output

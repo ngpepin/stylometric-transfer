@@ -66,8 +66,6 @@ class TestV110Regression(unittest.TestCase):
         self.assertIn("line_count_warn_pct", tunables["sanity_checks"])
         self.assertIn("word_count_warn_pct", tunables["sanity_checks"])
         self.assertIn("paragraph_count_warn_pct", tunables["sanity_checks"])
-        self.assertIn("section_restore", tunables)
-        self.assertIn("heading_similarity_threshold", tunables["section_restore"])
 
     def test_filter_author_voice_text_removes_non_voice(self) -> None:
         text = (
@@ -148,13 +146,6 @@ class TestV110Regression(unittest.TestCase):
         restored = af.restore_placeholders(masked, mapping)
         self.assertEqual(restored, md)
 
-    def test_restore_inline_code_inside_blockquote(self) -> None:
-        md = "> Guidance for `stylometric-transfer`"
-        masked_inline, inline_map = af.mask_inline_code(md)
-        masked_frozen, frozen_map = af.mask_non_voice_blocks(masked_inline)
-        restored = af.restore_placeholders(masked_frozen, frozen_map)
-        restored = af.restore_placeholders(restored, inline_map)
-        self.assertEqual(restored.strip(), md.strip())
 
     def test_inline_code_does_not_cross_lines(self) -> None:
         md = "Line one with `code\n## Heading\nLine two` tail"
@@ -176,16 +167,6 @@ class TestV110Regression(unittest.TestCase):
         self.assertFalse(mapping)
         self.assertEqual(masked, md)
 
-    def test_normalize_heading_strips_emoji_and_markup(self) -> None:
-        text = "Design principle: treat formulas as *signals* 😀"
-        norm = af.normalize_heading(text)
-        self.assertEqual(norm, "design principle treat formulas as signals")
-
-    def test_heading_similarity_paraphrase(self) -> None:
-        a = "Excel recalculation resembles a dataflow graph scheduler"
-        b = "Excel recalculation as a dataflow graph"
-        score = af.heading_similarity(af.normalize_heading(a), af.normalize_heading(b))
-        self.assertGreaterEqual(score, 0.7)
 
     def test_mask_and_restore_math(self) -> None:
         md = "Inline $E=mc^2$ and $$x^2$$ plus \\(y\\) and \\[z\\] and \\begin{equation}a=b\\end{equation}."

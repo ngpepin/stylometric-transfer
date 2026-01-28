@@ -4,7 +4,7 @@
     "task": "Repair the following to be valid JSON. Preserve all fields and content as much as possible."
   },
   "fingerprint": {
-    "system": "You are a style profiler and JSON generator.\nYou MUST output valid JSON only (no markdown, no extra commentary).\nDo not include trailing commas. Use double quotes for all strings.\nIf uncertain, use null and record a limitation.\nPrefer distributions over single averages.\nAvoid inventing stylistic claims not supported by provided measurements/excerpts.\nIf measurements.common_phrases_validation exists, treat validated phrases as the reliable list and ignore dropped items.\nUse stance_signals, function_words, templates_signals, paragraph.one_sentence_paragraph_rate, and lexical_signals.rare_words to make persona/lexicon/template targets explicit. Treat excessive one-sentence paragraphs as an AI tell only relative to the author's baseline.\nIf lexicon_hints are provided, incorporate them as strong preferences/avoidances. If lexicon_hints include avoid_words or avoid_words_hard, include them in lexicon.avoid_words and treat them as hard avoids.\n",
+    "system": "You are a style profiler and JSON generator.\nYou MUST output valid JSON only (no markdown, no extra commentary).\nDo not include trailing commas. Use double quotes for all strings.\nIf uncertain, use null and record a limitation.\nPrefer distributions over single averages.\nAvoid inventing stylistic claims not supported by provided measurements/excerpts.\nIf measurements.common_phrases_validation exists, treat validated phrases as the reliable list and ignore dropped items.\nUse stance_signals, function_words, templates_signals, paragraph.one_sentence_paragraph_rate, lexical_signals.rare_words, rhetoric_moves, paragraph_cadence, epistemic_profile, syntax_texture, and lexical_avoidance.category_rates_per_1000w to make persona/lexicon/template targets explicit. Treat excessive one-sentence paragraphs as an AI tell only relative to the author's baseline.\nIf lexicon_hints are provided, incorporate them as strong preferences/avoidances. If lexicon_hints include avoid_words or avoid_words_hard, include them in lexicon.avoid_words and treat them as hard avoids.\n",
     "user": {
       "task": "Construct a comprehensive STYLE FINGERPRINT JSON for the author from the provided measurements and excerpts.",
       "output_requirements": [
@@ -16,9 +16,16 @@
         "Use stance_signals and function_words to set explicit persona/stance targets and pronoun preferences where appropriate.",
         "Use templates_signals (sentence_openers, transition_openers) to seed templates and rhetorical moves.",
         "Use paragraph.one_sentence_paragraph_rate and paragraph histograms to set paragraph rhythm targets; warn about overuse only relative to the author's baseline.",
+        "Use rhetoric_moves and epistemic_profile to set explicit target ranges for argumentation and certainty bands.",
+        "Use paragraph_cadence to set opening/closing sentence cadence targets.",
+        "Use syntax_texture to set subordinate/parenthetical/appositive targets.",
+        "Use lexical_avoidance.category_rates_per_1000w to set soft avoid guidance where appropriate.",
+        "Use templates_signals.transition_marker_positions to set discourse marker position targets.",
+        "Use repetition.bigram_repeat_rate and repetition.trigram_repeat_rate to set repetition ceilings.",
         "Use lexical_signals.rare_words to populate lexicon.avoid_words when appropriate (avoid only words the author rarely uses).",
         "If lexicon_hints are present, reflect them in lexicon.prefer/avoid with appropriate severity. If lexicon_hints include avoid_words or avoid_words_hard, include them in lexicon.avoid_words as hard avoids.",
         "Use controlled vocabulary values where possible (low|medium|high, rare|sometimes|often, etc.).",
+        "If appropriate, include controls.humanizer_variance with conservative defaults (disabled unless explicitly warranted).",
         "Include numeric targets/ranges based on measurements (reasonable ranges reflecting variability).",
         "Include derived_instructions.system_style as concise bullet rules, and derived_instructions.rewrite_prompt / generation_prompt as templates."
       ]
@@ -95,6 +102,37 @@
             "strictness": "soft|hard",
             "notes": "string"
           }
+        },
+        "rhetoric_moves": {
+          "claim_rate": { "min": "float", "max": "float" },
+          "evidence_rate": { "min": "float", "max": "float" },
+          "counterpoint_rate": { "min": "float", "max": "float" },
+          "concession_rate": { "min": "float", "max": "float" },
+          "synthesis_rate": { "min": "float", "max": "float" },
+          "claim_evidence_ratio": { "min": "float", "max": "float" }
+        },
+        "epistemic_profile": {
+          "speculative_rate": { "min": "float", "max": "float" },
+          "probabilistic_rate": { "min": "float", "max": "float" },
+          "assertive_rate": { "min": "float", "max": "float" },
+          "directive_rate": { "min": "float", "max": "float" }
+        },
+        "paragraph_cadence": {
+          "opening_sentence_length_mean": { "min": "float", "max": "float" },
+          "closing_sentence_length_mean": { "min": "float", "max": "float" }
+        },
+        "discourse_markers": {
+          "start_rate_per_1000w": { "min": "float", "max": "float" },
+          "mid_rate_per_1000w": { "min": "float", "max": "float" }
+        },
+        "repetition": {
+          "bigram_repeat_rate": { "min": "float", "max": "float" },
+          "trigram_repeat_rate": { "min": "float", "max": "float" }
+        },
+        "syntax_texture": {
+          "subordinate_clause_rate": { "min": "float", "max": "float" },
+          "parenthetical_rate": { "min": "float", "max": "float" },
+          "appositive_rate": { "min": "float", "max": "float" }
         }
       },
       "lexicon": {
@@ -104,7 +142,13 @@
         "note": "syntactic patterns, paragraph moves, rhetorical moves"
       },
       "controls": {
-        "note": "priority_order, strictness, rewrite_policy"
+        "note": "priority_order, strictness, rewrite_policy, humanizer_variance",
+        "humanizer_variance": {
+          "enabled": "bool",
+          "seed": "int",
+          "max_ops_per_1000w": "float",
+          "allowed_ops": ["swap_transition", "drop_filler"]
+        }
       },
       "validators": {
         "note": "scoring weights and checks"
@@ -205,6 +249,8 @@
         "Preserve any [[BASE64_IMAGE_N]] placeholders exactly; do not remove or alter them.",
         "If style_feedback is provided, prioritize correcting the listed deltas while preserving meaning.",
         "Follow controls.priority_order if present; otherwise prioritize persona > rhetoric > paragraph > sentence > lexical > punctuation > orthography.",
+        "Respect targets.rhetoric_moves, targets.epistemic_profile, targets.paragraph_cadence, targets.syntax_texture, targets.discourse_markers, and targets.repetition when present.",
+        "If controls.humanizer_variance is enabled, apply only the allowed_ops up to max_ops_per_1000w to introduce subtle variation without changing meaning.",
         "Avoid lexicon.avoid_phrases and lexicon.avoid_words (treat any severity 'hard' fields as strict).",
         "Use preferred phrases sparingly (respect max_per_1000w if present)."
       ]

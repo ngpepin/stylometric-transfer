@@ -22,8 +22,9 @@ fi
 # Ensure artifacts directory exists.
 mkdir -p "$ARTIFACTS_DIR"
 
-# Run v1.1.0 regression tests (no API calls).
+# Run regression tests (no API calls).
 "$ROOT_DIR/tests/run_v1_1_0_regression.sh"
+"$ROOT_DIR/tests/run_v1_5_X_regression.sh"
 
 CORPUS_MD="$FIXTURES_DIR/corpus.md"
 INPUT_MD="$FIXTURES_DIR/input.md"
