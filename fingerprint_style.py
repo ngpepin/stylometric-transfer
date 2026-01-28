@@ -135,6 +135,19 @@ def load_optional_lexicon_hints() -> Optional[Dict[str, Any]]:
         return None
 
 
+def load_tunables_snapshot() -> Optional[Dict[str, Any]]:
+    # Load tunables for auditability snapshot (CWD or script directory).
+    cwd_path = Path.cwd() / "config.tunables.json"
+    script_path = Path(__file__).resolve().parent / "config.tunables.json"
+    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    if not path:
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
 def parse_avoid_list(text: str) -> List[str]:
     items: List[str] = []
     for raw in text.splitlines():
@@ -1481,6 +1494,7 @@ def main() -> int:
 
     cfg = load_config(args.config)
     prompts = load_prompts()
+    tunables_snapshot = load_tunables_snapshot()
     lexicon_hints = load_optional_lexicon_hints()
     avoid_list = load_avoid_list()
     if avoid_list:
@@ -1639,6 +1653,8 @@ def main() -> int:
             fingerprint["metadata"]["extraction"].setdefault("model", cfg.model)
             fingerprint["metadata"]["extraction"].setdefault("methods", ["hybrid"])
             fingerprint["metadata"]["extraction"].setdefault("confidence", "medium")
+            if tunables_snapshot is not None:
+                fingerprint["metadata"]["extraction"].setdefault("tunables_snapshot", tunables_snapshot)
 
         corpus = fingerprint["metadata"].setdefault("corpus", {})
         corpus_defaults = {}

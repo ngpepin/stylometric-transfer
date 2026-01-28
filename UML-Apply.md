@@ -32,11 +32,13 @@ class ApplyPipeline {
   +mask_html()
   +mask_entities()
   +compute_measurements()
+  +apply_humanizer_variance()
   +filter_humanizer_rules()
   +build_apply_prompt()
   +chat_completions()
   +compute_style_compliance()
   +rewrite_with_retry()
+  +restore_missing_sections()
   +restore_placeholders()
   +write_outputs()
 }
@@ -64,6 +66,8 @@ class StyleFingerprint {
 
 class Tunables {
   +humanizer_conflicts: object
+  +humanizer_mandatory: object
+  +section_restore: object
 }
 
 ApplyPipeline --> LLMConfig
@@ -105,6 +109,7 @@ endif
 
 :Build apply prompt;
 :Call LLM to rewrite (retry with backoff on timeout/5xx);
+:Apply bounded humanizer variance (optional);
 :Restore placeholders;
 :Compute style compliance;
 
@@ -114,6 +119,7 @@ if (Compliance below threshold?) then (yes)
   :Restore placeholders;
 endif
 
+:Restore missing sections (fuzzy heading match);
 :Write rewritten Markdown;
 :Write deviations report;
 stop
@@ -146,10 +152,12 @@ AF -> AF : fallback regex parse if needed
 AF -> AF : filter humanizer rules
 AF -> LLM : rewrite request (fingerprint + measurements + rules; retry on transient errors)
 LLM --> AF : JSON with final_markdown
+AF -> AF : apply humanizer variance (optional)
 AF -> AF : restore placeholders
 AF -> AF : compute style compliance
 AF -> LLM : retry with deltas (optional)
 LLM --> AF : revised JSON
+AF -> AF : restore missing sections (fuzzy match)
 AF -> FS : write output.md and deviations.json
 AF --> User : done
 @enduml

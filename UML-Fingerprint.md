@@ -30,6 +30,7 @@ class FingerprintPipeline {
   +compute_measurements()
   +pick_representative_excerpts()
   +build_fingerprint_prompt()
+  +derive_new_measurements()
   +chat_completions()
   +repair_json_with_llm()
   +write_fingerprint()
@@ -87,7 +88,7 @@ start
 :Read corpus files;
 :Normalize OCR artifacts;
 :Filter non-author voice text;
-:Compute measurements (sentence/paragraph rhythm, rare words);
+:Compute measurements (rhetoric moves, cadence, discourse markers, repetition);
 
 if (Phrase validation enabled?) then (yes)
   :Validate common phrases via LLM;
@@ -109,6 +110,7 @@ endif
 
 :Ensure required metadata fields;
 :Embed measurements verbatim;
+:Include targets for rhetoric/cadence/epistemic/syntax/repetition;
 :Write style_fingerprint.json;
 stop
 @enduml

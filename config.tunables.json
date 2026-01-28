@@ -13,6 +13,12 @@
     "avoid_em_dashes": true,
     "emoji_policy": "replace"
   },
+  "humanizer_variance": {
+    "enabled": true,
+    "seed": 12345,
+    "max_ops_per_1000w": 0.5,
+    "allowed_ops": ["swap_transition", "drop_filler"]
+  },
   "section_restore": {
     "enabled": true,
     "max_restore_sections": 20,

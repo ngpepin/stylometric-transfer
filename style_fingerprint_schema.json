@@ -100,7 +100,11 @@
             "date": { "type": "string" },
             "methods": { "type": "array", "items": { "type": "string" } },
             "confidence": { "type": "string" },
-            "limitations": { "type": "array", "items": { "type": "string" } }
+            "limitations": { "type": "array", "items": { "type": "string" } },
+            "tunables_snapshot": {
+              "type": ["object", "null"],
+              "description": "Optional snapshot of config.tunables.json used during fingerprinting for auditability."
+            }
           }
         }
       }

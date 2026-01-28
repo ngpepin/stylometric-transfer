@@ -2528,7 +2528,9 @@ def main() -> int:
                 raise RuntimeError("LLM did not return final_markdown")
 
             # Optional stochastic micro-variation layer (bounded, deterministic).
-            variance = fingerprint.get("controls", {}).get("humanizer_variance", {}) if isinstance(fingerprint, dict) else {}
+            variance = {}
+            if isinstance(tunables, dict):
+                variance = tunables.get("humanizer_variance", {}) if isinstance(tunables.get("humanizer_variance", {}), dict) else {}
             if isinstance(variance, dict) and variance.get("enabled"):
                 seed = int(variance.get("seed", 0))
                 max_ops_per_1000w = float(variance.get("max_ops_per_1000w", 0.0))
@@ -2540,7 +2542,7 @@ def main() -> int:
                 final_md, ops_applied = apply_humanizer_variance(final_md, seed, max_ops_per_1000w, allowed_ops)
                 if ops_applied:
                     out_obj.setdefault("deviations", []).append({
-                        "rule_or_field": "controls.humanizer_variance",
+                        "rule_or_field": "tunables.humanizer_variance",
                         "reason": "Applied bounded stochastic micro-variations.",
                         "ops": ops_applied
                     })

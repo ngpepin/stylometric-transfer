@@ -54,6 +54,11 @@ class TestV15XRegression(unittest.TestCase):
         score = af.heading_similarity(af.normalize_heading(a), af.normalize_heading(b))
         self.assertGreaterEqual(score, 0.7)
 
+    def test_tunables_snapshot_loads_for_fingerprinting(self) -> None:
+        snapshot = fs.load_tunables_snapshot()
+        self.assertIsInstance(snapshot, dict)
+        self.assertIn("humanizer_conflicts", snapshot)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -94,8 +94,10 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Overrides humanizer conflict thresholds for `apply_fingerprint.py`
   - See README for per‑field explanations and defaults
   - Includes mandatory humanizer controls (em‑dash ban, emoji policy)
+  - Includes bounded stochastic variance controls (seeded micro‑operations)
   - Includes section‑restore controls (fuzzy heading match + restoration caps)
   - Includes optional sanity checks such as line/word/paragraph count change warnings
+  - The current tunables may be embedded into fingerprints as `metadata.extraction.tunables_snapshot` for auditability
 - `config.avoid.txt`
   - Optional global avoid list (one word/phrase per line)
   - Applied during fingerprinting (via lexicon hints) and merged into `lexicon.avoid_words` during application

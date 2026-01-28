@@ -1392,7 +1392,11 @@ Rather than learning what style is, it defines where style may reside in feature
             "date": { "type": "string" },
             "methods": { "type": "array", "items": { "type": "string" } },
             "confidence": { "type": "string" },
-            "limitations": { "type": "array", "items": { "type": "string" } }
+            "limitations": { "type": "array", "items": { "type": "string" } },
+            "tunables_snapshot": {
+              "type": ["object", "null"],
+              "description": "Optional snapshot of config.tunables.json used during fingerprinting for auditability."
+            }
           }
         }
       }
@@ -1777,7 +1781,7 @@ Rather than learning what style is, it defines where style may reside in feature
 
 ## Appendix H. Tunables schema (config.tunables.json)
 
-`config.tunables.json` provides deterministic control over humanizer conflict thresholds and basic sanity checks, such as line-count change warnings, during style application. The following schema outlines the supported keys and types:
+`config.tunables.json` provides deterministic control over humanizer conflict thresholds and basic sanity checks, such as line-count change warnings, during style application. When a fingerprint is generated, the current tunables are optionally embedded under `metadata.extraction.tunables_snapshot` to preserve the exact settings used for provenance. The following schema outlines the supported keys and types:
 
 ```json
 {
@@ -1806,6 +1810,16 @@ Rather than learning what style is, it defines where style may reside in feature
       "properties": {
         "avoid_em_dashes": { "type": "boolean" },
         "emoji_policy": { "type": "string", "enum": ["remove", "replace", "none"] }
+      },
+      "additionalProperties": false
+    },
+    "humanizer_variance": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "seed": { "type": "integer" },
+        "max_ops_per_1000w": { "type": "number", "minimum": 0 },
+        "allowed_ops": { "type": "array", "items": { "type": "string" } }
       },
       "additionalProperties": false
     },
@@ -1848,6 +1862,10 @@ Rather than learning what style is, it defines where style may reside in feature
 - `inline_header_list_keep_rate`: if the ratio of inline-header list items (such as `- **Label:**`) meets or exceeds this value, the rule to avoid inline-header lists is set aside.
 - `avoid_em_dashes`: when true, em dashes are always removed in the final output (mandatory humanizer control).
 - `emoji_policy`: `remove`, `replace`, or `none`. `replace` swaps emojis with conventional monochrome symbols when possible, otherwise removes them.
+- `humanizer_variance.enabled`: enables bounded stochastic micro‑variation during application.
+- `humanizer_variance.seed`: RNG seed for deterministic runs.
+- `humanizer_variance.max_ops_per_1000w`: maximum number of micro‑operations per 1000 words. **Recommendation:** start at `0.5`; `0.5–1.5` is usually safe. Values above `2.0` can begin to feel noisy unless the input is highly repetitive.
+- `humanizer_variance.allowed_ops`: allowed micro‑operations (e.g., `swap_transition`, `drop_filler`). **Recommendation:** begin with `["swap_transition", "drop_filler"]`, add ops gradually, and keep the list short to avoid compounding randomness.
 - `section_restore.enabled`: enable/disable restoring missing sections after rewrite.
 - `section_restore.max_restore_sections`: maximum number of missing sections to restore (0 disables restoration).
 - `section_restore.heading_similarity_threshold`: fuzzy heading match threshold for considering a rewritten heading “present”.

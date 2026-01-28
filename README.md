@@ -196,10 +196,11 @@ Notes:
 - Prompt templates are stored in `prompts.json` next to the Python scripts and are loaded at runtime (includes the `validate_phrases` template used for common-phrase validation)
 - Optional `lexicon_hints.json` (in repo root or next to the scripts) can provide preferred or avoided phrases for fingerprinting
 - Optional `config.avoid.txt` (in repo root or next to the scripts) lists words or phrases to always avoid; it is merged into the fingerprint lexicon and enforced during style application
+- When fingerprinting, the current `config.tunables.json` can be embedded as `metadata.extraction.tunables_snapshot` for auditability
 
 ### Tunables: `config.tunables.json`
 
-`apply_fingerprint.py` uses `config.tunables.json` to determine which humanizer guidelines conflict with the fingerprint or the input Markdown style. Any rule that conflicts is dropped before prompting.
+`apply_fingerprint.py` uses `config.tunables.json` to determine which humanizer guidelines conflict with the fingerprint or the input Markdown style. Any rule that conflicts is dropped before prompting. `fingerprint_style.py` can also embed a `tunables_snapshot` under `metadata.extraction` to preserve the exact tunables used during profile creation.
 
 Example (defaults shown):
 
@@ -216,14 +217,20 @@ Example (defaults shown):
     "inline_header_list_keep_rate": 0.2
   },
   "humanizer_mandatory": {
-    "avoid_em_dashes": false,
-    "emoji_policy": "remove"
+    "avoid_em_dashes": true,
+    "emoji_policy": "replace"
+  },
+  "humanizer_variance": {
+    "enabled": false,
+    "seed": 0,
+    "max_ops_per_1000w": 0.0,
+    "allowed_ops": ["swap_transition", "drop_filler"]
   },
   "section_restore": {
     "enabled": true,
     "max_restore_sections": 20,
-    "heading_similarity_threshold": 0.75,
-    "signature_similarity_threshold": 0.6,
+    "heading_similarity_threshold": 0.5,
+    "signature_similarity_threshold": 0.35,
     "signature_min_overlap": 6
   },
   "sanity_checks": {
@@ -245,6 +252,12 @@ Example (defaults shown):
 - `inline_header_list_keep_rate` (0–1): if the input uses inline-header list style (e.g., `- **Label:** text`) **at or above** this ratio, the “avoid inline-header lists” guideline is dropped.
 - `avoid_em_dashes` (boolean): when true, em‑dashes are always removed in the output regardless of other signals.
 - `emoji_policy` (`remove`, `replace`, or `none`): remove emojis, replace common ones with conventional monochrome symbols, or disable emoji handling.
+- `humanizer_variance.enabled` (boolean): enables bounded stochastic micro‑variation during application.
+- `humanizer_variance.seed` (integer): RNG seed for deterministic runs.
+- `humanizer_variance.max_ops_per_1000w` (float): maximum number of micro‑operations per 1000 words. **Recommendation:** start at `0.5`; `0.5–1.5` is usually safe. Values above `2.0` can begin to feel noisy unless the input is highly repetitive.
+- `humanizer_variance.allowed_ops` (array): allowed micro‑operations (e.g., `swap_transition`, `drop_filler`). **Recommendation:** begin with `["swap_transition", "drop_filler"]`, add ops gradually, and keep the list short to avoid compounding randomness.
+  - `swap_transition`: swaps a transition phrase with another compatible transition to vary surface rhythm without changing meaning.
+  - `drop_filler`: removes low‑information filler words/phrases when safe (bounded by the ops budget).
 - `section_restore.enabled` (boolean): enable/disable restoration of missing sections detected after rewriting.
 - `section_restore.max_restore_sections` (integer): maximum number of missing sections to restore (0 disables restoration).
 - `section_restore.heading_similarity_threshold` (0–1): fuzzy heading match threshold for considering a rewritten heading “present”.

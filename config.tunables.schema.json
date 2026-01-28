@@ -27,6 +27,16 @@
       },
       "additionalProperties": false
     },
+    "humanizer_variance": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "seed": { "type": "integer" },
+        "max_ops_per_1000w": { "type": "number", "minimum": 0 },
+        "allowed_ops": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
     "section_restore": {
       "type": "object",
       "properties": {
