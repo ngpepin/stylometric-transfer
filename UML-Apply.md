@@ -32,6 +32,8 @@ class ApplyPipeline {
   +mask_html()
   +mask_entities()
   +compute_measurements()
+  +compute_humanization_metrics()
+  +compute_humanization_aggregate()
   +apply_humanizer_variance()
   +filter_humanizer_rules()
   +build_apply_prompt()
@@ -67,6 +69,9 @@ class StyleFingerprint {
 class Tunables {
   +humanizer_conflicts: object
   +humanizer_mandatory: object
+  +humanizer_variance: object
+  +humanization_metrics: object
+  +style_retry: object
   +section_restore: object
 }
 
@@ -97,6 +102,9 @@ start
 :Mask blockquotes, references, footnotes, citations;
 
 :Compute input measurements (author-voice only);
+if (Metrics enabled?) then (yes)
+  :Compute input humanization metrics;
+endif
 
 if (Humanizer guidelines enabled?) then (yes)
   :Load general-guidelines.md;
@@ -120,6 +128,10 @@ if (Compliance below threshold?) then (yes)
 endif
 
 :Restore missing sections (fuzzy heading match);
+if (Metrics enabled?) then (yes)
+  :Compute output humanization metrics;
+  :Compute aggregate score (weighted);
+endif
 :Write rewritten Markdown;
 :Write deviations report;
 stop
@@ -145,6 +157,7 @@ AF -> AF : merge avoid list into lexicon
 AF -> FS : read input.md
 AF -> AF : mask non-voice blocks & placeholders
 AF -> AF : compute input measurements
+AF -> AF : compute input humanization metrics (optional)
 AF -> FS : read general-guidelines.md (optional)
 AF -> LLM : parse humanizer guidelines (optional; retry on transient errors)
 LLM --> AF : rules JSON
@@ -158,6 +171,7 @@ AF -> AF : compute style compliance
 AF -> LLM : retry with deltas (optional)
 LLM --> AF : revised JSON
 AF -> AF : restore missing sections (fuzzy match)
+AF -> AF : compute output humanization metrics + aggregate (optional)
 AF -> FS : write output.md and deviations.json
 AF --> User : done
 @enduml

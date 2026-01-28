@@ -37,6 +37,16 @@
       },
       "additionalProperties": false
     },
+    "humanization_metrics": {
+      "type": "object",
+      "properties": {
+        "weights": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0 }
+        }
+      },
+      "additionalProperties": false
+    },
     "style_retry": {
       "type": "object",
       "properties": {

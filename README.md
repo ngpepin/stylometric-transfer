@@ -198,6 +198,7 @@ Notes:
 - Optional `config.avoid.txt` (in repo root or next to the scripts) lists words or phrases to always avoid; it is merged into the fingerprint lexicon and enforced during style application
 - When fingerprinting, the current `config.tunables.json` can be embedded as `metadata.extraction.tunables_snapshot` for auditability
 - If the fingerprint prompt exceeds `max_prompt_tokens`, excerpts are chunked and **partial fingerprints are merged using a second LLM merge pass** (pairwise merge with a dedicated merge prompt).
+- **Corpus size guidance:** diminishing returns typically appear once core style statistics stabilize. As a rule of thumb, ~20–50k words often yields a stable fingerprint for a single author/genre; ~100k words usually captures most steady signals. If key rates (sentence/paragraph distributions, punctuation per 1k words, function‑word profile, stance rates) drift by <1–2% after adding another 10–20k words, you’re likely in the diminishing‑returns zone. More data still helps when you’re mixing genres/eras or chasing rare rhetorical/lexical signals.
 
 ### Tunables: `config.tunables.json`
 
@@ -226,6 +227,26 @@ Example (defaults shown):
     "seed": 0,
     "max_ops_per_1000w": 0.0,
     "allowed_ops": ["swap_transition", "drop_filler"]
+  },
+  "humanization_metrics": {
+    "weights": {
+      "lexical_diversity": 1.0,
+      "herdan_c": 1.0,
+      "guiraud_r": 1.0,
+      "maas_ttr_inverse": 1.0,
+      "yules_k_inverse": 1.0,
+      "simpson_d_inverse": 1.0,
+      "repetition_inverse": 1.0,
+      "sentence_burstiness": 1.0,
+      "paragraph_burstiness": 1.0,
+      "punctuation_variety": 1.0,
+      "punctuation_entropy": 1.0,
+      "function_word_entropy": 1.0,
+      "function_word_kl_inverse": 1.0,
+      "sentence_length_js_inverse": 1.0,
+      "char_trigram_entropy": 1.0,
+      "avg_word_length": 1.0
+    }
   },
   "style_retry": {
     "enabled": true,
@@ -264,6 +285,7 @@ Example (defaults shown):
 - `humanizer_variance.allowed_ops` (array): allowed micro‑operations (e.g., `swap_transition`, `drop_filler`). **Recommendation:** begin with `["swap_transition", "drop_filler"]`, add ops gradually, and keep the list short to avoid compounding randomness.
   - `swap_transition`: swaps a transition phrase with another compatible transition to vary surface rhythm without changing meaning.
   - `drop_filler`: removes low‑information filler words/phrases when safe (bounded by the ops budget).
+- `humanization_metrics.weights` (object): optional weighting for the 0–100 aggregate humanization score. Any metric with a weight of 0 is excluded.
 - `style_retry.enabled` (boolean): enable/disable the delta‑feedback retry pass after measuring style compliance.
 - `style_retry.threshold` (0–1): retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold-based retries, while `1.0` retries unless the output is nearly perfect.
 - `style_retry.max_retries` (integer): maximum number of retry passes (default `1`).
@@ -365,6 +387,8 @@ Blockquotes, reference sections, footnotes and inline citations are preserved ve
 Outputs:
 - `draft.md.styled.md`: rewritten text
 - `draft.md.styled.md.deviations.json`: any rule conflicts or deviations
+  - When `--metrics` is enabled, includes `humanization_metrics` for **both input and output**, with heuristic quantitative scores plus an aggregate 0–100 score (`aggregate_score_100`).
+  - Metrics include: lexical diversity (TTR, Herdan’s C, Guiraud’s R, Maas TTR), Yule’s K, Simpson’s D, repetition inverse, sentence/paragraph burstiness, punctuation variety/entropy, function‑word entropy and KL‑inverse vs fingerprint, sentence‑length JS‑inverse vs fingerprint, character trigram entropy, and average word length.
 
 ---
 

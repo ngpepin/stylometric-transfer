@@ -97,6 +97,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Includes mandatory humanizer controls (em‑dash ban, emoji policy)
   - Includes bounded stochastic variance controls (seeded micro‑operations)
   - Includes style retry controls (delta‑feedback retries)
+  - Includes humanization metric weights for the aggregate 0–100 score
   - Includes section‑restore controls (fuzzy heading match + restoration caps)
   - Includes optional sanity checks such as line/word/paragraph count change warnings
   - The current tunables may be embedded into fingerprints as `metadata.extraction.tunables_snapshot` for auditability

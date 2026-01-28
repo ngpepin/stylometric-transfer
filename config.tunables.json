@@ -19,6 +19,26 @@
     "max_ops_per_1000w": 0.5,
     "allowed_ops": ["swap_transition", "drop_filler"]
   },
+  "humanization_metrics": {
+    "weights": {
+      "lexical_diversity": 1.0,
+      "herdan_c": 1.0,
+      "guiraud_r": 1.0,
+      "maas_ttr_inverse": 1.0,
+      "yules_k_inverse": 1.0,
+      "simpson_d_inverse": 1.0,
+      "repetition_inverse": 1.0,
+      "sentence_burstiness": 1.0,
+      "paragraph_burstiness": 1.0,
+      "punctuation_variety": 1.0,
+      "punctuation_entropy": 1.0,
+      "function_word_entropy": 1.0,
+      "function_word_kl_inverse": 1.0,
+      "sentence_length_js_inverse": 1.0,
+      "char_trigram_entropy": 1.0,
+      "avg_word_length": 1.0
+    }
+  },
   "style_retry": {
     "enabled": true,
     "threshold": 0.75,

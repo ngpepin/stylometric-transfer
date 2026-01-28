@@ -42,11 +42,15 @@ Non-parallel TST methods, such as cross-alignment, demonstrate that certain styl
 
 The literature indicates that style is difficult to define precisely. The approach here is to make style explicit and auditable, rather than learned and hidden.
 
-### 2.3 Humanization-Aware Stylometric Transfer
+### 2.3 Corpus Size and Diminishing Returns
+
+In practice, stylometric signals stabilize as corpus size grows. A pragmatic rule of thumb is that **~20–50k words** often yields a stable fingerprint for a single author/genre, while **~100k words** typically captures most steady signals. If the key rates (sentence/paragraph distributions, punctuation per 1k words, function‑word profile, stance rates) drift by **<1–2%** after adding another 10–20k words, you are likely in a diminishing‑returns regime. Additional data is still valuable when the corpus spans multiple genres or eras, or when capturing sparse phenomena such as rare rhetorical moves or infrequent lexical patterns.
+
+### 2.4 Humanization-Aware Stylometric Transfer
 
 Most style-transfer pipelines treat humanization as a separate editing step. Stylometric-Transfer incorporates humanization directly into constraint-guided rewriting by formalizing a conflict-resolution layer: humanization guidelines are applied only when they do not violate fingerprint-derived constraints or the input's structural features (such as heading case or inline-header lists). The guideline list is parsed into structured rules by an LLM (with deterministic fallback), then filtered against fingerprint signals before any rewrite prompt is constructed. This produces a single, auditable framework that balances stylistic fidelity with the removal of AI artefacts, rather than relying on post-hoc edits that may diverge from the author’s voice.
 
-### 2.4 Humanization Mechanisms and Benefits
+### 2.5 Humanization Mechanisms and Benefits
 
 Humanization in this system is not a vague “make it sound human” instruction. It is a set of explicit, inspectable mechanisms designed to target known LLM artefacts while preserving the author’s voice. These mechanisms include:
 
@@ -56,6 +60,8 @@ Humanization in this system is not a vague “make it sound human” instruction
 - **Bounded stochastic variance**: when enabled, a small, seeded number of micro‑edits (e.g., swapping transition words or dropping filler terms) introduce controlled irregularity without semantic drift.
 
 The practical benefit is a *measurable reduction in AI‑typical uniformity* while keeping the transformation aligned to the author’s measurable habits. Because the humanization layer is explicit, deterministic by default, and logged, it can be audited and tuned without introducing opaque behaviour. In short, humanization is treated as a constrained post‑processing step integrated into the same interpretability framework as stylometric profiling itself.
+
+After rewriting, the system can emit a compact quantitative report for **both the input and output** (via `--metrics`) in the deviations log—lexical diversity variants (TTR, Herdan’s C, Guiraud’s R, Maas), Yule’s K and Simpson’s D, repetition inverse, sentence/paragraph burstiness, punctuation variety/entropy, function‑word entropy and KL‑inverse vs fingerprint, sentence‑length JS‑inverse vs fingerprint, character trigram entropy, and average word length—plus an aggregate 0–100 humanization score for quick inspection.
 
 ---
 
@@ -1838,6 +1844,16 @@ Rather than learning what style is, it defines where style may reside in feature
       },
       "additionalProperties": false
     },
+    "humanization_metrics": {
+      "type": "object",
+      "properties": {
+        "weights": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0 }
+        }
+      },
+      "additionalProperties": false
+    },
     "style_retry": {
       "type": "object",
       "properties": {
@@ -1890,6 +1906,7 @@ Rather than learning what style is, it defines where style may reside in feature
 - `humanizer_variance.seed`: RNG seed for deterministic runs.
 - `humanizer_variance.max_ops_per_1000w`: maximum number of micro‑operations per 1000 words. **Recommendation:** start at `0.5`; `0.5–1.5` is usually safe. Values above `2.0` can begin to feel noisy unless the input is highly repetitive.
 - `humanizer_variance.allowed_ops`: allowed micro‑operations (e.g., `swap_transition`, `drop_filler`). **Recommendation:** begin with `["swap_transition", "drop_filler"]`, add ops gradually, and keep the list short to avoid compounding randomness.
+- `humanization_metrics.weights`: optional weighting for the 0–100 aggregate humanization score. Any metric with a weight of 0 is excluded.
 - `style_retry.enabled`: enable/disable the delta‑feedback retry pass after measuring style compliance.
 - `style_retry.threshold`: retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold‑based retries, while `1.0` retries unless the output is nearly perfect.
 - `style_retry.max_retries`: maximum number of retry passes (default `1`).

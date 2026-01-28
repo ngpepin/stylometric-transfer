@@ -30,6 +30,8 @@ import os
 import datetime
 import time
 import random
+import statistics
+import math
 from pathlib import Path
 import copy
 from typing import Any, Dict, List
@@ -2126,6 +2128,198 @@ def compute_style_compliance(
     }
 
 
+def _entropy(counts: Dict[str, int]) -> float:
+    total = sum(counts.values())
+    if total <= 0:
+        return 0.0
+    ent = 0.0
+    for c in counts.values():
+        if c <= 0:
+            continue
+        p = c / total
+        ent -= p * math.log(p, 2)
+    return ent
+
+
+def _js_divergence(p: List[float], q: List[float]) -> float:
+    if not p or not q or len(p) != len(q):
+        return 0.0
+    eps = 1e-12
+    m = [(pi + qi) / 2.0 for pi, qi in zip(p, q)]
+    kl_pm = sum(pi * math.log((pi + eps) / (mi + eps), 2) for pi, mi in zip(p, m))
+    kl_qm = sum(qi * math.log((qi + eps) / (mi + eps), 2) for qi, mi in zip(q, m))
+    return (kl_pm + kl_qm) / 2.0
+
+
+def compute_humanization_metrics(text: str, fingerprint: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    # Heuristic, research-inspired quantitative signals (lexical diversity, repetition, burstiness).
+    text = filter_author_voice_text(text)
+    meas = compute_measurements(text)
+
+    tokens = [w.lower() for w in words(text)]
+    total_words = len(tokens)
+    unique_words = len(set(tokens))
+    ttr = (unique_words / total_words) if total_words else 0.0
+    if total_words > 1 and unique_words > 0:
+        herdan_c = math.log(unique_words) / math.log(total_words)
+        guiraud_r = unique_words / math.sqrt(total_words)
+        maas_ttr = (math.log(total_words) - math.log(unique_words)) / (math.log(total_words) ** 2)
+    else:
+        herdan_c = 0.0
+        guiraud_r = 0.0
+        maas_ttr = 0.0
+
+    freq = collections.Counter(tokens)
+    m1 = total_words
+    m2 = sum(v * v for v in freq.values())
+    if m1 > 0:
+        yules_k = (10000.0 * (m2 - m1) / (m1 * m1)) if m1 > 0 else 0.0
+        simpson_d = sum(v * (v - 1) for v in freq.values()) / (m1 * (m1 - 1)) if m1 > 1 else 0.0
+    else:
+        yules_k = 0.0
+        simpson_d = 0.0
+
+    sent_lens = [len(words(s)) for s in split_sentences(text) if words(s)]
+    sent_mean = (sum(sent_lens) / len(sent_lens)) if sent_lens else 0.0
+    sent_stdev = statistics.pstdev(sent_lens) if len(sent_lens) > 1 else 0.0
+    sent_burstiness = (sent_stdev / sent_mean) if sent_mean > 0 else 0.0
+
+    paras = []
+    for block in split_markdown_blocks(text):
+        if is_code_block(block):
+            continue
+        if not block.strip():
+            continue
+        paras.append(block)
+    para_lens = [len(split_sentences(p)) for p in paras] if paras else []
+    para_mean = (sum(para_lens) / len(para_lens)) if para_lens else 0.0
+    para_stdev = statistics.pstdev(para_lens) if len(para_lens) > 1 else 0.0
+    para_burstiness = (para_stdev / para_mean) if para_mean > 0 else 0.0
+
+    repetition = meas.get("repetition", {}) if isinstance(meas, dict) else {}
+    bigram_repeat = float(repetition.get("bigram_repeat_rate", 0.0)) if isinstance(repetition, dict) else 0.0
+    trigram_repeat = float(repetition.get("trigram_repeat_rate", 0.0)) if isinstance(repetition, dict) else 0.0
+    repeat_rate = (bigram_repeat + trigram_repeat) / 2.0
+
+    punct = meas.get("punctuation", {}).get("rates_per_1000w", {}) if isinstance(meas, dict) else {}
+    punctuation_variety = sum(1 for v in punct.values() if isinstance(v, (int, float)) and v > 0)
+    punct_counts = {k: int(v * max(1, total_words) / 1000.0) for k, v in punct.items() if isinstance(v, (int, float))}
+    punctuation_entropy = _entropy(punct_counts)
+
+    function_entropy = 0.0
+    function_kl = None
+    out_func = meas.get("function_words", {}).get("rates_per_1000w", {}) if isinstance(meas, dict) else {}
+    if isinstance(out_func, dict) and out_func:
+        out_counts = {k: max(0, int(v * max(1, total_words) / 1000.0)) for k, v in out_func.items() if isinstance(v, (int, float))}
+        function_entropy = _entropy(out_counts)
+        if isinstance(fingerprint, dict):
+            fp_func = fingerprint.get("measurements", {}).get("function_words", {}).get("rates_per_1000w", {})
+            if isinstance(fp_func, dict) and fp_func:
+                keys = sorted(set(out_func.keys()) | set(fp_func.keys()))
+                p = []
+                q = []
+                for k in keys:
+                    p.append(max(0.0, float(out_func.get(k, 0.0))) + 1e-9)
+                    q.append(max(0.0, float(fp_func.get(k, 0.0))) + 1e-9)
+                psum = sum(p)
+                qsum = sum(q)
+                p = [x / psum for x in p]
+                q = [x / qsum for x in q]
+                function_kl = sum(pi * math.log(pi / qi, 2) for pi, qi in zip(p, q))
+
+    sentence_js = None
+    if isinstance(fingerprint, dict):
+        fp_hist = fingerprint.get("measurements", {}).get("sentence", {}).get("length_words", {}).get("histogram_p")
+        out_hist = meas.get("sentence", {}).get("length_words", {}).get("histogram_p") if isinstance(meas, dict) else None
+        if isinstance(fp_hist, list) and isinstance(out_hist, list) and len(fp_hist) == len(out_hist):
+            sentence_js = _js_divergence(fp_hist, out_hist)
+
+    letters_only = re.sub(r"[^a-zA-Z]+", "", text.lower())
+    n = 3
+    trigram_counts: Dict[str, int] = {}
+    if len(letters_only) >= n:
+        trigram_counts = collections.Counter(letters_only[i:i+n] for i in range(len(letters_only) - n + 1))
+    char_trigram_entropy = _entropy(trigram_counts)
+
+    word_lens = [len(w) for w in tokens if w]
+    avg_word_len = (sum(word_lens) / len(word_lens)) if word_lens else 0.0
+
+    scores = {
+        "lexical_diversity": min(1.0, ttr / 0.5) if ttr > 0 else 0.0,
+        "herdan_c": min(1.0, herdan_c / 0.9) if herdan_c > 0 else 0.0,
+        "guiraud_r": min(1.0, guiraud_r / 15.0) if guiraud_r > 0 else 0.0,
+        "maas_ttr_inverse": max(0.0, 1.0 - min(1.0, maas_ttr / 0.15)) if maas_ttr > 0 else 0.0,
+        "yules_k_inverse": max(0.0, 1.0 - min(1.0, yules_k / 100.0)) if yules_k > 0 else 0.0,
+        "simpson_d_inverse": max(0.0, 1.0 - min(1.0, simpson_d / 0.2)) if simpson_d > 0 else 0.0,
+        "repetition_inverse": max(0.0, 1.0 - min(1.0, repeat_rate / 0.2)),
+        "sentence_burstiness": min(1.0, sent_burstiness / 1.0) if sent_burstiness > 0 else 0.0,
+        "paragraph_burstiness": min(1.0, para_burstiness / 1.0) if para_burstiness > 0 else 0.0,
+        "punctuation_variety": min(1.0, punctuation_variety / 8.0) if punctuation_variety > 0 else 0.0,
+        "punctuation_entropy": min(1.0, punctuation_entropy / 3.0) if punctuation_entropy > 0 else 0.0,
+        "function_word_entropy": min(1.0, function_entropy / 4.0) if function_entropy > 0 else 0.0,
+        "function_word_kl_inverse": max(0.0, 1.0 - min(1.0, (function_kl or 0.0) / 0.5)) if function_kl is not None else 0.0,
+        "sentence_length_js_inverse": max(0.0, 1.0 - min(1.0, (sentence_js or 0.0) / 0.3)) if sentence_js is not None else 0.0,
+        "char_trigram_entropy": min(1.0, char_trigram_entropy / 6.0) if char_trigram_entropy > 0 else 0.0,
+        "avg_word_length": max(0.0, 1.0 - min(1.0, abs(avg_word_len - 5.0) / 3.0)) if avg_word_len > 0 else 0.0
+    }
+
+    return {
+        "token_count": total_words,
+        "type_token_ratio": ttr,
+        "herdan_c": herdan_c,
+        "guiraud_r": guiraud_r,
+        "maas_ttr": maas_ttr,
+        "yules_k": yules_k,
+        "simpson_d": simpson_d,
+        "sentence_length_mean": sent_mean,
+        "sentence_length_stdev": sent_stdev,
+        "sentence_burstiness": sent_burstiness,
+        "paragraph_length_mean": para_mean,
+        "paragraph_length_stdev": para_stdev,
+        "paragraph_burstiness": para_burstiness,
+        "bigram_repeat_rate": bigram_repeat,
+        "trigram_repeat_rate": trigram_repeat,
+        "punctuation_variety": punctuation_variety,
+        "punctuation_entropy": punctuation_entropy,
+        "function_word_entropy": function_entropy,
+        "function_word_kl": function_kl,
+        "sentence_length_js": sentence_js,
+        "char_trigram_entropy": char_trigram_entropy,
+        "avg_word_length": avg_word_len,
+        "scores": scores,
+        "notes": [
+            "Scores are heuristic and intended for comparative inspection, not absolute judgment."
+        ]
+    }
+
+
+def compute_humanization_aggregate(
+    scores: Dict[str, float],
+    weights: Dict[str, float] | None = None
+) -> Dict[str, Any]:
+    if not scores:
+        return {"aggregate_score_100": 0.0, "weights": {}, "weighted_scores": {}}
+    weights = weights or {}
+    weighted_scores: Dict[str, float] = {}
+    total_weight = 0.0
+    weighted_sum = 0.0
+    for key, val in scores.items():
+        w = weights.get(key, 1.0)
+        if not isinstance(w, (int, float)):
+            w = 1.0
+        if w <= 0:
+            continue
+        weighted_scores[key] = val
+        weighted_sum += float(val) * float(w)
+        total_weight += float(w)
+    aggregate = (weighted_sum / total_weight) if total_weight > 0 else 0.0
+    return {
+        "aggregate_score_100": round(aggregate * 100.0, 2),
+        "weights": weights,
+        "weighted_scores": weighted_scores
+    }
+
+
 # ---- OpenAI-compatible client ----
 
 class LLMConfig:
@@ -2329,6 +2523,11 @@ def main() -> int:
         type=int,
         default=1,
         help="Maximum number of style retry passes (default: 1)"
+    )
+    ap.add_argument(
+        "--metrics",
+        action="store_true",
+        help="Compute and report humanization metrics for both input and output"
     )
     ap.add_argument(
         "--license",
@@ -3093,10 +3292,59 @@ def main() -> int:
         "percent_change": para_change_pct
     })
 
+    humanization_metrics = None
+    if args.metrics:
+        input_metrics = compute_humanization_metrics(original_input_md, fingerprint)
+        output_metrics = compute_humanization_metrics(final_md, fingerprint)
+        humanization_metrics = {
+            "input": input_metrics,
+            "output": output_metrics
+        }
+        input_weights = {}
+        output_weights = {}
+        if isinstance(tunables, dict):
+            hm = tunables.get("humanization_metrics", {})
+            if isinstance(hm, dict):
+                weights = hm.get("weights", {})
+                if isinstance(weights, dict):
+                    input_weights = {str(k): float(v) for k, v in weights.items() if isinstance(v, (int, float))}
+                    output_weights = dict(input_weights)
+        input_metrics.update(compute_humanization_aggregate(input_metrics.get("scores", {}), input_weights))
+        output_metrics.update(compute_humanization_aggregate(output_metrics.get("scores", {}), output_weights))
+    humanization_weights = {}
+    if isinstance(tunables, dict):
+        hm = tunables.get("humanization_metrics", {})
+        if isinstance(hm, dict):
+            weights = hm.get("weights", {})
+            if isinstance(weights, dict):
+                humanization_weights = {str(k): float(v) for k, v in weights.items() if isinstance(v, (int, float))}
+    aggregate = compute_humanization_aggregate(humanization_metrics.get("scores", {}), humanization_weights)
+    humanization_metrics.update(aggregate)
+    all_deviations.append({
+        "rule_or_field": "humanization_metrics",
+        "metrics": humanization_metrics
+    })
+
     out_path = args.out or args.inp.with_suffix(args.inp.suffix + ".styled.md")
     vprint(f"Writing output: {out_path}")
     out_path.write_text(final_md, encoding="utf-8")
     print(f"Wrote rewritten markdown to: {out_path}")
+    if args.metrics and isinstance(humanization_metrics, dict):
+        for label in ("input", "output"):
+            metrics = humanization_metrics.get(label, {})
+            scores = metrics.get("scores", {}) if isinstance(metrics, dict) else {}
+            aggregate_100 = metrics.get("aggregate_score_100") if isinstance(metrics, dict) else None
+            if isinstance(scores, dict) and scores:
+                print(
+                    f"Humanization metrics ({label}, heuristic scores): "
+                    f"lexical_diversity={scores.get('lexical_diversity', 0):.2f}, "
+                    f"repetition_inverse={scores.get('repetition_inverse', 0):.2f}, "
+                    f"sentence_burstiness={scores.get('sentence_burstiness', 0):.2f}, "
+                    f"paragraph_burstiness={scores.get('paragraph_burstiness', 0):.2f}, "
+                    f"punctuation_variety={scores.get('punctuation_variety', 0):.2f}"
+                )
+            if isinstance(aggregate_100, (int, float)):
+                print(f"Humanization aggregate score ({label}, 0–100): {aggregate_100:.2f}")
 
     # Optionally also write deviations report
     if humanizer_debug:
@@ -3105,6 +3353,11 @@ def main() -> int:
         all_deviations.append({
             "rule_or_field": "input_style_signals",
             "signals": input_style_signals
+        })
+    if humanization_metrics:
+        all_deviations.append({
+            "rule_or_field": "humanization_metrics",
+            "metrics": humanization_metrics
         })
     if all_deviations:
         rep = out_path.with_suffix(out_path.suffix + ".deviations.json")

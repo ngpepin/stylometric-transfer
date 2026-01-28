@@ -30,6 +30,7 @@ class FingerprintPipeline {
   +compute_measurements()
   +pick_representative_excerpts()
   +build_fingerprint_prompt()
+  +build_merge_prompt()
   +derive_new_measurements()
   +chat_completions()
   +repair_json_with_llm()
@@ -50,6 +51,7 @@ class PromptTemplates {
   +fingerprint.system: string
   +fingerprint.user: json
   +validate_phrases: json
+  +merge: json
 }
 
 class StyleFingerprint {
@@ -80,6 +82,7 @@ FingerprintPipeline --> StyleFingerprint
 start
 :Load config.llm.json;
 :Load prompts.json;
+:Load config.tunables.json (optional);
 :Load lexicon_hints.json (optional);
 :Load config.avoid.txt (optional);
 :Merge avoid list into lexicon hints;
@@ -101,7 +104,7 @@ endif
 if (Prompt too large?) then (yes)
   :Chunk excerpts;
   :Synthesize partial fingerprints;
-  :Merge partial fingerprints;
+  :Merge partial fingerprints via LLM merge prompt;
 else (no)
   :Synthesize fingerprint JSON;
 endif
@@ -109,6 +112,7 @@ endif
 :Retry LLM call with backoff on timeout/5xx (up to max_retries);
 
 :Ensure required metadata fields;
+:Embed tunables snapshot (optional);
 :Embed measurements verbatim;
 :Include targets for rhetoric/cadence/epistemic/syntax/repetition;
 :Write style_fingerprint.json;
@@ -128,6 +132,7 @@ participant "LLM API" as LLM
 User -> FS : run -a corpus.zip -o fingerprint.json
 FS -> FSYS : read config.llm.json
 FS -> FSYS : read prompts.json
+FS -> FSYS : read config.tunables.json (optional)
 FS -> FSYS : read lexicon_hints.json (optional)
 FS -> FSYS : read config.avoid.txt (optional)
 FS -> FSYS : extract archive & read files
