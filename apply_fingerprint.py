@@ -2362,6 +2362,21 @@ def main() -> int:
     if args.max_prompt_tokens is not None:
         # Allow CLI override for chunking threshold.
         cfg.max_prompt_tokens = args.max_prompt_tokens
+    if isinstance(tunables, dict):
+        style_retry = tunables.get("style_retry", {})
+        if isinstance(style_retry, dict):
+            if args.no_style_retry is False:
+                enabled = style_retry.get("enabled")
+                if isinstance(enabled, bool) and not enabled:
+                    args.no_style_retry = True
+            if args.style_retry_threshold == 0.75:
+                threshold = style_retry.get("threshold")
+                if isinstance(threshold, (int, float)):
+                    args.style_retry_threshold = float(threshold)
+            if args.max_style_retries == 1:
+                max_retries = style_retry.get("max_retries")
+                if isinstance(max_retries, int):
+                    args.max_style_retries = max(0, max_retries)
 
     humanizer_rules: List[Dict[str, Any]] = []
     humanizer_debug: Dict[str, Any] | None = None

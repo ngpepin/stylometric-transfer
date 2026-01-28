@@ -1823,6 +1823,15 @@ Rather than learning what style is, it defines where style may reside in feature
       },
       "additionalProperties": false
     },
+    "style_retry": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "max_retries": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "section_restore": {
       "type": "object",
       "properties": {
@@ -1866,6 +1875,9 @@ Rather than learning what style is, it defines where style may reside in feature
 - `humanizer_variance.seed`: RNG seed for deterministic runs.
 - `humanizer_variance.max_ops_per_1000w`: maximum number of micro‑operations per 1000 words. **Recommendation:** start at `0.5`; `0.5–1.5` is usually safe. Values above `2.0` can begin to feel noisy unless the input is highly repetitive.
 - `humanizer_variance.allowed_ops`: allowed micro‑operations (e.g., `swap_transition`, `drop_filler`). **Recommendation:** begin with `["swap_transition", "drop_filler"]`, add ops gradually, and keep the list short to avoid compounding randomness.
+- `style_retry.enabled`: enable/disable the delta‑feedback retry pass after measuring style compliance.
+- `style_retry.threshold`: retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold‑based retries, while `1.0` retries unless the output is nearly perfect.
+- `style_retry.max_retries`: maximum number of retry passes (default `1`).
 - `section_restore.enabled`: enable/disable restoring missing sections after rewrite.
 - `section_restore.max_restore_sections`: maximum number of missing sections to restore (0 disables restoration).
 - `section_restore.heading_similarity_threshold`: fuzzy heading match threshold for considering a rewritten heading “present”.

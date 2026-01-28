@@ -19,6 +19,11 @@
     "max_ops_per_1000w": 0.5,
     "allowed_ops": ["swap_transition", "drop_filler"]
   },
+  "style_retry": {
+    "enabled": true,
+    "threshold": 0.75,
+    "max_retries": 2
+  },
   "section_restore": {
     "enabled": true,
     "max_restore_sections": 20,

@@ -226,6 +226,11 @@ Example (defaults shown):
     "max_ops_per_1000w": 0.0,
     "allowed_ops": ["swap_transition", "drop_filler"]
   },
+  "style_retry": {
+    "enabled": true,
+    "threshold": 0.75,
+    "max_retries": 1
+  },
   "section_restore": {
     "enabled": true,
     "max_restore_sections": 20,
@@ -258,6 +263,9 @@ Example (defaults shown):
 - `humanizer_variance.allowed_ops` (array): allowed micro‑operations (e.g., `swap_transition`, `drop_filler`). **Recommendation:** begin with `["swap_transition", "drop_filler"]`, add ops gradually, and keep the list short to avoid compounding randomness.
   - `swap_transition`: swaps a transition phrase with another compatible transition to vary surface rhythm without changing meaning.
   - `drop_filler`: removes low‑information filler words/phrases when safe (bounded by the ops budget).
+- `style_retry.enabled` (boolean): enable/disable the delta‑feedback retry pass after measuring style compliance.
+- `style_retry.threshold` (0–1): retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold-based retries, while `1.0` retries unless the output is nearly perfect.
+- `style_retry.max_retries` (integer): maximum number of retry passes (default `1`).
 - `section_restore.enabled` (boolean): enable/disable restoration of missing sections detected after rewriting.
 - `section_restore.max_restore_sections` (integer): maximum number of missing sections to restore (0 disables restoration).
 - `section_restore.heading_similarity_threshold` (0–1): fuzzy heading match threshold for considering a rewritten heading “present”.

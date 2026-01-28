@@ -1490,7 +1490,7 @@ def main() -> int:
 
     vprint(f"Using config: {args.config}")
     vprint(f"Output path: {args.out}")
-    print("License: run with --license to view LICENSE.md.")
+    # print("Use --license to view license.")
 
     cfg = load_config(args.config)
     prompts = load_prompts()

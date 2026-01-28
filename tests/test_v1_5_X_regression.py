@@ -58,6 +58,7 @@ class TestV15XRegression(unittest.TestCase):
         snapshot = fs.load_tunables_snapshot()
         self.assertIsInstance(snapshot, dict)
         self.assertIn("humanizer_conflicts", snapshot)
+        self.assertIn("style_retry", snapshot)
 
 
 if __name__ == "__main__":

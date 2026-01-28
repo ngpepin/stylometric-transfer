@@ -37,6 +37,15 @@
       },
       "additionalProperties": false
     },
+    "style_retry": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "max_retries": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "section_restore": {
       "type": "object",
       "properties": {
