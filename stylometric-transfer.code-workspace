@@ -4,5 +4,20 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"saveEditorLayout.list": [
+			{
+				"name": "stylo",
+				"documents": [],
+				"layout": {
+					"orientation": 0,
+					"groups": [
+						{
+							"size": 1162
+						}
+					]
+				}
+			}
+		]
+	}
 }
