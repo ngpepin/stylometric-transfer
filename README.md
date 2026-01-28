@@ -178,10 +178,10 @@ Create `config.llm.json` in the project root (used by default):
   "max_tokens": 6000,
   "max_prompt_tokens": 6000,
   "temperature": 0.2,
-  "timeout_seconds": 120,
-  "max_retries": 2,
-  "backoff_base_seconds": 1.0,
-  "backoff_max_seconds": 8.0
+  "timeout_seconds": 300,
+  "max_retries": 6,
+  "backoff_base_seconds": 2.0,
+  "backoff_max_seconds": 20.0
 }
 ```
 

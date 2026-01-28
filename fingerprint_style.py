@@ -1197,12 +1197,12 @@ class LLMConfig:
     model: str
     max_tokens: int = 6000
     temperature: float = 0.2
-    timeout_seconds: int = 120
+    timeout_seconds: int = 300
     extra_headers: Dict[str, str] = dataclasses.field(default_factory=dict)
     max_prompt_tokens: int = 100000
-    max_retries: int = 2
-    backoff_base_seconds: float = 1.0
-    backoff_max_seconds: float = 8.0
+    max_retries: int = 6
+    backoff_base_seconds: float = 2.0
+    backoff_max_seconds: float = 20.0
 
 def load_config(path: Path) -> LLMConfig:
     # Load API configuration and apply defaults.
@@ -1214,12 +1214,12 @@ def load_config(path: Path) -> LLMConfig:
         model=data["model"],
         max_tokens=max_tokens,
         temperature=float(data.get("temperature", 0.2)),
-        timeout_seconds=int(data.get("timeout_seconds", 120)),
+        timeout_seconds=int(data.get("timeout_seconds", 300)),
         extra_headers=dict(data.get("extra_headers", {})),
         max_prompt_tokens=int(data.get("max_prompt_tokens", max_tokens)),
-        max_retries=int(data.get("max_retries", 2)),
-        backoff_base_seconds=float(data.get("backoff_base_seconds", 1.0)),
-        backoff_max_seconds=float(data.get("backoff_max_seconds", 8.0)),
+        max_retries=int(data.get("max_retries", 6)),
+        backoff_base_seconds=float(data.get("backoff_base_seconds", 2.0)),
+        backoff_max_seconds=float(data.get("backoff_max_seconds", 20.0)),
     )
 
 def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
