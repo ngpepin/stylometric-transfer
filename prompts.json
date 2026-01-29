@@ -181,7 +181,9 @@
       "rules": [
         "If the phrase is clearly a citation fragment, drop it.",
         "If the phrase looks like OCR noise or non-words, drop it.",
-        "Drop phrases dominated by proper nouns or named entities (e.g., person/organization names) unless they are generic or multi-author conventions.",
+        "Drop phrases dominated by proper nouns or named entities (e.g., person/organization/place names).",
+        "If the phrase contains two or more capitalized tokens (in title case) or looks like a specific person/place/organization, drop it.",
+        "Allow proper nouns only when they are generic conventions (e.g., 'United States', 'World Bank') or widely used institutional terms.",
         "If the phrase is a normal lexical phrase, keep it."
       ]
     }
