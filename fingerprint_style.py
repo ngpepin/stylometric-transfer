@@ -85,6 +85,7 @@ PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
 LICENSE_FILENAME = "LICENSE.md"
 LEXICON_HINTS_FILENAME = "lexicon_hints.json"
 AVOID_LIST_FILENAME = "config.avoid.txt"
+PLACE_NAMES_FILENAME = "config.place_names.txt"
 
 def load_prompts() -> Dict[str, Any]:
     # Load externalized prompt templates located alongside this script.
@@ -149,7 +150,7 @@ def load_tunables_snapshot() -> Optional[Dict[str, Any]]:
     except Exception:
         return None
 
-def parse_avoid_list(text: str) -> List[str]:
+def parse_list_lines(text: str) -> List[str]:
     items: List[str] = []
     for raw in text.splitlines():
         line = raw.split("#", 1)[0].strip()
@@ -166,9 +167,39 @@ def load_avoid_list() -> List[str]:
     if not path:
         return []
     try:
-        return parse_avoid_list(path.read_text(encoding="utf-8"))
+        return parse_list_lines(path.read_text(encoding="utf-8"))
     except Exception:
         return []
+
+
+def normalize_place_name(value: str) -> str:
+    tokens = re.findall(r"[A-Za-z0-9]+", value.lower())
+    return " ".join(tokens)
+
+
+def load_place_names() -> List[str]:
+    # Load optional place-name list from CWD or script directory.
+    cwd_path = Path.cwd() / PLACE_NAMES_FILENAME
+    script_path = Path(__file__).resolve().parent / PLACE_NAMES_FILENAME
+    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    if not path:
+        return []
+    try:
+        raw_items = parse_list_lines(path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    normalized: List[str] = []
+    seen = set()
+    for item in raw_items:
+        norm = normalize_place_name(item)
+        if not norm:
+            continue
+        if " " not in norm and len(norm) < 3:
+            continue
+        if norm not in seen:
+            seen.add(norm)
+            normalized.append(norm)
+    return normalized
 
 
 def merge_avoid_list_into_hints(
@@ -1158,6 +1189,30 @@ def compute_measurements(
     return measurements
 
 
+def compute_token_capitalization_ratios(
+    texts: List[str],
+    token_set: set[str]
+) -> Dict[str, float]:
+    totals: Dict[str, int] = {t: 0 for t in token_set}
+    caps: Dict[str, int] = {t: 0 for t in token_set}
+    if not token_set:
+        return {}
+    for text in texts:
+        for tok in re.findall(r"[A-Za-z][A-Za-z'-]*", text):
+            key = tok.lower()
+            if key not in totals:
+                continue
+            totals[key] += 1
+            if tok[0].isupper():
+                caps[key] += 1
+    ratios: Dict[str, float] = {}
+    for t in token_set:
+        total = totals.get(t, 0)
+        if total > 0:
+            ratios[t] = caps.get(t, 0) / total
+    return ratios
+
+
 def pick_representative_excerpts(files_and_texts: List[Tuple[str, str]], max_total_chars: int) -> List[Dict[str, str]]:
     """
     Pick excerpts from multiple files to show the LLM real style.
@@ -1415,13 +1470,55 @@ def validate_common_phrases(
     cfg: LLMConfig,
     phrases: List[Dict[str, Any]],
     prompts: Dict[str, Any],
-    rare_word_candidates: List[Dict[str, Any]] | None = None
+    rare_word_candidates: List[Dict[str, Any]] | None = None,
+    token_cap_ratios: Dict[str, float] | None = None,
+    place_names: List[str] | None = None
 ) -> Dict[str, Any]:
     # Ask the LLM to flag OCR/citation noise in common phrases.
+    honorifics = {
+        "mr", "mrs", "ms", "dr", "sir", "madam", "lord", "lady", "duke", "emir", "imam",
+        "saint", "st", "president", "prime", "minister", "governor", "senator", "rep",
+        "mp", "king", "queen", "prince", "princess"
+    }
+
+    month_names = {
+        "january", "february", "march", "april", "may", "june",
+        "july", "august", "september", "october", "november", "december",
+        "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec"
+    }
+
+    def looks_like_date(phrase: str) -> bool:
+        lowered = phrase.lower()
+        tokens = [t for t in re.findall(r"[A-Za-z0-9]+", lowered)]
+        if any(t in month_names for t in tokens):
+            if any(t.isdigit() for t in tokens):
+                return True
+        # Numeric date patterns: 2024-06-20, 06/20/2024, 20.06.2024, 20240620
+        if re.search(r"\b\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}\b", lowered):
+            return True
+        if re.search(r"\b\d{1,2}[-/\.]\d{1,2}[-/\.]\d{2,4}\b", lowered):
+            return True
+        if re.search(r"\b\d{8}\b", lowered):
+            return True
+        # Ordinal dates like 13th, 2nd, 1st when paired with month names
+        if any(t in month_names for t in tokens) and re.search(r"\b\d{1,2}(st|nd|rd|th)\b", lowered):
+            return True
+        return False
+
     def should_drop_proper_name(phrase: str) -> bool:
         tokens = [t for t in re.findall(r"[A-Za-z][A-Za-z'-]*", phrase)]
         if not tokens:
             return False
+        if looks_like_date(phrase):
+            return True
+        if place_names:
+            normalized_phrase = f" {normalize_place_name(phrase)} "
+            for place in place_names:
+                if f" {place} " in normalized_phrase:
+                    return True
+        lower_tokens = [t.lower() for t in tokens]
+        if any(t in honorifics for t in lower_tokens):
+            return True
         cap_tokens = [t for t in tokens if t[0].isupper()]
         if len(cap_tokens) >= 2:
             return True
@@ -1429,6 +1526,13 @@ def validate_common_phrases(
             # Drop single-capitalized token phrases unless it's a generic institution.
             generic = {"United", "States", "World", "Bank", "European", "Union", "Congress", "Parliament"}
             if cap_tokens[0] not in generic:
+                return True
+        if token_cap_ratios:
+            high = [t for t in lower_tokens if token_cap_ratios.get(t, 0.0) >= 0.6]
+            mid = [t for t in lower_tokens if token_cap_ratios.get(t, 0.0) >= 0.4]
+            if len(high) >= 1:
+                return True
+            if len(mid) >= 2:
                 return True
         return False
 
@@ -1441,7 +1545,7 @@ def validate_common_phrases(
                 "phrase": phrase,
                 "ngram": item.get("ngram"),
                 "count": item.get("count"),
-                "reason": "Dropped by prefilter: likely proper name."
+                "reason": "Dropped by prefilter: likely proper name, place name, or date."
             })
         else:
             filtered.append(item)
@@ -1608,6 +1712,7 @@ def main() -> int:
     tunables_snapshot = load_tunables_snapshot()
     lexicon_hints = load_optional_lexicon_hints()
     avoid_list = load_avoid_list()
+    place_names = load_place_names()
     if avoid_list:
         lexicon_hints = merge_avoid_list_into_hints(lexicon_hints, avoid_list)
     if args.max_prompt_tokens is not None:
@@ -1667,8 +1772,22 @@ def main() -> int:
                     "ngram": 3
                 })
             if candidates:
+                token_set: set[str] = set()
+                for item in candidates:
+                    phrase = item.get("phrase", "")
+                    if isinstance(phrase, str):
+                        for tok in re.findall(r"[A-Za-z][A-Za-z'-]*", phrase):
+                            token_set.add(tok.lower())
+                token_cap_ratios = compute_token_capitalization_ratios(texts, token_set)
                 rare_candidates = measurements.get("lexical_signals", {}).get("rare_words", [])
-                validation = validate_common_phrases(cfg, candidates, prompts, rare_word_candidates=rare_candidates)
+                validation = validate_common_phrases(
+                    cfg,
+                    candidates,
+                    prompts,
+                    rare_word_candidates=rare_candidates,
+                    token_cap_ratios=token_cap_ratios,
+                    place_names=place_names
+                )
                 decisions = validation.get("decisions", []) or []
                 decision_map: Dict[Tuple[str, int], Dict[str, Any]] = {}
                 for d in decisions:

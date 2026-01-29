@@ -196,9 +196,10 @@ Notes:
 - Prompt templates are stored in `prompts.json` next to the Python scripts and are loaded at runtime (includes the `validate_phrases` template used for common-phrase validation)
 - Optional `lexicon_hints.json` (in repo root or next to the scripts) can provide preferred or avoided phrases for fingerprinting
 - Optional `config.avoid.txt` (in repo root or next to the scripts) lists words or phrases to always avoid; it is merged into the fingerprint lexicon and enforced during style application
+- Optional `config.place_names.txt` (in repo root or next to the scripts) lists place names to suppress from common-phrase extraction to avoid location-heavy phrases dominating
 - When fingerprinting, the current `config.tunables.json` can be embedded as `metadata.extraction.tunables_snapshot` for auditability
 - If the fingerprint prompt exceeds `max_prompt_tokens`, excerpts are chunked and **partial fingerprints are merged using a second LLM merge pass** (pairwise merge with a dedicated merge prompt).
-- Common-phrase validation now includes a deterministic prefilter and an optional LLM phrase ranking step that drops likely proper‑name phrases before final selection.
+- Common-phrase validation now includes a deterministic prefilter (honorifics + capitalization‑ratio heuristics, place‑name blacklist, date patterns) and an optional LLM phrase‑ranking step that drops likely proper‑name phrases before final selection.
 - Rare‑word selection can be ranked by the same LLM validation call used for common phrases, to de‑prioritize proper names before truncation.
 - **Corpus size guidance:** diminishing returns typically appear once core style statistics stabilize. As a rule of thumb, ~20–50k words often yields a stable fingerprint for a single author/genre; ~100k words usually captures most steady signals. If key rates (sentence/paragraph distributions, punctuation per 1k words, function‑word profile, stance rates) drift by <1–2% after adding another 10–20k words, you’re likely in the diminishing‑returns zone. More data still helps when you’re mixing genres/eras or chasing rare rhetorical/lexical signals.
 
@@ -324,6 +325,12 @@ If present, `config.avoid.txt` provides a hard “never use” list. Each non-em
 - Merged into `lexicon.avoid_words` during application (even if the fingerprint does not include them)
 
 Organizational bans, regulatory requirements or personal preferences may take precedence over the author's stylistic choices.
+
+---
+
+### Place-name blacklist: `config.place_names.txt`
+
+If present, `config.place_names.txt` provides a list of place names (one per line) that should be excluded from common-phrase extraction. This helps prevent location-heavy phrases (e.g., “new york”, “london”) from dominating `common_phrases`. Lines may include comments after `#`, and blank lines are ignored. Multi-word names are supported. Single-word names shorter than 3 characters are ignored.
 
 ---
 
