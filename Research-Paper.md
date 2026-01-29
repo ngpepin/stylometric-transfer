@@ -357,7 +357,8 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
         # sentence-openers/templates, n-grams
 
     if phrase_validation_enabled:
-        V ← validate_common_phrases(M.common_phrases, llm=C)
+        V ← prefilter_proper_names(M.common_phrases)
+        V ← validate_common_phrases(V, llm=C)
         M.common_phrases_validation ← V
 
     E ← pick_representative_excerpts(files, char_budget=B, voice_scoring=on)
@@ -397,6 +398,8 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
     return F
 end procedure
 ```
+
+Common‑phrase validation includes a deterministic prefilter that drops likely proper‑name phrases (e.g., person/place/org names) before the LLM review.
 
 ### A.2 Rewrite (Fingerprint + Draft → Styled Draft)
 

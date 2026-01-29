@@ -28,6 +28,7 @@ class FingerprintPipeline {
   +normalize_text()
   +filter_author_voice_text()
   +compute_measurements()
+  +prefilter_proper_name_phrases()
   +pick_representative_excerpts()
   +build_fingerprint_prompt()
   +build_merge_prompt()
@@ -94,6 +95,7 @@ start
 :Compute measurements (rhetoric moves, cadence, discourse markers, repetition);
 
 if (Phrase validation enabled?) then (yes)
+  :Prefilter proper-name phrases;
   :Validate common phrases via LLM;
   :Drop OCR/citation noise;
 endif
@@ -138,6 +140,7 @@ FS -> FSYS : read config.avoid.txt (optional)
 FS -> FSYS : extract archive & read files
 FS -> FS : normalize/filter text
 FS -> FS : compute measurements
+FS -> FS : prefilter proper-name phrases
 FS -> LLM : validate common phrases (optional)
 LLM --> FS : validation decisions
 FS -> FS : pick excerpts
