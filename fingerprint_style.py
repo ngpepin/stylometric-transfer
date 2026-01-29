@@ -1932,10 +1932,10 @@ def main() -> int:
             )
             measurements["templates_signals"]["sentence_openers_top"] = filtered_sentence
             measurements["templates_signals"]["transition_openers_top"] = filtered_transition
-            if dropped_sentence:
-                measurements["templates_signals"]["sentence_openers_dropped"] = dropped_sentence
-            if dropped_transition:
-                measurements["templates_signals"]["transition_openers_dropped"] = dropped_transition
+            # if dropped_sentence:
+            #     measurements["templates_signals"]["sentence_openers_dropped"] = dropped_sentence
+            # if dropped_transition:
+            #     measurements["templates_signals"]["transition_openers_dropped"] = dropped_transition
         if not args.no_phrase_validation:
             vprint("Validating common phrases with LLM...")
             common = measurements.get("common_phrases", {})
