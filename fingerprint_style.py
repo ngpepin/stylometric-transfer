@@ -1684,6 +1684,13 @@ def main() -> int:
                     measurements["lexical_signals"]["rare_words"] = ordered + remaining
                     if "lexical_avoidance" in measurements and isinstance(measurements["lexical_avoidance"], dict):
                         measurements["lexical_avoidance"]["rare_words"] = ordered + remaining
+                ranked_phrases = validation.get("ranked_phrases") if isinstance(validation, dict) else None
+                keep_phrase_set: set[str] | None = None
+                if isinstance(ranked_phrases, list) and ranked_phrases:
+                    keep_count = max(1, len(ranked_phrases) // 2)
+                    keep_phrase_set = set(
+                        p for p in ranked_phrases[:keep_count] if isinstance(p, str)
+                    )
 
                 validated_bi: List[Dict[str, Any]] = []
                 validated_tri: List[Dict[str, Any]] = []
@@ -1692,7 +1699,14 @@ def main() -> int:
                 for item in common.get("bigrams_top", []) or []:
                     phrase = item.get("phrase", "")
                     decision = decision_map.get((phrase, 2))
-                    if decision and decision.get("decision") == "drop":
+                    if keep_phrase_set is not None and phrase not in keep_phrase_set:
+                        dropped.append({
+                            "phrase": phrase,
+                            "count": item.get("count", 0),
+                            "ngram": 2,
+                            "reason": "Dropped by phrase ranking (likely proper name)."
+                        })
+                    elif decision and decision.get("decision") == "drop":
                         dropped.append({
                             "phrase": phrase,
                             "count": item.get("count", 0),
@@ -1705,7 +1719,14 @@ def main() -> int:
                 for item in common.get("trigrams_top", []) or []:
                     phrase = item.get("phrase", "")
                     decision = decision_map.get((phrase, 3))
-                    if decision and decision.get("decision") == "drop":
+                    if keep_phrase_set is not None and phrase not in keep_phrase_set:
+                        dropped.append({
+                            "phrase": phrase,
+                            "count": item.get("count", 0),
+                            "ngram": 3,
+                            "reason": "Dropped by phrase ranking (likely proper name)."
+                        })
+                    elif decision and decision.get("decision") == "drop":
                         dropped.append({
                             "phrase": phrase,
                             "count": item.get("count", 0),

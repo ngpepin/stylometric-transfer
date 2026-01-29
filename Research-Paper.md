@@ -399,7 +399,7 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
 end procedure
 ```
 
-Common‑phrase validation includes a deterministic prefilter that drops likely proper‑name phrases (e.g., person/place/org names) before the LLM review.
+Common‑phrase validation includes a deterministic prefilter and an LLM phrase‑ranking step that drop likely proper‑name phrases (e.g., person/place/org names) before final selection.
 
 Rare‑word selection can be optionally ranked by the same LLM validation call (shared with common‑phrase filtering), using capitalization ratios to de‑prioritize proper names before truncation.
 

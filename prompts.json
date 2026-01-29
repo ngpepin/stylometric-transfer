@@ -175,6 +175,7 @@
           }
         ],
         "ranked_rare_words": ["string"],
+        "ranked_phrases": ["string"],
         "notes": [
           "string"
         ]
@@ -186,7 +187,8 @@
         "If the phrase contains two or more capitalized tokens (in title case) or looks like a specific person/place/organization, drop it.",
         "If the phrase is an abbreviation or acronym split into letters (e.g., 'e. g.', 'i. e.', 'U. S.'), drop it.",
         "If the phrase is a normal lexical phrase, keep it.",
-        "If rare-word candidates are provided, rank them from least likely to be proper names to most likely in ranked_rare_words."
+        "If rare-word candidates are provided, rank them from least likely to be proper names to most likely in ranked_rare_words.",
+        "If phrase candidates are provided, rank them from least likely to be proper names to most likely in ranked_phrases."
       ]
     }
   },
