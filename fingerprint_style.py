@@ -1836,6 +1836,41 @@ def chunk_excerpts(
     return batches
 
 
+def _extract_json_candidate(text: str) -> str | None:
+    # Extract the first complete JSON object/array from a string.
+    start = None
+    stack: List[str] = []
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text):
+        if start is None:
+            if ch == "{" or ch == "[":
+                start = i
+                stack.append(ch)
+            continue
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            if in_string:
+                escape = True
+            continue
+        if ch == "\"":
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{" or ch == "[":
+            stack.append(ch)
+        elif ch == "}" or ch == "]":
+            if not stack:
+                continue
+            open_ch = stack.pop()
+            if not stack:
+                return text[start:i + 1]
+    return None
+
+
 def parse_json_strict(s: str) -> Dict[str, Any]:
     # Strip code fences if present and parse strictly as JSON.
     s = s.strip()
@@ -1843,7 +1878,13 @@ def parse_json_strict(s: str) -> Dict[str, Any]:
     if s.startswith("```"):
         s = re.sub(r"^```(?:json)?\s*", "", s)
         s = re.sub(r"\s*```$", "", s)
-    return json.loads(s)
+    try:
+        return json.loads(s)
+    except Exception:
+        candidate = _extract_json_candidate(s)
+        if candidate:
+            return json.loads(candidate)
+        raise
 
 def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any]) -> Dict[str, Any]:
     # Ask the LLM to repair malformed JSON while preserving content.
