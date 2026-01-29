@@ -2501,17 +2501,15 @@ def build_apply_prompt(
         meta = fp_payload.get("metadata")
         if isinstance(meta, dict):
             extraction = meta.get("extraction")
-            if isinstance(extraction, dict) and "tunables_snapshot" in extraction:
+            if isinstance(extraction, dict):
                 extraction = dict(extraction)
                 extraction.pop("tunables_snapshot", None)
                 meta = dict(meta)
-                meta["extraction"] = extraction
+                meta.pop("extraction", None)
             corpus = meta.get("corpus")
-            if isinstance(corpus, dict) and "documents" in corpus:
-                corpus = dict(corpus)
-                corpus.pop("documents", None)
+            if isinstance(corpus, dict):
                 meta = dict(meta)
-                meta["corpus"] = corpus
+                meta.pop("corpus", None)
             fp_payload["metadata"] = meta
     user["style_fingerprint_json"] = fp_payload
     user["input_measurements"] = input_meas
