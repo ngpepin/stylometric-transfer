@@ -1630,6 +1630,103 @@ def validate_common_phrases(
     return result
 
 
+def filter_proper_phrase_candidates(
+    phrases: List[Dict[str, Any]],
+    token_cap_ratios: Dict[str, float] | None,
+    entity_blacklist: List[str] | None
+) -> List[Dict[str, Any]]:
+    # Deterministically drop phrases likely to be proper names, entities, or dates.
+    honorifics = {
+        "mr", "mrs", "ms", "dr", "sir", "madam", "lord", "lady", "duke", "emir", "imam",
+        "saint", "st", "president", "prime", "minister", "governor", "senator", "rep",
+        "mp", "king", "queen", "prince", "princess"
+    }
+    month_names = {
+        "january", "february", "march", "april", "may", "june",
+        "july", "august", "september", "october", "november", "december",
+        "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec"
+    }
+
+    def looks_like_date(phrase: str) -> bool:
+        lowered = phrase.lower()
+        tokens = [t for t in re.findall(r"[A-Za-z0-9]+", lowered)]
+        if any(t in month_names for t in tokens) and any(t.isdigit() for t in tokens):
+            return True
+        if re.search(r"\b\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}\b", lowered):
+            return True
+        if re.search(r"\b\d{1,2}[-/\.]\d{1,2}[-/\.]\d{2,4}\b", lowered):
+            return True
+        if re.search(r"\b\d{8}\b", lowered):
+            return True
+        if any(t in month_names for t in tokens) and re.search(r"\b\d{1,2}(st|nd|rd|th)\b", lowered):
+            return True
+        return False
+
+    entity_singles: set[str]
+    entity_phrases: set[tuple[str, ...]]
+    entity_max_len: int
+    if entity_blacklist:
+        entity_singles, entity_phrases, entity_max_len = build_entity_matcher(entity_blacklist)
+    else:
+        entity_singles, entity_phrases, entity_max_len = set(), set(), 1
+
+    def contains_entity(phrase: str) -> bool:
+        if not entity_singles and not entity_phrases:
+            return False
+        tokens = re.findall(r"[A-Za-z0-9]+", phrase.lower())
+        if not tokens:
+            return False
+        for tok in tokens:
+            if tok in entity_singles:
+                return True
+        if not entity_phrases:
+            return False
+        max_len = min(entity_max_len, len(tokens))
+        for start in range(0, len(tokens)):
+            for length in range(2, max_len + 1):
+                end = start + length
+                if end > len(tokens):
+                    break
+                if tuple(tokens[start:end]) in entity_phrases:
+                    return True
+        return False
+
+    def should_drop(phrase: str) -> bool:
+        tokens = [t for t in re.findall(r"[A-Za-z][A-Za-z'-]*", phrase)]
+        if not tokens:
+            return False
+        if looks_like_date(phrase):
+            return True
+        if contains_entity(phrase):
+            return True
+        lower_tokens = [t.lower() for t in tokens]
+        if any(t in honorifics for t in lower_tokens):
+            return True
+        cap_tokens = [t for t in tokens if t[0].isupper()]
+        if len(cap_tokens) >= 2:
+            return True
+        if len(cap_tokens) == 1:
+            generic = {"United", "States", "World", "Bank", "European", "Union", "Congress", "Parliament"}
+            if cap_tokens[0] not in generic:
+                return True
+        if token_cap_ratios:
+            high = [t for t in lower_tokens if token_cap_ratios.get(t, 0.0) >= 0.6]
+            mid = [t for t in lower_tokens if token_cap_ratios.get(t, 0.0) >= 0.4]
+            if len(high) >= 1:
+                return True
+            if len(mid) >= 2:
+                return True
+        return False
+
+    kept: List[Dict[str, Any]] = []
+    for item in phrases:
+        phrase = item.get("phrase", "") if isinstance(item, dict) else ""
+        if isinstance(phrase, str) and should_drop(phrase):
+            continue
+        kept.append(item)
+    return kept
+
+
 def chunk_excerpts(
     excerpts: List[Dict[str, str]],
     measurements: Dict[str, Any],
@@ -1806,6 +1903,33 @@ def main() -> int:
             rare_words_limit=rare_words_limit,
             rare_words_limit_avoidance=rare_words_limit_avoid
         )
+        # Deterministically filter sentence/transition openers to reduce proper-name noise.
+        template_signals = measurements.get("templates_signals", {})
+        opener_candidates: List[Dict[str, Any]] = []
+        for item in template_signals.get("sentence_openers_top", []) or []:
+            opener_candidates.append(item)
+        for item in template_signals.get("transition_openers_top", []) or []:
+            opener_candidates.append(item)
+        if opener_candidates:
+            token_set: set[str] = set()
+            for item in opener_candidates:
+                phrase = item.get("phrase", "")
+                if isinstance(phrase, str):
+                    for tok in re.findall(r"[A-Za-z][A-Za-z'-]*", phrase):
+                        token_set.add(tok.lower())
+            token_cap_ratios = compute_token_capitalization_ratios(texts, token_set)
+            filtered_sentence = filter_proper_phrase_candidates(
+                template_signals.get("sentence_openers_top", []) or [],
+                token_cap_ratios,
+                entity_blacklist
+            )
+            filtered_transition = filter_proper_phrase_candidates(
+                template_signals.get("transition_openers_top", []) or [],
+                token_cap_ratios,
+                entity_blacklist
+            )
+            measurements["templates_signals"]["sentence_openers_top"] = filtered_sentence
+            measurements["templates_signals"]["transition_openers_top"] = filtered_transition
         if not args.no_phrase_validation:
             vprint("Validating common phrases with LLM...")
             common = measurements.get("common_phrases", {})
