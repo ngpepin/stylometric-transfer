@@ -47,6 +47,13 @@
       },
       "additionalProperties": false
     },
+    "chunking": {
+      "type": "object",
+      "properties": {
+        "max_input_tokens": { "type": "integer", "minimum": 200 }
+      },
+      "additionalProperties": false
+    },
     "style_retry": {
       "type": "object",
       "properties": {

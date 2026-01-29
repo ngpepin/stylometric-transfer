@@ -2881,14 +2881,28 @@ def main() -> int:
             last_out = out_obj
             return final_md, out_obj, compliance
 
-    initial_messages = build_messages_for_chunk(input_md)
-    initial_tokens = estimate_tokens_for_messages(initial_messages)
-    if initial_tokens <= cfg.max_prompt_tokens:
+    base_messages = build_messages_for_chunk("", None, True)
+    base_tokens = estimate_tokens_for_messages(base_messages)
+    max_input_tokens = max(400, cfg.max_prompt_tokens - base_tokens)
+    if isinstance(tunables, dict):
+        chunk_conf = tunables.get("chunking", {})
+        if isinstance(chunk_conf, dict):
+            cap = chunk_conf.get("max_input_tokens")
+            if isinstance(cap, int) and cap > 0:
+                max_input_tokens = min(max_input_tokens, max(200, cap))
+    input_tokens = estimate_tokens_for_text(input_md)
+    initial_tokens = input_tokens + base_tokens
+    if args.verbose:
+        vprint(
+            f"Prompt overhead tokens: {base_tokens}; "
+            f"input budget: {max_input_tokens}; input tokens: {input_tokens}"
+        )
+    if input_tokens <= max_input_tokens:
         vprint("Calling LLM to apply fingerprint...")
-    try:
-        final_md, out_obj, compliance = rewrite_chunk(input_md)
-    except RuntimeError:
-        return 3
+        try:
+            final_md, out_obj, compliance = rewrite_chunk(input_md)
+        except RuntimeError:
+            return 3
         # Ensure any frozen blocks and citation placeholders survive.
         missing_html = [p for p in find_placeholders(input_md, HTML_PLACEHOLDER_RE) if p not in final_md]
         if missing_html:

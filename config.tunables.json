@@ -39,6 +39,9 @@
       "avg_word_length": 1.0
     }
   },
+  "chunking": {
+    "max_input_tokens": 4000
+  },
   "style_retry": {
     "enabled": true,
     "threshold": 0.75,

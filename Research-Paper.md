@@ -1854,6 +1854,13 @@ Rather than learning what style is, it defines where style may reside in feature
       },
       "additionalProperties": false
     },
+    "chunking": {
+      "type": "object",
+      "properties": {
+        "max_input_tokens": { "type": "integer", "minimum": 200 }
+      },
+      "additionalProperties": false
+    },
     "style_retry": {
       "type": "object",
       "properties": {
@@ -1907,6 +1914,7 @@ Rather than learning what style is, it defines where style may reside in feature
 - `humanizer_variance.max_ops_per_1000w`: maximum number of micro‑operations per 1000 words. **Recommendation:** start at `0.5`; `0.5–1.5` is usually safe. Values above `2.0` can begin to feel noisy unless the input is highly repetitive.
 - `humanizer_variance.allowed_ops`: allowed micro‑operations (e.g., `swap_transition`, `drop_filler`). **Recommendation:** begin with `["swap_transition", "drop_filler"]`, add ops gradually, and keep the list short to avoid compounding randomness.
 - `humanization_metrics.weights`: optional weighting for the 0–100 aggregate humanization score. Any metric with a weight of 0 is excluded.
+- `chunking.max_input_tokens`: hard cap on input tokens per chunk (after prompt overhead). Lower values increase chunk count but reduce per‑request latency and timeouts.
 - `style_retry.enabled`: enable/disable the delta‑feedback retry pass after measuring style compliance.
 - `style_retry.threshold`: retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold‑based retries, while `1.0` retries unless the output is nearly perfect.
 - `style_retry.max_retries`: maximum number of retry passes (default `1`).
