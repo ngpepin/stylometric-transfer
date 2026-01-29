@@ -1396,12 +1396,50 @@ def validate_common_phrases(
     prompts: Dict[str, Any]
 ) -> Dict[str, Any]:
     # Ask the LLM to flag OCR/citation noise in common phrases.
-    messages = build_phrase_validation_prompt(phrases, prompts)
+    def should_drop_proper_name(phrase: str) -> bool:
+        tokens = [t for t in re.findall(r"[A-Za-z][A-Za-z'-]*", phrase)]
+        if not tokens:
+            return False
+        cap_tokens = [t for t in tokens if t[0].isupper()]
+        if len(cap_tokens) >= 2:
+            return True
+        if len(cap_tokens) == 1:
+            # Drop single-capitalized token phrases unless it's a generic institution.
+            generic = {"United", "States", "World", "Bank", "European", "Union", "Congress", "Parliament"}
+            if cap_tokens[0] not in generic:
+                return True
+        return False
+
+    filtered = []
+    dropped = []
+    for item in phrases:
+        phrase = item.get("phrase", "") if isinstance(item, dict) else ""
+        if isinstance(phrase, str) and should_drop_proper_name(phrase):
+            dropped.append({
+                "phrase": phrase,
+                "ngram": item.get("ngram"),
+                "count": item.get("count"),
+                "reason": "Dropped by prefilter: likely proper name."
+            })
+        else:
+            filtered.append(item)
+    messages = build_phrase_validation_prompt(filtered, prompts)
     raw, _ = chat_completions(cfg, messages)
     try:
-        return parse_json_strict(raw)
+        result = parse_json_strict(raw)
     except Exception:
-        return repair_json_with_llm(cfg, raw, prompts)
+        result = repair_json_with_llm(cfg, raw, prompts)
+    if dropped:
+        result.setdefault("decisions", [])
+        for d in dropped:
+            result["decisions"].append({
+                "phrase": d["phrase"],
+                "ngram": d["ngram"],
+                "count": d["count"],
+                "decision": "drop",
+                "reason": d["reason"]
+            })
+    return result
 
 
 def chunk_excerpts(
