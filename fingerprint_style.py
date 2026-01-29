@@ -1634,7 +1634,7 @@ def filter_proper_phrase_candidates(
     phrases: List[Dict[str, Any]],
     token_cap_ratios: Dict[str, float] | None,
     entity_blacklist: List[str] | None
-) -> List[Dict[str, Any]]:
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     # Deterministically drop phrases likely to be proper names, entities, or dates.
     honorifics = {
         "mr", "mrs", "ms", "dr", "sir", "madam", "lord", "lady", "duke", "emir", "imam",
@@ -1719,12 +1719,14 @@ def filter_proper_phrase_candidates(
         return False
 
     kept: List[Dict[str, Any]] = []
+    dropped: List[Dict[str, Any]] = []
     for item in phrases:
         phrase = item.get("phrase", "") if isinstance(item, dict) else ""
         if isinstance(phrase, str) and should_drop(phrase):
+            dropped.append(item)
             continue
         kept.append(item)
-    return kept
+    return kept, dropped
 
 
 def chunk_excerpts(
@@ -1918,18 +1920,22 @@ def main() -> int:
                     for tok in re.findall(r"[A-Za-z][A-Za-z'-]*", phrase):
                         token_set.add(tok.lower())
             token_cap_ratios = compute_token_capitalization_ratios(texts, token_set)
-            filtered_sentence = filter_proper_phrase_candidates(
+            filtered_sentence, dropped_sentence = filter_proper_phrase_candidates(
                 template_signals.get("sentence_openers_top", []) or [],
                 token_cap_ratios,
                 entity_blacklist
             )
-            filtered_transition = filter_proper_phrase_candidates(
+            filtered_transition, dropped_transition = filter_proper_phrase_candidates(
                 template_signals.get("transition_openers_top", []) or [],
                 token_cap_ratios,
                 entity_blacklist
             )
             measurements["templates_signals"]["sentence_openers_top"] = filtered_sentence
             measurements["templates_signals"]["transition_openers_top"] = filtered_transition
+            if dropped_sentence:
+                measurements["templates_signals"]["sentence_openers_dropped"] = dropped_sentence
+            if dropped_transition:
+                measurements["templates_signals"]["transition_openers_dropped"] = dropped_transition
         if not args.no_phrase_validation:
             vprint("Validating common phrases with LLM...")
             common = measurements.get("common_phrases", {})
