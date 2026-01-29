@@ -3,8 +3,13 @@
 # Multi-word names are supported (e.g., "new york", "acme corp").
 # If present in the project root or next to fingerprint_style.py, phrases
 # containing these entities are dropped as likely proper‑name noise.
-Sarajevo
+middle east
+south korea
+economist newspaper
 'Big' Jim Sullivan
+prime minister
+economist com
+economist.com
 1 Automotive
 3M
 50 Cent
@@ -9180,7 +9185,9 @@ Mr. Kool-Aid
 Mr. Magoo
 Mr. Rogers
 Mr. T
+Mr. Trump
 Mr. Weatherbee
+Mr. Xi
 Mr.Ollivander
 Mrs Figg
 Mrs. Norris
@@ -11454,6 +11461,7 @@ Sarah Michelle Gellar
 Sarah Palin
 Sarah Silverman
 Saraj
+Sarajevo
 Sarandë
 Saratovskaya oblast'
 Sardegna
@@ -12489,6 +12497,7 @@ The Bride
 The Cat in the Hat
 The Doctor
 The Drumologist
+The Economist
 The Edge
 The Gambia
 The Great Gazoo
