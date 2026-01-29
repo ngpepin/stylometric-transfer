@@ -1461,13 +1461,13 @@ def mask_html_entities(text: str) -> tuple[str, Dict[str, str]]:
 
 def split_oversize_block(
     block: str,
-    build_messages_fn,
-    max_prompt_tokens: int,
+    estimate_tokens_fn,
+    max_input_tokens: int,
     depth: int = 0,
     max_depth: int = 50
 ) -> List[str]:
     # Recursively split blocks that exceed token limits, respecting code fences.
-    if estimate_tokens_for_messages(build_messages_fn(block)) <= max_prompt_tokens:
+    if estimate_tokens_fn(block) <= max_input_tokens:
         return [block]
     if depth >= max_depth:
         # Failsafe: avoid infinite recursion; return the block as-is.
@@ -1486,7 +1486,7 @@ def split_oversize_block(
         for line in content:
             current.append(line)
             candidate = "\n".join([opener] + current + [fence])
-            if estimate_tokens_for_messages(build_messages_fn(candidate)) > max_prompt_tokens and len(current) > 1:
+            if estimate_tokens_fn(candidate) > max_input_tokens and len(current) > 1:
                 current.pop()
                 chunks.append("\n".join([opener] + current + [fence]))
                 current = [line]
@@ -1515,37 +1515,63 @@ def split_oversize_block(
         return [block]
     chunks: List[str] = []
     if left:
-        chunks.extend(split_oversize_block(left, build_messages_fn, max_prompt_tokens, depth + 1, max_depth))
+        chunks.extend(split_oversize_block(left, estimate_tokens_fn, max_input_tokens, depth + 1, max_depth))
     if right:
-        chunks.extend(split_oversize_block(right, build_messages_fn, max_prompt_tokens, depth + 1, max_depth))
+        chunks.extend(split_oversize_block(right, estimate_tokens_fn, max_input_tokens, depth + 1, max_depth))
     return chunks
 
 
 def chunk_markdown(markdown: str, build_messages_fn, max_prompt_tokens: int) -> List[str]:
-    # Greedily group blocks into chunks that fit the prompt budget.
+    # Chunk by paragraph with a fixed character budget derived from prompt overhead.
+    base_messages = build_messages_fn("", True)
+    base_tokens = estimate_tokens_for_messages(base_messages)
+    max_input_tokens = max(400, max_prompt_tokens - base_tokens)
+    max_chars = max_input_tokens * 4
+
     blocks = split_markdown_blocks(markdown)
     chunks: List[str] = []
     current: List[str] = []
+    current_len = 0
 
-    def join_blocks(parts: List[str]) -> str:
-        return "\n\n".join(p for p in parts if p.strip())
+    def flush() -> None:
+        nonlocal current, current_len
+        if current:
+            chunks.append("\n\n".join(current).strip())
+            current = []
+            current_len = 0
+
+    def split_oversize_text(text: str) -> List[str]:
+        if len(text) <= max_chars:
+            return [text]
+        parts: List[str] = []
+        lines = text.splitlines()
+        buf: List[str] = []
+        buf_len = 0
+        for line in lines:
+            line_len = len(line) + 1
+            if buf_len + line_len > max_chars and buf:
+                parts.append("\n".join(buf).strip())
+                buf = [line]
+                buf_len = len(line) + 1
+            else:
+                buf.append(line)
+                buf_len += line_len
+        if buf:
+            parts.append("\n".join(buf).strip())
+        return parts if parts else [text]
 
     for block in blocks:
         if not block.strip():
             continue
-        for sub_block in split_oversize_block(block, build_messages_fn, max_prompt_tokens):
-            if not current:
-                current = [sub_block]
-                continue
-            candidate = join_blocks(current + [sub_block])
-            if estimate_tokens_for_messages(build_messages_fn(candidate)) <= max_prompt_tokens:
-                current.append(sub_block)
-            else:
-                chunks.append(join_blocks(current))
-                current = [sub_block]
+        sub_blocks = split_oversize_text(block.strip())
+        for sub in sub_blocks:
+            sub_len = len(sub) + 2
+            if current_len + sub_len > max_chars and current:
+                flush()
+            current.append(sub)
+            current_len += sub_len
 
-    if current:
-        chunks.append(join_blocks(current))
+    flush()
     return [c for c in chunks if c.strip()]
 
 def approx_rate_per_1000_words(count: int, total_words: int) -> float:
@@ -2469,7 +2495,25 @@ def build_apply_prompt(
     if not isinstance(user_template, dict):
         raise TypeError("prompts.apply.user must be an object")
     user = copy.deepcopy(user_template)
-    user["style_fingerprint_json"] = fingerprint
+    fp_payload = fingerprint
+    if isinstance(fingerprint, dict):
+        fp_payload = copy.deepcopy(fingerprint)
+        meta = fp_payload.get("metadata")
+        if isinstance(meta, dict):
+            extraction = meta.get("extraction")
+            if isinstance(extraction, dict) and "tunables_snapshot" in extraction:
+                extraction = dict(extraction)
+                extraction.pop("tunables_snapshot", None)
+                meta = dict(meta)
+                meta["extraction"] = extraction
+            corpus = meta.get("corpus")
+            if isinstance(corpus, dict) and "documents" in corpus:
+                corpus = dict(corpus)
+                corpus.pop("documents", None)
+                meta = dict(meta)
+                meta["corpus"] = corpus
+            fp_payload["metadata"] = meta
+    user["style_fingerprint_json"] = fp_payload
     user["input_measurements"] = input_meas
     user["input_markdown"] = input_md
     if style_feedback:
@@ -2730,9 +2774,17 @@ def main() -> int:
     all_deviations: List[Any] = []
     outputs: List[str] = []
 
-    def build_messages_for_chunk(md_chunk: str, style_feedback: Dict[str, Any] | None = None) -> List[Dict[str, str]]:
+    def build_messages_for_chunk(
+        md_chunk: str,
+        style_feedback: Dict[str, Any] | None = None,
+        for_estimate: bool = False
+    ) -> List[Dict[str, str]]:
         # Build prompts per chunk using local measurements.
-        input_meas = compute_measurements(filter_author_voice_text(md_chunk))
+        if for_estimate:
+            word_count = len(words(md_chunk))
+            input_meas = {"totals": {"total_words_est": word_count}}
+        else:
+            input_meas = compute_measurements(filter_author_voice_text(md_chunk))
         return build_apply_prompt(
             fingerprint,
             md_chunk,
