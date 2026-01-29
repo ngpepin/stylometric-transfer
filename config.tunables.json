@@ -51,7 +51,7 @@
   "style_retry": {
     "enabled": true,
     "threshold": 0.75,
-    "max_retries": 2
+    "max_retries": 3
   },
   "section_restore": {
     "enabled": true,
