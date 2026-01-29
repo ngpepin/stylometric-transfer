@@ -39,6 +39,12 @@
       "avg_word_length": 1.0
     }
   },
+  "lexical_signals": {
+    "rare_words_limit": 120
+  },
+  "lexical_avoidance": {
+    "rare_words_limit": 120
+  },
   "chunking": {
     "max_input_tokens": 4000
   },

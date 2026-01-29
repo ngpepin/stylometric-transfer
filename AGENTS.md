@@ -99,6 +99,8 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Includes style retry controls (delta‑feedback retries)
   - Includes humanization metric weights for the aggregate 0–100 score
   - Includes chunking caps (max input tokens per chunk)
+  - Includes lexical signal limits (rare word list size)
+  - Includes lexical avoidance limits (rare word list size)
   - Includes section‑restore controls (fuzzy heading match + restoration caps)
   - Includes optional sanity checks such as line/word/paragraph count change warnings
   - The current tunables may be embedded into fingerprints as `metadata.extraction.tunables_snapshot` for auditability

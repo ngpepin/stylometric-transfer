@@ -47,6 +47,20 @@
       },
       "additionalProperties": false
     },
+    "lexical_signals": {
+      "type": "object",
+      "properties": {
+        "rare_words_limit": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "lexical_avoidance": {
+      "type": "object",
+      "properties": {
+        "rare_words_limit": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
     "chunking": {
       "type": "object",
       "properties": {

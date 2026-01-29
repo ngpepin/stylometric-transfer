@@ -248,6 +248,12 @@ Example (defaults shown):
       "avg_word_length": 1.0
     }
   },
+  "lexical_signals": {
+    "rare_words_limit": 40
+  },
+  "lexical_avoidance": {
+    "rare_words_limit": 40
+  },
   "chunking": {
     "max_input_tokens": 4000
   },
@@ -289,6 +295,8 @@ Example (defaults shown):
   - `swap_transition`: swaps a transition phrase with another compatible transition to vary surface rhythm without changing meaning.
   - `drop_filler`: removes low‑information filler words/phrases when safe (bounded by the ops budget).
 - `humanization_metrics.weights` (object): optional weighting for the 0–100 aggregate humanization score. Any metric with a weight of 0 is excluded.
+- `lexical_signals.rare_words_limit` (integer): maximum number of rare words to include in `measurements.lexical_signals.rare_words`.
+- `lexical_avoidance.rare_words_limit` (integer): maximum number of rare words to include in `measurements.lexical_avoidance.rare_words`.
 - `chunking.max_input_tokens` (integer): hard cap on input tokens per chunk (after prompt overhead). Lower values increase chunk count but reduce per‑request latency and timeouts.
 - `style_retry.enabled` (boolean): enable/disable the delta‑feedback retry pass after measuring style compliance.
 - `style_retry.threshold` (0–1): retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold-based retries, while `1.0` retries unless the output is nearly perfect.

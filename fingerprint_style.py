@@ -34,6 +34,7 @@ import collections
 import dataclasses
 import io
 import json
+import hashlib
 import os
 import re
 import shutil
@@ -746,7 +747,11 @@ def detect_english_spelling_variant(text: str) -> Dict[str, Any]:
         "note": "Heuristic based on common US vs Canadian spellings."
     }
 
-def compute_measurements(texts: List[str]) -> Dict[str, Any]:
+def compute_measurements(
+    texts: List[str],
+    rare_words_limit: int | None = None,
+    rare_words_limit_avoidance: int | None = None
+) -> Dict[str, Any]:
     # Compute corpus-wide measurements for stylistic grounding.
     combined = "\n\n".join(texts)
     w = words(combined)
@@ -829,14 +834,43 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
         (token, count) for token, count in token_counts.items()
         if count <= max_count and is_candidate_rare(token)
     ]
-    rare_candidates.sort(key=lambda x: (x[1], x[0]))
-    rare_words = [
+    def stable_token_hash(token: str) -> int:
+        return int(hashlib.md5(token.encode("utf-8")).hexdigest()[:8], 16)
+
+    rare_candidates.sort(key=lambda x: (x[1], stable_token_hash(x[0])))
+    # Round-robin by initial letter to avoid alphabetical bias when counts tie.
+    by_initial: Dict[str, List[Tuple[str, int]]] = {}
+    for token, count in rare_candidates:
+        initial = token[0] if token else "#"
+        by_initial.setdefault(initial, []).append((token, count))
+    initials = sorted(by_initial.keys())
+    selected: List[Tuple[str, int]] = []
+    while len(selected) < 40 and initials:
+        next_initials = []
+        for initial in initials:
+            bucket = by_initial.get(initial, [])
+            if bucket:
+                selected.append(bucket.pop(0))
+            if bucket and len(selected) < 40:
+                next_initials.append(initial)
+        initials = next_initials
+    limit_signals = rare_words_limit if isinstance(rare_words_limit, int) and rare_words_limit > 0 else 40
+    limit_avoid = rare_words_limit_avoidance if isinstance(rare_words_limit_avoidance, int) and rare_words_limit_avoidance > 0 else limit_signals
+    rare_words_signals = [
         {
             "word": token,
             "count": count,
             "rate_per_1000w": approx_rate_per_1000_words(count, total_words)
         }
-        for token, count in rare_candidates[:40]
+        for token, count in selected[:limit_signals]
+    ]
+    rare_words_avoid = [
+        {
+            "word": token,
+            "count": count,
+            "rate_per_1000w": approx_rate_per_1000_words(count, total_words)
+        }
+        for token, count in selected[:limit_avoid]
     ]
     def ngrams(n: int) -> Iterable[str]:
         for i in range(0, len(toks) - n + 1):
@@ -1091,13 +1125,13 @@ def compute_measurements(texts: List[str]) -> Dict[str, Any]:
             "appositive_rate": approx_rate_per_1000_words(appositive_hits, total_words)
         },
         "lexical_signals": {
-            "rare_words": rare_words,
+            "rare_words": rare_words_signals,
             "rare_word_max_count": max_count,
             "rare_word_min_length": 4
         },
         "lexical_avoidance": {
             "category_rates_per_1000w": avoidance_rates,
-            "rare_words": rare_words
+            "rare_words": rare_words_avoid
         },
         "repetition": {
             "bigram_repeat_rate": repeat_rate(bigrams_all),
@@ -1527,7 +1561,24 @@ def main() -> int:
         corpus_documents = build_corpus_documents(files_and_texts)
         vprint(f"Found {len(files_and_texts)} files; computing measurements...")
         texts = [t for _, t in files_and_texts]
-        measurements = compute_measurements(texts)
+        rare_words_limit = None
+        rare_words_limit_avoid = None
+        if isinstance(tunables_snapshot, dict):
+            lex = tunables_snapshot.get("lexical_signals", {})
+            if isinstance(lex, dict):
+                limit = lex.get("rare_words_limit")
+                if isinstance(limit, int) and limit > 0:
+                    rare_words_limit = limit
+            lex_avoid = tunables_snapshot.get("lexical_avoidance", {})
+            if isinstance(lex_avoid, dict):
+                limit_avoid = lex_avoid.get("rare_words_limit")
+                if isinstance(limit_avoid, int) and limit_avoid > 0:
+                    rare_words_limit_avoid = limit_avoid
+        measurements = compute_measurements(
+            texts,
+            rare_words_limit=rare_words_limit,
+            rare_words_limit_avoidance=rare_words_limit_avoid
+        )
         if not args.no_phrase_validation:
             vprint("Validating common phrases with LLM...")
             common = measurements.get("common_phrases", {})
