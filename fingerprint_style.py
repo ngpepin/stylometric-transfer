@@ -1222,7 +1222,7 @@ def load_config(path: Path) -> LLMConfig:
         backoff_max_seconds=float(data.get("backoff_max_seconds", 20.0)),
     )
 
-def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
+def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> tuple[str, Dict[str, Any] | None]:
     # POST to a /v1/chat/completions-compatible endpoint.
     url = f"{cfg.base_url}/chat/completions"
     headers = {
@@ -1252,7 +1252,7 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
                         f"LLM request succeeded after {attempt} retry(ies).",
                         file=sys.stderr
                     )
-                return content
+                return content, data.get("usage")
             except Exception:
                 raise RuntimeError(f"Unexpected LLM response shape: {json.dumps(data)[:2000]}")
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, RuntimeError) as exc:
@@ -1363,7 +1363,7 @@ def validate_common_phrases(
 ) -> Dict[str, Any]:
     # Ask the LLM to flag OCR/citation noise in common phrases.
     messages = build_phrase_validation_prompt(phrases, prompts)
-    raw = chat_completions(cfg, messages)
+    raw, _ = chat_completions(cfg, messages)
     try:
         return parse_json_strict(raw)
     except Exception:
@@ -1422,7 +1422,7 @@ def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any
             "bad_output": bad_output[:20000]
         })}
     ]
-    fixed = chat_completions(cfg, messages)
+    fixed, _ = chat_completions(cfg, messages)
     return parse_json_strict(fixed)
 
 
@@ -1605,7 +1605,7 @@ def main() -> int:
         messages = build_fingerprint_prompt(measurements, excerpts, cfg, prompts, lexicon_hints)
         prompt_tokens = estimate_tokens_for_messages(messages)
         if prompt_tokens <= cfg.max_prompt_tokens:
-            raw = chat_completions(cfg, messages)
+            raw, usage = chat_completions(cfg, messages)
             try:
                 fingerprint = parse_json_strict(raw)
             except Exception:
@@ -1619,12 +1619,19 @@ def main() -> int:
             for idx, batch in enumerate(batches, start=1):
                 vprint(f"Synthesizing partial fingerprint {idx}/{len(batches)}...")
                 batch_messages = build_fingerprint_prompt(measurements, batch, cfg, prompts, lexicon_hints)
-                raw = chat_completions(cfg, batch_messages)
+                raw, usage = chat_completions(cfg, batch_messages)
                 try:
                     partial = parse_json_strict(raw)
                 except Exception:
                     vprint("Invalid JSON returned; attempting repair...")
                     partial = repair_json_with_llm(cfg, raw, prompts)
+                if usage and args.verbose:
+                    vprint(
+                        f"Partial {idx}/{len(batches)} token usage: "
+                        f"prompt={usage.get('prompt_tokens', 'n/a')}, "
+                        f"completion={usage.get('completion_tokens', 'n/a')}, "
+                        f"total={usage.get('total_tokens', 'n/a')}"
+                    )
                 partials.append(partial)
 
             fingerprint = partials[0]
@@ -1637,12 +1644,19 @@ def main() -> int:
                     cfg,
                     prompts
                 )
-                raw = chat_completions(cfg, merge_messages)
+                raw, usage = chat_completions(cfg, merge_messages)
                 try:
                     fingerprint = parse_json_strict(raw)
                 except Exception:
                     vprint("Invalid JSON returned; attempting repair...")
                     fingerprint = repair_json_with_llm(cfg, raw, prompts)
+                if usage and args.verbose:
+                    vprint(
+                        f"Merge {idx}/{len(partials)} token usage: "
+                        f"prompt={usage.get('prompt_tokens', 'n/a')}, "
+                        f"completion={usage.get('completion_tokens', 'n/a')}, "
+                        f"total={usage.get('total_tokens', 'n/a')}"
+                    )
 
         # Ensure essential fields
         fingerprint.setdefault("schema_version", "1.0.0")

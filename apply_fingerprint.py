@@ -1063,7 +1063,7 @@ def parse_humanizer_guidelines_llm(
     raw_guidelines: str
 ) -> List[Dict[str, Any]]:
     messages = build_humanizer_parse_prompt(prompts, raw_guidelines)
-    raw = chat_completions(cfg, messages)
+    raw, _ = chat_completions(cfg, messages)
     try:
         out_obj = parse_json_strict(raw)
     except Exception:
@@ -1317,6 +1317,11 @@ def estimate_tokens_for_messages(messages: List[Dict[str, str]]) -> int:
         total += estimate_tokens(msg.get("content", ""))
         total += 4  # per-message overhead
     return total + 2
+
+
+def estimate_tokens_for_text(text: str) -> int:
+    # Rough token estimate for plain text.
+    return estimate_tokens(text)
 
 
 def split_markdown_blocks(markdown: str) -> List[str]:
@@ -2413,7 +2418,7 @@ def load_config(path: Path) -> LLMConfig:
         backoff_max_seconds=float(data.get("backoff_max_seconds", 20.0))
     )
 
-def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
+def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> tuple[str, Dict[str, Any] | None]:
     # POST to a /v1/chat/completions-compatible endpoint.
     url = f"{cfg.base_url}/chat/completions"
     headers = {
@@ -2439,7 +2444,7 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> str:
             content = data["choices"][0]["message"]["content"]
             if attempt > 0:
                 print_warn(f"LLM request succeeded after {attempt} retry(ies).")
-            return content
+            return content, data.get("usage")
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, RuntimeError) as exc:
             last_err = exc
             if attempt >= cfg.max_retries:
@@ -2474,7 +2479,7 @@ def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any
             "bad_output": bad_output[:20000]
         })}
     ]
-    fixed = chat_completions(cfg, messages)
+    fixed, _ = chat_completions(cfg, messages)
     return parse_json_strict(fixed)
 
 
@@ -2797,7 +2802,8 @@ def main() -> int:
         last_out: Dict[str, Any] = {}
         while True:
             messages = build_messages_for_chunk(md_chunk, style_feedback)
-            raw = chat_completions(cfg, messages)
+            input_tokens = estimate_tokens_for_messages(messages)
+            raw, usage = chat_completions(cfg, messages)
             try:
                 out_obj = parse_json_strict(raw)
             except Exception:
@@ -2858,13 +2864,27 @@ def main() -> int:
                 attempts += 1
                 continue
 
+            if chunk_index is not None and chunk_total is not None and args.verbose:
+                if isinstance(usage, dict):
+                    vprint(
+                        f"Chunk {chunk_index}/{chunk_total} token usage: "
+                        f"prompt={usage.get('prompt_tokens', 'n/a')}, "
+                        f"completion={usage.get('completion_tokens', 'n/a')}, "
+                        f"total={usage.get('total_tokens', 'n/a')}"
+                    )
+                else:
+                    output_tokens = estimate_tokens_for_text(final_md)
+                    vprint(
+                        f"Chunk {chunk_index}/{chunk_total} token estimate: "
+                        f"in={input_tokens}, out={output_tokens}"
+                    )
             last_out = out_obj
             return final_md, out_obj, compliance
 
     initial_messages = build_messages_for_chunk(input_md)
-    initial_tokens = estimate_tokens_for_messages(initial_messages)
-    if initial_tokens <= cfg.max_prompt_tokens:
-        vprint("Calling LLM to apply fingerprint...")
+        initial_tokens = estimate_tokens_for_messages(initial_messages)
+        if initial_tokens <= cfg.max_prompt_tokens:
+            vprint("Calling LLM to apply fingerprint...")
         try:
             final_md, out_obj, compliance = rewrite_chunk(input_md)
         except RuntimeError:
