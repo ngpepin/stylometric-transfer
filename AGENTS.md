@@ -50,7 +50,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Extract archive
     - Read text files
     - Compute stylometric measurements locally
-    - Filter out blockquotes, reference sections, footnotes, and inline citation markers from style analysis
+    - Filter out blockquotes, reference sections, footnotes, inline citation markers, and boilerplate notices (copyright/terms/privacy) from style analysis
     - Strip embedded BASE64 images from prompts
     - Select representative excerpts
     - Call LLM to synthesise fingerprint JSON

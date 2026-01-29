@@ -78,6 +78,20 @@ BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\
 BASE64_PLACEHOLDER_RE = re.compile(r"\[\[BASE64_IMAGE(?:_\d+)?\]\]")
 HTML_TAG_RE = re.compile(r"<[A-Za-z/][^>]*>")
 HTML_ENTITY_RE = re.compile(r"&[A-Za-z0-9#]+;")
+BOILERPLATE_LINE_RE = re.compile(
+    r"(?i)\\b("
+    r"copyright|all rights reserved|rights reserved|"
+    r"terms of use|terms & conditions|terms and conditions|"
+    r"privacy policy|conditions of use|legal notice|imprint|disclaimer|"
+    r"permission(?:s)?|reproduction|published by|"
+    r"©|\\(c\\)"
+    r")\\b"
+)
+BOILERPLATE_HEADING_RE = re.compile(
+    r"(?i)\\b("
+    r"copyright|terms|conditions|privacy|legal|imprint|disclaimer|permissions"
+    r")\\b"
+)
 DEFAULT_MAX_FILES = 2000
 DEFAULT_MAX_BYTES_PER_FILE = 2_000_000  # 2 MB per file
 DEFAULT_MAX_TOTAL_CHARS_FOR_LLM = 180_000  # excerpt cap; we send stats + representative excerpts
@@ -460,6 +474,66 @@ def strip_non_voice_sections(text: str) -> str:
     return cleaned.strip()
 
 
+def strip_boilerplate_sections(text: str) -> str:
+    # Remove legal/publishing boilerplate sections and paragraphs.
+    lines = text.splitlines()
+    boiler_sections: List[Tuple[int, int]] = []
+    i = 0
+    while i < len(lines):
+        heading = get_heading_at(lines, i)
+        if heading:
+            level, title, span = heading
+            if BOILERPLATE_HEADING_RE.search(title):
+                start = i
+                end = len(lines)
+                j = i + span
+                while j < len(lines):
+                    next_h = get_heading_at(lines, j)
+                    if next_h and next_h[0] <= level:
+                        end = j
+                        break
+                    j += 1
+                boiler_sections.append((start, end))
+                i = end
+                continue
+        i += 1
+    if boiler_sections:
+        boiler_iter = iter(boiler_sections)
+        current = next(boiler_iter, None)
+        pruned: List[str] = []
+        idx = 0
+        while idx < len(lines):
+            if current and idx == current[0]:
+                idx = current[1]
+                current = next(boiler_iter, None)
+                continue
+            pruned.append(lines[idx])
+            idx += 1
+        lines = pruned
+
+    # Drop paragraphs that contain boilerplate lines.
+    paragraphs: List[List[str]] = []
+    current_para: List[str] = []
+    for line in lines:
+        if line.strip() == "":
+            if current_para:
+                paragraphs.append(current_para)
+                current_para = []
+            paragraphs.append([line])
+        else:
+            current_para.append(line)
+    if current_para:
+        paragraphs.append(current_para)
+    kept_lines: List[str] = []
+    for para in paragraphs:
+        if any(BOILERPLATE_LINE_RE.search(l) for l in para if l.strip()):
+            continue
+        kept_lines.extend(para)
+    cleaned = "\n".join(kept_lines)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
 def strip_fenced_code_blocks(text: str) -> str:
     # Remove fenced code blocks (``` or ~~~) entirely.
     lines = text.splitlines()
@@ -551,6 +625,7 @@ def filter_author_voice_text(text: str) -> str:
     # Remove non-author voice segments and inline citations for measurements/excerpts.
     text = strip_fenced_code_blocks(text)
     text = strip_non_voice_sections(text)
+    text = strip_boilerplate_sections(text)
     text = strip_inline_code(text)
     text = strip_latex_math(text)
     text = strip_html(text)

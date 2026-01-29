@@ -117,7 +117,7 @@ In research terms, the system performs:
   - Structural fidelity
   - Deviation reporting
   - Optional style-compliance retry with delta feedback
-- Filters out blockquotes, reference sections, footnotes, and citation markers from style measurements and excerpts, preserving them verbatim during rewrite
+- Filters out blockquotes, reference sections, footnotes, citation markers, and boilerplate notices (copyright/terms/privacy) from style measurements and excerpts, preserving them verbatim during rewrite
 - Strips embedded BASE64 images before sending prompts to the LLM and re-embeds them in output
 - Compatible with OpenAI (works with OpenAI, Azure OpenAI, vLLM, etc.)
 - Interpretable, editable, versionable style models
@@ -372,7 +372,7 @@ Large corpora are automatically chunked according to `max_prompt_tokens`; overri
 
 The process will:
 - Extract the archive
-- Measure stylistic statistics (excluding blockquotes, reference sections, footnotes and inline citations)
+- Measure stylistic statistics (excluding blockquotes, reference sections, footnotes, boilerplate notices, and inline citations)
 - Send measurements and excerpts to the LLM
 - Produce `my_fingerprint.json`
 
@@ -403,7 +403,7 @@ Style compliance is scored locally. If the score falls below the threshold, the 
 If `general-guidelines.md` is present in the repository root or next to the scripts, its humanization rules (adapted from softaworks/agent-toolkit by @leonardocouy) are parsed with an LLM by default. Deterministically conflicting guidance (based on fingerprint signals such as em-dash rate, hedging or first-person use) is dropped before prompting. This introduces one additional LLM call when enabled. Parsed rules are cached in `humanizer_rules.cache.json` next to the scripts and are only re-parsed when `general-guidelines.md` changes. LLM parsing can be disabled via `--no-humanizer-llm-parse`, or the guidelines can be disabled entirely via `--no-humanizer-guidelines`.
 
 Embedded BASE64 images are removed from prompts to avoid excessive token usage and re-inserted into the rewritten output.
-Blockquotes, reference sections, footnotes and inline citations are preserved verbatim and excluded from style transfer.
+Blockquotes, reference sections, footnotes, boilerplate notices, and inline citations are preserved verbatim and excluded from style transfer.
 
 Outputs:
 - `draft.md.styled.md`: rewritten text

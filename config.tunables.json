@@ -40,10 +40,10 @@
     }
   },
   "lexical_signals": {
-    "rare_words_limit": 60
+    "rare_words_limit": 80
   },
   "lexical_avoidance": {
-    "rare_words_limit": 60
+    "rare_words_limit": 80
   },
   "chunking": {
     "max_input_tokens": 4000
