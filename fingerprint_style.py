@@ -2116,7 +2116,6 @@ def main() -> int:
                         "bigrams_top": validated_bi,
                         "trigrams_top": validated_tri
                     },
-                    "dropped": dropped,
                     "notes": validation.get("notes", [])
                 }
                 measurements["common_phrases"] = {
