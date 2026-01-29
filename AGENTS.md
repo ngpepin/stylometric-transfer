@@ -56,6 +56,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Call LLM to synthesise fingerprint JSON
     - If chunking excerpts, merge partial fingerprints via a dedicated LLM merge prompt
     - Prefilter likely proper-name phrases before LLM common-phrase validation
+    - Optionally rank rare-word candidates with the LLM (shared with common-phrase validation) to de-prioritize proper names
     - Validate common phrases via a separate LLM pass to remove OCR/citation noise (disable with `--no-phrase-validation`)
     - Repair invalid JSON if necessary
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-a` (archive), `-o` (out), `-v` (verbose)

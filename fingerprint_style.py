@@ -817,6 +817,7 @@ def compute_measurements(
 
     toks = [t.lower() for t in w]
     token_counts = collections.Counter(toks)
+    cap_counts = collections.Counter(t.lower() for t in w if t and t[0].isupper())
 
     # Rare-word signals: low-frequency tokens that the author rarely uses.
     def is_candidate_rare(token: str) -> bool:
@@ -837,7 +838,13 @@ def compute_measurements(
     def stable_token_hash(token: str) -> int:
         return int(hashlib.md5(token.encode("utf-8")).hexdigest()[:8], 16)
 
-    rare_candidates.sort(key=lambda x: (x[1], stable_token_hash(x[0])))
+    def proper_name_likelihood(token: str) -> float:
+        total = token_counts.get(token, 0)
+        if total <= 0:
+            return 0.0
+        return cap_counts.get(token, 0) / total
+
+    rare_candidates.sort(key=lambda x: (x[1], proper_name_likelihood(x[0]), stable_token_hash(x[0])))
     # Round-robin by initial letter to avoid alphabetical bias when counts tie.
     by_initial: Dict[str, List[Tuple[str, int]]] = {}
     for token, count in rare_candidates:
@@ -856,13 +863,18 @@ def compute_measurements(
         initials = next_initials
     limit_signals = rare_words_limit if isinstance(rare_words_limit, int) and rare_words_limit > 0 else 40
     limit_avoid = rare_words_limit_avoidance if isinstance(rare_words_limit_avoidance, int) and rare_words_limit_avoidance > 0 else limit_signals
+    pool_size = max(limit_signals, limit_avoid) * 2
+    candidate_pool = selected[:pool_size]
+    candidate_pool.sort(key=lambda x: (proper_name_likelihood(x[0]), x[1], stable_token_hash(x[0])))
+    filtered = candidate_pool[:max(limit_signals, limit_avoid)]
+    # LLM ranking is handled during common-phrase validation to avoid extra calls.
     rare_words_signals = [
         {
             "word": token,
             "count": count,
             "rate_per_1000w": approx_rate_per_1000_words(count, total_words)
         }
-        for token, count in selected[:limit_signals]
+        for token, count in filtered[:limit_signals]
     ]
     rare_words_avoid = [
         {
@@ -870,7 +882,7 @@ def compute_measurements(
             "count": count,
             "rate_per_1000w": approx_rate_per_1000_words(count, total_words)
         }
-        for token, count in selected[:limit_avoid]
+        for token, count in filtered[:limit_avoid]
     ]
     def ngrams(n: int) -> Iterable[str]:
         for i in range(0, len(toks) - n + 1):
@@ -1390,10 +1402,20 @@ def build_phrase_validation_prompt(
     ]
 
 
+def rank_rare_words_llm(
+    validation_result: Dict[str, Any]
+) -> List[str]:
+    ranked = validation_result.get("ranked_rare_words") if isinstance(validation_result, dict) else None
+    if not isinstance(ranked, list):
+        return []
+    return [w for w in ranked if isinstance(w, str)]
+
+
 def validate_common_phrases(
     cfg: LLMConfig,
     phrases: List[Dict[str, Any]],
-    prompts: Dict[str, Any]
+    prompts: Dict[str, Any],
+    rare_word_candidates: List[Dict[str, Any]] | None = None
 ) -> Dict[str, Any]:
     # Ask the LLM to flag OCR/citation noise in common phrases.
     def should_drop_proper_name(phrase: str) -> bool:
@@ -1424,6 +1446,17 @@ def validate_common_phrases(
         else:
             filtered.append(item)
     messages = build_phrase_validation_prompt(filtered, prompts)
+    if rare_word_candidates is not None:
+        try:
+            messages[1]["content"] = json.dumps(
+                {
+                    **json.loads(messages[1]["content"]),
+                    "rare_word_candidates": rare_word_candidates
+                },
+                ensure_ascii=False
+            )
+        except Exception:
+            pass
     raw, _ = chat_completions(cfg, messages)
     try:
         result = parse_json_strict(raw)
@@ -1634,7 +1667,8 @@ def main() -> int:
                     "ngram": 3
                 })
             if candidates:
-                validation = validate_common_phrases(cfg, candidates, prompts)
+                rare_candidates = measurements.get("lexical_signals", {}).get("rare_words", [])
+                validation = validate_common_phrases(cfg, candidates, prompts, rare_word_candidates=rare_candidates)
                 decisions = validation.get("decisions", []) or []
                 decision_map: Dict[Tuple[str, int], Dict[str, Any]] = {}
                 for d in decisions:
@@ -1642,6 +1676,14 @@ def main() -> int:
                     ngram = d.get("ngram")
                     if isinstance(phrase, str) and isinstance(ngram, int):
                         decision_map[(phrase, ngram)] = d
+                ranked = rank_rare_words_llm(validation)
+                if ranked:
+                    word_to_item = {item.get("word"): item for item in rare_candidates if isinstance(item, dict)}
+                    ordered = [word_to_item[w] for w in ranked if w in word_to_item]
+                    remaining = [item for item in rare_candidates if item.get("word") not in set(ranked)]
+                    measurements["lexical_signals"]["rare_words"] = ordered + remaining
+                    if "lexical_avoidance" in measurements and isinstance(measurements["lexical_avoidance"], dict):
+                        measurements["lexical_avoidance"]["rare_words"] = ordered + remaining
 
                 validated_bi: List[Dict[str, Any]] = []
                 validated_tri: List[Dict[str, Any]] = []

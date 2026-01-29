@@ -401,6 +401,8 @@ end procedure
 
 Common‑phrase validation includes a deterministic prefilter that drops likely proper‑name phrases (e.g., person/place/org names) before the LLM review.
 
+Rare‑word selection can be optionally ranked by the same LLM validation call (shared with common‑phrase filtering), using capitalization ratios to de‑prioritize proper names before truncation.
+
 ### A.2 Rewrite (Fingerprint + Draft → Styled Draft)
 
 **Inputs:** Fingerprint $\mathcal{F}$, input Markdown $x$, language model $\mathcal{R}_\theta$  

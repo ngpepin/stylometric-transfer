@@ -174,6 +174,7 @@
             "reason": "string"
           }
         ],
+        "ranked_rare_words": ["string"],
         "notes": [
           "string"
         ]
@@ -181,10 +182,11 @@
       "rules": [
         "If the phrase is clearly a citation fragment, drop it.",
         "If the phrase looks like OCR noise or non-words, drop it.",
-        "Drop phrases dominated by proper nouns or named entities (e.g., person/organization/place names).",
+        "Drop phrases dominated by proper nouns, place names or named entities (e.g., persons, organizations).",
         "If the phrase contains two or more capitalized tokens (in title case) or looks like a specific person/place/organization, drop it.",
-        "Allow proper nouns only when they are generic conventions (e.g., 'United States', 'World Bank') or widely used institutional terms.",
-        "If the phrase is a normal lexical phrase, keep it."
+        "If the phrase is an abbreviation or acronym split into letters (e.g., 'e. g.', 'i. e.', 'U. S.'), drop it.",
+        "If the phrase is a normal lexical phrase, keep it.",
+        "If rare-word candidates are provided, rank them from least likely to be proper names to most likely in ranked_rare_words."
       ]
     }
   },
