@@ -2882,13 +2882,13 @@ def main() -> int:
             return final_md, out_obj, compliance
 
     initial_messages = build_messages_for_chunk(input_md)
-        initial_tokens = estimate_tokens_for_messages(initial_messages)
-        if initial_tokens <= cfg.max_prompt_tokens:
-            vprint("Calling LLM to apply fingerprint...")
-        try:
-            final_md, out_obj, compliance = rewrite_chunk(input_md)
-        except RuntimeError:
-            return 3
+    initial_tokens = estimate_tokens_for_messages(initial_messages)
+    if initial_tokens <= cfg.max_prompt_tokens:
+        vprint("Calling LLM to apply fingerprint...")
+    try:
+        final_md, out_obj, compliance = rewrite_chunk(input_md)
+    except RuntimeError:
+        return 3
         # Ensure any frozen blocks and citation placeholders survive.
         missing_html = [p for p in find_placeholders(input_md, HTML_PLACEHOLDER_RE) if p not in final_md]
         if missing_html:
