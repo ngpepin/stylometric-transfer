@@ -2500,17 +2500,14 @@ def build_apply_prompt(
         fp_payload = copy.deepcopy(fingerprint)
         meta = fp_payload.get("metadata")
         if isinstance(meta, dict):
-            extraction = meta.get("extraction")
-            if isinstance(extraction, dict):
-                extraction = dict(extraction)
-                extraction.pop("tunables_snapshot", None)
-                meta = dict(meta)
-                meta.pop("extraction", None)
-            corpus = meta.get("corpus")
-            if isinstance(corpus, dict):
-                meta = dict(meta)
-                meta.pop("corpus", None)
-            fp_payload["metadata"] = meta
+            author = meta.get("author")
+            if isinstance(author, dict):
+                meta = {"author": author}
+            else:
+                meta = {}
+            fp_payload["metadata"] = meta if meta else None
+            if fp_payload.get("metadata") is None:
+                fp_payload.pop("metadata", None)
     user["style_fingerprint_json"] = fp_payload
     user["input_measurements"] = input_meas
     user["input_markdown"] = input_md
