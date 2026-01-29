@@ -1459,9 +1459,18 @@ def mask_html_entities(text: str) -> tuple[str, Dict[str, str]]:
     return stripped, mapping
 
 
-def split_oversize_block(block: str, build_messages_fn, max_prompt_tokens: int) -> List[str]:
+def split_oversize_block(
+    block: str,
+    build_messages_fn,
+    max_prompt_tokens: int,
+    depth: int = 0,
+    max_depth: int = 50
+) -> List[str]:
     # Recursively split blocks that exceed token limits, respecting code fences.
     if estimate_tokens_for_messages(build_messages_fn(block)) <= max_prompt_tokens:
+        return [block]
+    if depth >= max_depth:
+        # Failsafe: avoid infinite recursion; return the block as-is.
         return [block]
 
     if is_code_block(block):
@@ -1492,13 +1501,23 @@ def split_oversize_block(block: str, build_messages_fn, max_prompt_tokens: int) 
         split_idx = block.find("\n", mid)
     if split_idx == -1:
         split_idx = mid
-    left = block[:split_idx].strip()
-    right = block[split_idx:].strip()
+    left = block[:split_idx].rstrip()
+    right = block[split_idx:].lstrip()
+    if not left or not right:
+        split_idx = max(1, mid)
+        left = block[:split_idx].rstrip()
+        right = block[split_idx:].lstrip()
+    if left == block or right == block:
+        split_idx = max(1, mid)
+        left = block[:split_idx].rstrip()
+        right = block[split_idx:].lstrip()
+    if not left and not right:
+        return [block]
     chunks: List[str] = []
     if left:
-        chunks.extend(split_oversize_block(left, build_messages_fn, max_prompt_tokens))
+        chunks.extend(split_oversize_block(left, build_messages_fn, max_prompt_tokens, depth + 1, max_depth))
     if right:
-        chunks.extend(split_oversize_block(right, build_messages_fn, max_prompt_tokens))
+        chunks.extend(split_oversize_block(right, build_messages_fn, max_prompt_tokens, depth + 1, max_depth))
     return chunks
 
 
