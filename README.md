@@ -196,7 +196,7 @@ Notes:
 - Prompt templates are stored in `prompts.json` next to the Python scripts and are loaded at runtime (includes the `validate_phrases` template used for common-phrase validation)
 - Optional `lexicon_hints.json` (in repo root or next to the scripts) can provide preferred or avoided phrases for fingerprinting
 - Optional `config.avoid.txt` (in repo root or next to the scripts) lists words or phrases to always avoid; it is merged into the fingerprint lexicon and enforced during style application
-- Optional `config.place_names.txt` (in repo root or next to the scripts) lists place names to suppress from common-phrase extraction to avoid location-heavy phrases dominating
+- Optional `config.entity_blacklist.txt` (in repo root or next to the scripts) lists entities (people, places, organizations) to suppress from common-phrase extraction to avoid proper‑name dominance
 - When fingerprinting, the current `config.tunables.json` can be embedded as `metadata.extraction.tunables_snapshot` for auditability
 - If the fingerprint prompt exceeds `max_prompt_tokens`, excerpts are chunked and **partial fingerprints are merged using a second LLM merge pass** (pairwise merge with a dedicated merge prompt).
 - Common-phrase validation now includes a deterministic prefilter (honorifics + capitalization‑ratio heuristics, place‑name blacklist, date patterns) and an optional LLM phrase‑ranking step that drops likely proper‑name phrases before final selection.
@@ -328,9 +328,9 @@ Organizational bans, regulatory requirements or personal preferences may take pr
 
 ---
 
-### Place-name blacklist: `config.place_names.txt`
+### Entity blacklist: `config.entity_blacklist.txt`
 
-If present, `config.place_names.txt` provides a list of place names (one per line) that should be excluded from common-phrase extraction. This helps prevent location-heavy phrases (e.g., “new york”, “london”) from dominating `common_phrases`. Lines may include comments after `#`, and blank lines are ignored. Multi-word names are supported. Single-word names shorter than 3 characters are ignored.
+If present, `config.entity_blacklist.txt` provides a list of entity names (people, places, organizations) that should be excluded from common-phrase extraction. This helps prevent proper‑name phrases (e.g., “new york”, “microsoft”, “jane doe”) from dominating `common_phrases`. Lines may include comments after `#`, and blank lines are ignored. Multi-word names are supported. Single-word names shorter than 3 characters are ignored.
 
 ---
 

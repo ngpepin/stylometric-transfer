@@ -85,7 +85,7 @@ PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
 LICENSE_FILENAME = "LICENSE.md"
 LEXICON_HINTS_FILENAME = "lexicon_hints.json"
 AVOID_LIST_FILENAME = "config.avoid.txt"
-PLACE_NAMES_FILENAME = "config.place_names.txt"
+ENTITY_BLACKLIST_FILENAME = "config.entity_blacklist.txt"
 
 def load_prompts() -> Dict[str, Any]:
     # Load externalized prompt templates located alongside this script.
@@ -172,15 +172,23 @@ def load_avoid_list() -> List[str]:
         return []
 
 
-def normalize_place_name(value: str) -> str:
-    tokens = re.findall(r"[A-Za-z0-9]+", value.lower())
+def normalize_entity_name(value: str) -> str:
+    try:
+        import unicodedata
+    except Exception:
+        unicodedata = None
+    lowered = value.lower()
+    if unicodedata is not None:
+        normalized = unicodedata.normalize("NFKD", lowered)
+        lowered = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    tokens = re.findall(r"[A-Za-z0-9]+", lowered)
     return " ".join(tokens)
 
 
-def load_place_names() -> List[str]:
-    # Load optional place-name list from CWD or script directory.
-    cwd_path = Path.cwd() / PLACE_NAMES_FILENAME
-    script_path = Path(__file__).resolve().parent / PLACE_NAMES_FILENAME
+def load_entity_blacklist() -> List[str]:
+    # Load optional entity blacklist from CWD or script directory.
+    cwd_path = Path.cwd() / ENTITY_BLACKLIST_FILENAME
+    script_path = Path(__file__).resolve().parent / ENTITY_BLACKLIST_FILENAME
     path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
     if not path:
         return []
@@ -191,7 +199,7 @@ def load_place_names() -> List[str]:
     normalized: List[str] = []
     seen = set()
     for item in raw_items:
-        norm = normalize_place_name(item)
+        norm = normalize_entity_name(item)
         if not norm:
             continue
         if " " not in norm and len(norm) < 3:
@@ -200,6 +208,23 @@ def load_place_names() -> List[str]:
             seen.add(norm)
             normalized.append(norm)
     return normalized
+
+
+def build_entity_matcher(entities: List[str]) -> tuple[set[str], set[tuple[str, ...]], int]:
+    singles: set[str] = set()
+    phrases: set[tuple[str, ...]] = set()
+    max_len = 1
+    for item in entities:
+        parts = tuple(item.split())
+        if not parts:
+            continue
+        if len(parts) == 1:
+            singles.add(parts[0])
+        else:
+            phrases.add(parts)
+            if len(parts) > max_len:
+                max_len = len(parts)
+    return singles, phrases, max_len
 
 
 def merge_avoid_list_into_hints(
@@ -1472,7 +1497,7 @@ def validate_common_phrases(
     prompts: Dict[str, Any],
     rare_word_candidates: List[Dict[str, Any]] | None = None,
     token_cap_ratios: Dict[str, float] | None = None,
-    place_names: List[str] | None = None
+    entity_blacklist: List[str] | None = None
 ) -> Dict[str, Any]:
     # Ask the LLM to flag OCR/citation noise in common phrases.
     honorifics = {
@@ -1505,17 +1530,43 @@ def validate_common_phrases(
             return True
         return False
 
+    entity_singles: set[str]
+    entity_phrases: set[tuple[str, ...]]
+    entity_max_len: int
+    if entity_blacklist:
+        entity_singles, entity_phrases, entity_max_len = build_entity_matcher(entity_blacklist)
+    else:
+        entity_singles, entity_phrases, entity_max_len = set(), set(), 1
+
+    def contains_entity(phrase: str) -> bool:
+        if not entity_singles and not entity_phrases:
+            return False
+        tokens = re.findall(r"[A-Za-z0-9]+", phrase.lower())
+        if not tokens:
+            return False
+        for tok in tokens:
+            if tok in entity_singles:
+                return True
+        if not entity_phrases:
+            return False
+        max_len = min(entity_max_len, len(tokens))
+        for start in range(0, len(tokens)):
+            for length in range(2, max_len + 1):
+                end = start + length
+                if end > len(tokens):
+                    break
+                if tuple(tokens[start:end]) in entity_phrases:
+                    return True
+        return False
+
     def should_drop_proper_name(phrase: str) -> bool:
         tokens = [t for t in re.findall(r"[A-Za-z][A-Za-z'-]*", phrase)]
         if not tokens:
             return False
         if looks_like_date(phrase):
             return True
-        if place_names:
-            normalized_phrase = f" {normalize_place_name(phrase)} "
-            for place in place_names:
-                if f" {place} " in normalized_phrase:
-                    return True
+        if contains_entity(phrase):
+            return True
         lower_tokens = [t.lower() for t in tokens]
         if any(t in honorifics for t in lower_tokens):
             return True
@@ -1545,7 +1596,7 @@ def validate_common_phrases(
                 "phrase": phrase,
                 "ngram": item.get("ngram"),
                 "count": item.get("count"),
-                "reason": "Dropped by prefilter: likely proper name, place name, or date."
+                "reason": "Dropped by prefilter: likely proper name, entity name, or date."
             })
         else:
             filtered.append(item)
@@ -1712,7 +1763,7 @@ def main() -> int:
     tunables_snapshot = load_tunables_snapshot()
     lexicon_hints = load_optional_lexicon_hints()
     avoid_list = load_avoid_list()
-    place_names = load_place_names()
+    entity_blacklist = load_entity_blacklist()
     if avoid_list:
         lexicon_hints = merge_avoid_list_into_hints(lexicon_hints, avoid_list)
     if args.max_prompt_tokens is not None:
@@ -1786,7 +1837,7 @@ def main() -> int:
                     prompts,
                     rare_word_candidates=rare_candidates,
                     token_cap_ratios=token_cap_ratios,
-                    place_names=place_names
+                    entity_blacklist=entity_blacklist
                 )
                 decisions = validation.get("decisions", []) or []
                 decision_map: Dict[Tuple[str, int], Dict[str, Any]] = {}

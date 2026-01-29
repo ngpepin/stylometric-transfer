@@ -109,9 +109,9 @@ Avoid ambiguous terms like “clone” in public documentation.
 - `config.avoid.txt`
   - Optional global avoid list (one word/phrase per line)
   - Applied during fingerprinting (via lexicon hints) and merged into `lexicon.avoid_words` during application
-- `config.place_names.txt`
-  - Optional place-name blacklist (one name per line)
-  - Used to suppress place-heavy phrases during common-phrase validation
+- `config.entity_blacklist.txt`
+  - Optional entity blacklist (people, places, organizations; one per line)
+  - Used to suppress proper‑name phrases during common-phrase validation
 
 ### Data Flow
 
