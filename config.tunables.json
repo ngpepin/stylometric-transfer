@@ -46,12 +46,12 @@
     "rare_words_limit": 80
   },
   "chunking": {
-    "max_input_tokens": 4000
+    "max_input_tokens": 6000
   },
   "style_retry": {
     "enabled": true,
     "threshold": 0.75,
-    "max_retries": 3
+    "max_retries": 2
   },
   "section_restore": {
     "enabled": true,
