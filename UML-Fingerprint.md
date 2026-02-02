@@ -27,6 +27,8 @@ class FingerprintPipeline {
   +iter_corpus_texts()
   +normalize_text()
   +filter_author_voice_text()
+  +detect_fiction()
+  +strip_quoted_passages()
   +compute_measurements()
   +prefilter_proper_name_phrases()
   +pick_representative_excerpts()
@@ -45,6 +47,7 @@ class PhraseValidator {
 class LexiconHints {
   +lexicon_hints: dict
   +avoid_list: list
+  +entity_blacklist: list
   +merge_avoid_list_into_hints()
 }
 
@@ -86,16 +89,20 @@ start
 :Load config.tunables.json (optional);
 :Load lexicon_hints.json (optional);
 :Load config.avoid.txt (optional);
+:Load config.entity_blacklist.txt (optional);
 :Merge avoid list into lexicon hints;
 
 :Extract corpus archive;
 :Read corpus files;
 :Normalize OCR artifacts;
+:Detect fiction vs non-fiction (can be forced by flags);
 :Filter non-author voice text;
+:If non-fiction, drop multi-word quoted passages;
 :Compute measurements (rhetoric moves, cadence, discourse markers, repetition);
 
 if (Phrase validation enabled?) then (yes)
   :Prefilter proper-name phrases;
+  :Apply entity blacklist + date-pattern filters;
   :Validate common phrases via LLM;
   :Drop OCR/citation noise;
 endif
@@ -137,7 +144,9 @@ FS -> FSYS : read prompts.json
 FS -> FSYS : read config.tunables.json (optional)
 FS -> FSYS : read lexicon_hints.json (optional)
 FS -> FSYS : read config.avoid.txt (optional)
+FS -> FSYS : read config.entity_blacklist.txt (optional)
 FS -> FSYS : extract archive & read files
+FS -> FS : detect fiction vs non-fiction
 FS -> FS : normalize/filter text
 FS -> FS : compute measurements
 FS -> FS : prefilter proper-name phrases

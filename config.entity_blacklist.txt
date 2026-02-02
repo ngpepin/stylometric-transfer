@@ -3,17 +3,16 @@
 # Multi-word names are supported (e.g., "new york", "acme corp").
 # If present in the project root or next to fingerprint_style.py, phrases
 # containing these entities are dropped as likely proper‑name noise.
-Jim Sullivan
 1 Automotive
 3M
 50 Cent
 A Coruña
 A-Mark Precious Metals
+A.C. Green
 A.J. Levin
 A.J. Liebling
-A.J. Sebastian
-A.C. Green
 A.J. Mogis
+A.J. Sebastian
 A.J. Styles
 A.W. Tozer
 Aaliyah
@@ -55,6 +54,7 @@ Abbahu
 Abbas Kiarostami
 Abbey Rader
 Abbie Hoffman
+Abbott
 Abbott Laboratories
 AbbVie
 Abby Travis
@@ -95,6 +95,7 @@ Abraham Serfaty
 Abraham Sinkov
 Abraham Zapruder
 Abraham Zelmanowitz
+Abril
 Abruzzo
 Absalom
 Abşeron
@@ -110,6 +111,7 @@ Acquaviva
 Ad-Mike D
 Ad-Rock
 Ada Lovelace
+Adam
 Adam Arkin
 Adam Brody
 Adam Clayton
@@ -138,10 +140,15 @@ Adam Stern
 Adam von Buhler
 Adam Worth
 Adam Yauch
+Adams
 Adana
+Adara
+Aday
 Ādažu novads
+Addison
 Adele Goldberg
 Adele Goldstine
+Adeline
 Adin Steinsaltz
 Adıyaman
 Admiral Ackbar
@@ -160,6 +167,7 @@ Adolph Ochs
 Adolph Sutro
 Adolph Zukor
 Adolphus Solomons
+Adrian
 Adrian Belew
 Adrian Fenty
 Adrian Jackson
@@ -167,6 +175,7 @@ Adrian Lambert
 Adrian Lamo
 Adrian Pucey
 Adrian Smith
+Adriana
 Adriana Lima
 Adriane Pieczonka
 Adrien Brody
@@ -182,6 +191,7 @@ Aeschylus
 Aesop
 Afghanistan
 Aflac
+Africa
 Afyonkarahisar
 Agatha Christie
 Ağcabədi
@@ -202,25 +212,33 @@ Ahad Ha'am
 Aharon Kotler
 Aharon Lichtenstein
 Ahmad Suradji
+Ahmed
 Ahmedabad
 Ahmose I
 Ahsoka Tano
 Ahvenanmaan maakunta
+Aiden
 ail Kim
 Aileen Wuornos
 Aimee Mann
 Ain
+Aina
+Ainara
+Ainhoa
 Air Products & Chemicals
 Airbnb
 Aisha bint Abu Bakr
 Aisne
+Aitana
 Aitolia kai Akarnania
+Aitor
 Aizkraukles novads
 Aizputes novads
 Ajaria
 Ajdovščina
 Akershus
 Akhenaten
+Akhtar
 Aki Kaurismaki
 Akiba Eger
 Akiba Rubinstein
@@ -263,12 +281,14 @@ Al Stewart
 Al Waxman
 Al-Farabi
 Al-Ghazali
+Alaia
 Alain Caron
 Alain Chabat
 Alain Delon
 Alain Johannes
 Alain Resnais
 Alain Rieder
+Alan
 Alan Arkin
 Alan Autry
 Alan Berg
@@ -342,6 +362,7 @@ Albert Schatz
 Albert Schweitzer
 Albert Von Tilzer
 Alberta
+Alberto
 Alberto Moravia
 Alberto Ponce
 Albertsons
@@ -355,6 +376,8 @@ Alec Baillie
 Alec Baldwin
 Alec Templeton
 Aleister Crowley
+Alejandra
+Alejandro
 Alejandro Jodorowsky
 Aleksander Sergeyevich Pushkin
 Aleksandr Pushkin
@@ -368,6 +391,7 @@ Alessandro Nesta
 Alessandro Vanzini
 Alessandro Volta
 Alessia Mattalia
+Alex
 Alex Acuña
 Alex Band of The Calling
 Alex Barberis
@@ -390,6 +414,7 @@ Alex Sonchez
 Alex Turner
 Alex Webster
 Alex Winter
+Alexander
 Alexander Anderson
 Alexander Belyavsky
 Alexander Dumas
@@ -451,6 +476,7 @@ Ali Landry
 Ali MacGraw
 Ali McMordie
 Alicante
+Alice
 Alice B. Toklas
 Alice Braga
 Alice Cooper
@@ -458,6 +484,7 @@ Alice in Wonderland
 Alice Longbottom
 Alice Miller
 Alice Nelson
+Alicia
 Alicia Keys
 Alicia Ostriker
 Alicia Silverstone
@@ -470,6 +497,7 @@ Alita
 Alix Dobkin
 All the Ronin Warriors
 Alla Nazimova
+Allan
 Allan Arbus
 Allan Arkush
 Allan Clarke
@@ -478,6 +506,7 @@ Allan Sherman
 Allan Stewart
 Allan Zavod
 Allard K. Lowenstein
+Allen
 Allen Arbus
 Allen Collins
 Allen Covert
@@ -492,6 +521,7 @@ Allen Ravenstine
 Allie
 Allie DiMeco
 Allier
+Allison
 Allison Crowe
 Allison Gopnik
 Allison Miller
@@ -501,8 +531,10 @@ Ally Financial
 Ally McBeal
 Ally Sheedy
 Allyson Schwartz
+Alma
 Almería
 Alojas novads
+Alonso
 Alonso Mudarra
 Alora Lanzillotta
 Alpes-de-Haute-Provence
@@ -522,6 +554,7 @@ Altria
 Alucard
 Alūksnes novads
 Alvar Aalto
+Alvaro
 Alvaro Jardón
 Alvin
 Alvin Lee
@@ -547,6 +580,7 @@ Amber Benson
 Ambrose
 Ambrosius Flume
 Amedeo Modigliani
+Amelia
 Amelia Earhart
 Amelia Susan Bones
 Amenhotep III
@@ -562,7 +596,9 @@ Amerigo Vespucci
 Ameriprise Financial
 Amgen
 Aminoss
+Amir
 Amir Derakh
+Amira
 Amira Hass
 Amitabh Bachchan
 Amitai Etzioni
@@ -591,6 +627,7 @@ Amy Pascal
 Amy Weber
 Amy Weisberger
 Amy Winehouse
+Ana
 Anacreon
 Anakin Solo
 Analog Devices
@@ -606,8 +643,10 @@ Anaximenes of Miletus
 Ancona
 Ancus Marcius
 Andalucía
+Ander
 Anders Celsius
 Anders Iwers
+Anderson
 Andersons
 Andorra
 Andorra (AD)
@@ -626,6 +665,7 @@ Andre the Giant
 Andre Ward
 Andre Weil
 André-Marie Ampère
+Andrea
 Andrea Bocelli
 Andrea Centazzo
 Andrea Dworkin
@@ -642,8 +682,10 @@ Andrei Lilienthal
 Andrei Shleifer
 Andrei Tarkovsky
 Andrej Romanowitsch Chikatilo
+Andres
 Andrés Bretel
 Andrés Segovia
+Andrew
 Andrew "Dice" Clay
 Andrew Beacock
 Andrew Bergman
@@ -672,6 +714,7 @@ Andrew Viterbi
 Andrew Weiss
 Andrew White
 Andrew Young
+Andrews
 Andrijevica
 Android 18
 Andromeda Blackv
@@ -711,6 +754,7 @@ Angel
 Angel Ibarra
 Angel Manfredy
 Angel Resendez
+Angela
 Angela Merkel
 Angelica Pickles
 Angelika Kirchschlager
@@ -727,6 +771,7 @@ Anicius Manlius Severinus Boethius
 Anja Harteros
 Ankara
 Ann Landers
+Anna
 Anna Benson
 Anna Chlumsky
 Anna Freud
@@ -761,6 +806,7 @@ Anselm of Canterbury
 Antal Dorati
 Antalya
 Antarctica
+Anthony
 Anthony Beilenson
 Anthony Cerabino
 Anthony Ervin
@@ -792,12 +838,14 @@ Anton LaVey
 Anton Rubinstein
 Anton Walbrook
 Anton Webern
+Antonella
 Antonelli, Dominic A.
 Antoni Gaudí
 Antoni Slonimski
 Antonin Dvorak
 Antonín Dvořák
 Antoninus Pius
+Antonio
 Antonio Banderas
 Antonio Carlos Jobim
 António Chainho
@@ -845,6 +893,7 @@ Ararat
 Arcadius
 Archangelo Corelli
 Archduke Franz Ferdinand of Austria
+Archer
 Archer Daniels Midland
 Archibald Alphonso Alexander
 Archie
@@ -856,6 +905,7 @@ Ardahan
 Ardèche
 Ardennes
 Ards and North Down
+Ares
 Aretha Franklin
 Arezzo
 Argel Medina Cota "Arhkota"
@@ -865,6 +915,8 @@ Argolida
 Argus Filch
 Argyll and Bute
 Ari Fleischer
+Aria
+Ariadna
 Arie Eldad
 Ariège
 Ariel Durant
@@ -893,6 +945,8 @@ Armenia (AM)
 Armik
 Armin Shimerman
 Arminius
+Armstrong
+Arnau
 Arne Duncan
 Arne Jacobsoen
 Arnie Kantrowitz
@@ -910,6 +964,7 @@ Arnold Rothstein
 Arnold Schoenberg
 Arnold Schwarzenegger
 Arnolt Schlick
+Aroa
 Aron Nimzowitsch
 Arrow Electronics
 Art Alexakis
@@ -976,14 +1031,17 @@ Asbury Automotive
 Ascoli Piceno
 Ash Soan
 Ashanti
+Asher
 Asher ben Jehiel
 Ashitaka
 Ashlee Simpson
 Ashley Montagu
 Ashley Tisdale
 Ashoka
+Ashton
 Ashton Kutcher
 Ashurbanipal
+Asier
 Assurant
 Astara
 Asti
@@ -996,6 +1054,9 @@ Asturias
 Asturias, Principado de
 Asuka Langley Soryu
 AT&T
+Athena
+Atkins
+Atkinson
 Atlanta
 Ato Egoyan
 Atom
@@ -1007,7 +1068,9 @@ Attila the Hun
 Aube
 Auces novads
 Aude
+Audrey
 Audrey Hepburn
+August
 August Belmont
 Augusta Longbottom
 Auguste Comte
@@ -1017,9 +1080,11 @@ Augusto Pinochet
 Augustus
 Aunt May
 Aurelian
+Aurora
 Aurra Sing
 Aust-Agder
 Austen O'Brian
+Austin
 Austin Peck
 Austin Powers
 Australia
@@ -1031,11 +1096,14 @@ Autoliv
 Automatic Data Processing
 AutoNation
 AutoZone
+Autumn
 Auvergne-Rhône-Alpes
+Ava
 Ava Gardner
 Aveiro
 Avellino
 Averroes
+Avery
 Avery Dennison
 Avery Johnson
 Aveyron
@@ -1055,10 +1123,13 @@ Avram Goldstein
 Avril Lavigne
 Avshalom
 Avtalyon
+Axel
 Axl Rose
+Aya
 Ayatollah Khomeini
 Aydın
 Ayeka Masaki Jurai
+Ayla
 Ayn Rand
 Aynsley Dunbar
 Ayre Gross
@@ -1087,12 +1158,14 @@ Bahrain
 Bahya ibn Paquda
 Bái
 Bail Organa
+Bailey
 Bailey Gatzert
 Baker Hughes
 Bakithi Kumalo
 Bakı
 Balakən
 Baldones novads
+Baldwin
 Balears
 Balıkesir
 Ball
@@ -1110,6 +1183,7 @@ Bangkok
 Bangladesh
 Bank of America
 Bank of New York
+Banks
 Banskobystrický kraj
 Bar
 Barabara Stanwyck
@@ -1132,12 +1206,16 @@ Barbara Tuchman
 Barbara Tversky
 Barbara Walters
 Barbecue Bob
+Barber
 Barbi Benton
 Barcelona
 Bari
+Barker
 Barking and Dagenham
 Barletta-Andria-Trani
+Barlow
 Barnet
+Barnett
 Barney Dreyfuss
 Barney Frank
 Barney Gumble
@@ -1150,7 +1228,9 @@ Barney Stinson
 Barnsley
 Barny the Fruitbat
 Baron Browne
+Barrett
 Barriss Offee
+Barry
 Barry Adamson
 Barry Allen
 Barry Bangemout
@@ -1179,7 +1259,9 @@ Bartemius Crouch Jr.
 Bartemius Crouch Senior
 Bartholomäus
 Bartın
+Bartlett
 Bartolomeu Dias
+Barton
 Baruch Blumberg
 Baruch de Spinoza
 Baruch Epstein
@@ -1197,6 +1279,7 @@ Basil II
 Basil of Caesarea
 Basilicata
 Bastila Shan
+Bates
 Bath and North East Somerset
 Bathsheba
 Batistuta
@@ -1204,6 +1287,7 @@ Batman
 Battling Levinsky
 Batu Khan
 Bauskas novads
+Baxter
 Baxter International
 Bayard Taylor
 Bayburt
@@ -1214,6 +1298,7 @@ Beast
 Beastie Boys
 Beatrice Alexander
 Beatrix Potter
+Beau
 Beavis
 Bebe Neuwirth
 BeBe Winans
@@ -1225,6 +1310,7 @@ Bedřich Smetana
 Bedrick Smetana
 Beethoven
 Beetle Baily
+Begum
 Behnken, Robert L.
 Beijing
 Beja
@@ -1244,6 +1330,7 @@ Belgorodskaya oblast'
 Belinda
 Belisarius
 Belize
+Bell
 Bella Abzug
 Bella Swan
 Bellatrix Lestrange
@@ -1299,6 +1386,7 @@ Bengaluru
 Benicio Del Toro
 Benin
 Benito Mussolini
+Benjamin
 Benjamin 'Bugsy' Siegel
 Benjamin A. Gilman
 Benjamin Britten
@@ -1314,6 +1402,7 @@ Benjamin Netanyahu
 Benjamin Oliver Davis Sr.
 Benjamin Orr
 Benmont Tench
+Bennett
 Bennett Cerf
 Bennie Smith
 Benny Andersson
@@ -1325,6 +1414,8 @@ Benny Leonard
 Benny Lom
 Benny Morris
 Benoit Mandelbrot
+Benson
+Bentley
 Beny Alagem
 Beograd
 Ber Borochov
@@ -1396,6 +1487,7 @@ Betty Boop
 Betty Comden
 Betty Cooper
 Betty Friedan
+Bevan
 Beverīnas novads
 Beverly Breckenridge
 Beverly Sills
@@ -1408,6 +1500,8 @@ Bhaichung Bhutia
 Bhutan
 Bib Fortuna
 Bibbe Hansen
+Bibi
+Biel
 Biella
 Big Bad Wolf
 Big L
@@ -1506,11 +1600,13 @@ Billy Wilder
 Bingöl
 Binyamin Ze'ev Kahane
 Biogen
+Birch
 Birgu
 Birkirkara
 Birmingham
 Birtha Jorkins
 Birżebbuġa
+Bishop
 Bistrica ob Sotli
 Bistrița-Năsăud
 Bitlis
@@ -1528,6 +1624,7 @@ Black Panther
 Black Pete
 Black Shadow
 Black Widow
+Blackburn
 Blackburn with Darwen
 Blackie Lawless
 Blackpool
@@ -1538,6 +1635,8 @@ Blagoevgrad
 Blair Thornton
 Blaise Pascal
 Blaise Zabini
+Blake
+Blanca
 Blanche Knopf
 Blansko
 Blas Elias
@@ -1634,6 +1733,7 @@ Bolu
 Bolzano
 Bonaire
 Bonaire, Sint Eustatius, and Saba
+Bond
 Bone Thugs N Harmony
 Bones Hillman
 Bonnie and Clyde
@@ -1643,6 +1743,7 @@ Boo Boo
 Booker T. Jones
 Booker T. Washington
 Booking s
+Booth
 Bootsy Collins
 Booz Allen Hamilton
 Borat
@@ -1681,8 +1782,10 @@ Bournemouth
 Bouvet Island
 Bovec
 Bow Wow
+Bowen
 Bowen, Stephen G.
 Boyd Martin
+Boyle
 Boz Burrell
 Boz Scaggs
 Bozo
@@ -1700,9 +1803,12 @@ Brad Sherman
 Brad Whitford
 Brad Wilk
 Bradford
+Bradley
 Bradley Fish
 Bradley Nowell
 Bradley Webb
+Bradshaw
+Brady
 Braga
 Bragança
 Brăila
@@ -1714,6 +1820,7 @@ Branko Lustig
 Braslovče
 Brașov
 Bratislavský kraj
+Bray
 Brazil
 Brčko distrikt
 Brda
@@ -1726,6 +1833,7 @@ Brendan Bayliss
 Brendan Benson
 Brendan Fraser
 Brendan O' Carroll
+Brennan
 Brennan Manning
 Brent
 Brent Hinds
@@ -1789,6 +1897,7 @@ Briceni
 Bridgend; Pen-y-bont ar Ogwr
 Bridget Jones
 Brie Larson
+Briggs
 Brighton and Hove
 BrightSpring Health Services
 Brigitte Bardot
@@ -1813,7 +1922,11 @@ Bronson Pinchot
 Brooke Burke
 Brooke Hogan
 Brooke Valentine
+Brookes
+Brooks
 Brown Mark
+Browne
+Bruce
 Bruce Cockburn
 Bruce Dickinson
 Bruce Fleisher
@@ -1843,6 +1956,7 @@ Bruce Wasserstein
 Bruce Wayne
 Bruce Willis
 Brunei
+Bruno
 Bruno Bergonzi
 Bruno Bettelheim
 Bruno Kreisky
@@ -1853,6 +1967,7 @@ Bruno Walter
 Bruntál
 Bruxelles-Capitale, Région de;Brussels Hoofdstedelijk Gewest
 Brvenica
+Bryan
 Bryan Adams
 Bryan Beller
 Bryan Breaux
@@ -1860,6 +1975,7 @@ Bryan Hitt
 Bryan Singer
 Bryan Sutton
 Bryanskaya oblast'
+Bryant
 Bryce Avary
 Bryce Soderberg
 Bryher
@@ -1870,6 +1986,7 @@ Buck Williams
 Buckbeak
 Buckethead
 Buckinghamshire
+Buckley
 Bucky Barnes
 București
 Bud Abbott
@@ -1904,15 +2021,20 @@ Burbank, Daniel C.
 Burdur
 Burgas
 Burgenland
+Burgess
 Burgos
 Burhan Öçal
 Burk
+Burke
 Burkina Faso
 Burlington Stores
+Burns
+Burrows
 Bursa
 Burt Bacharach
 Burt Balaban
 Burtnieku novads
+Burton
 Burton Baskin
 Burton Cummings
 Burton Lane
@@ -1925,10 +2047,12 @@ Buskerud
 Busta Rhymes
 Buster Keaton
 Butel
+Butler
 Butt Head
 Buwi Meneses
 Buzău
 Buzz Osborne
+Byrne
 Byron Janis
 Byron Stroud
 C-3PO
@@ -1964,6 +2088,7 @@ Calabria
 Călărași
 Calderdale
 Caldwell Dyson, Tracy E.
+Caleb
 California
 Caligula
 Calogero Marrali
@@ -1976,15 +2101,18 @@ Cambodia
 Cambridgeshire
 Cambyses II of Persia
 Camden
+Cameron
 Cameron Diaz
 Cameron Kerry
 Cameron Muncey
 Cameroon
+Camila
 Camille Dreyfus
 Camille Pissarro
 Camille Saint-Saëns
 Camillo Berneri
 Campania
+Campbell
 Campbell's
 Campobasso
 Camryn Manheim
@@ -1992,6 +2120,7 @@ Canada
 Çanakkale
 Canarias
 Candace Cameron
+Candela
 Canderous Ordo
 Candice Michelle
 Canillo
@@ -2023,6 +2152,7 @@ Carbonia-Iglesias
 Cardiff; Caerdydd
 Cardinal Health
 Cardinal Richelieu
+Carey
 Carinus
 Carl
 Carl Allen
@@ -2051,6 +2181,7 @@ Carl Rakosi
 Carl Reiner
 Carl Sagan
 Carl Wilson
+Carla
 Carlene Begnaud
 Carles Benavent
 Carlito
@@ -2058,17 +2189,20 @@ Carlo Alberto Canevali
 Carlo Little
 Carlo Marchione
 Carlo Von Sexron
+Carlos
 Carlos Alomar
 Carlos Baerga
 Carlos Cavazo
 Carlos Dengler
 Carlos Santana
 Carlos Slim Helú
+Carlota
 Carlow
 Carly Simon
 Carman
 Carmarthenshire; Sir Gaerfyrddin
 CarMax
+Carmen
 Carmen Electra
 Carmine Appice
 Carnikavas novads
@@ -2085,21 +2219,27 @@ Carol Swain
 Carol Vorderman
 Carole Bayer Sager
 Carole King
+Carolina
+Caroline
 Caroline Taylor
 Carolyn Drake
 Carolyn Jones
 Carolyn Leigh
 Carolyn Mervis
 Carolyn S Shoemaker
+Carr
 Carrie Bradshaw
 Carrie Brownstein of Sleater-Kinney
 Carrie Fisher
 Carrie Underwood
 Carrier Global
+Carroll
 Carroll O'Connor
+Carter
 Carter Beauford
 Carter Pewterschmidt
 Cartman
+Cartwright
 Carus
 Carvana
 Cary Grant
@@ -2122,6 +2262,8 @@ Castilla y León
 Castilla-La Mancha
 Cat in the Hat
 Cat Stevens
+Cataleya
+Catalina
 Catalunya
 Catania
 Catanzaro
@@ -2143,6 +2285,7 @@ Catwoman
 Căușeni
 Causeway Coast and Glens
 Cavan
+Cayetana
 Cayman Islands
 CBRE
 CDW
@@ -2152,6 +2295,7 @@ Cecil Day
 Cecilia Bartoli
 Cedric Diggory
 Celanese
+Celia
 Celine Dion
 Celje
 Cencora
@@ -2188,6 +2332,7 @@ Chad Larson
 Chad Michael Murray
 Chad Urmston
 Chad Wakerman
+Chadwick
 Chaim Grade
 Chaim Herzog
 Chaim Michael Dov Weissmandl
@@ -2197,17 +2342,23 @@ Chaim Soutine
 Chaim Topol
 Chaim Weizmann
 Chalkidiki
+Chamberlain
+Chambers
 Chamitoff, Gregory E.
+Chan
+Chandler
 Chandra Levy
 Cháng
 Chania
 Channing Tatum
 Chantal Akerman
+Chapman
 Chappii Eda
 Charente
 Charente-Maritime
 Charlas Schwab
 Charlemagne
+Charles
 Charles Austin
 Charles Babbage
 Charles Barkley
@@ -2280,11 +2431,13 @@ Charlie Waymire
 Charlie Weasley
 Charlie Zaa
 Charlize Theron
+Charlotte
 Charlotte Arnold
 Charlotte Buresova
 Charlotte Caffey
 Charlotte Hatherley
 Charlotte Rae
+Charlton
 Charlton Heston
 Charo
 Charter Communications
@@ -2342,6 +2495,7 @@ Chip Douglas
 Chipotle Mexican Grill
 Chișinău
 Chiyochichi
+Chloe
 Cho Chang
 Chomutov
 Chongqing
@@ -2407,6 +2561,7 @@ Chris Young
 Chrissie Hynde
 Christer Nordlander
 Christiaan Huygens
+Christian
 Christian B. Anfinsen
 Christian Bale
 Christian Burns
@@ -2425,6 +2580,7 @@ Christmas Island
 Christoph Willibald Gluck
 Christophe Deschamps
 Christophe Pratiffi
+Christopher
 Christopher Baron
 Christopher Boone
 Christopher Columbus
@@ -2482,7 +2638,9 @@ Citizens Financial
 City Sleeps
 Ciudad Real
 Clackmannanshire
+Claire
 Claire Bloom
+Clara
 Clarabelle Cow
 Clare
 Clare Kenny
@@ -2491,11 +2649,13 @@ Clarence Gilyard
 Clarence Thomas
 Clarence White
 Clarice Lispector
+Clark
 Clark Gable
 Clark Griswold
 Clark Howard
 Clark Kent
 Clark Tracey
+Clarke
 Claude Chabrol
 Claude Cohen-Tannoudji
 Claude Debussy
@@ -2504,6 +2664,7 @@ Claude Lelouch
 Claude Levi-Strauss
 Claude Monet
 Claude Rains
+Claudia
 Claudio Canzano
 Claudio Monteverdi
 Claudio Sanchez
@@ -2512,12 +2673,14 @@ Claudio Simonetti
 Claudius
 Claudius II
 Clay Aiken
+Clayton
 Clayton Bigsby
 Clayton Cameron
 Cleisthenes
 Clem Snide
 Clement Greenberg
 Clement of Alexandria
+Clements
 Cleopatra
 Cleopatra I of Egypt
 Cleopatra VII of Egypt
@@ -2539,11 +2702,13 @@ Clive Davis
 Clive Mears
 Clive Owen
 Clive Sinclair
+Cloe
 Cloris Leachman
 Clovis I
 Cluj
 Clyde Barrow
 CMS Energy
+Coates
 Cobra Commander
 Coca-Cola
 Coco Chanel
@@ -2551,9 +2716,12 @@ Cocos (Keeling) Islands
 Cody Votolato
 Cognizant Technology
 Coimbra
+Cole
 Cole Hauser
+Coleman
 Coleman Young
 Coleman, Catherine G.
+Coles
 Colgate-Palmolive
 Colin Bailey
 Colin Bass
@@ -2566,10 +2734,13 @@ Colin Greenwood
 Colin Hay
 Colin L. Powell
 Colin Moulding
+Collier
+Collins
 Colombia
 Colonel Sanders
 Colorado
 Colossus
+Colton
 Columbus
 Comcast
 Comenius
@@ -2593,6 +2764,8 @@ Connacht
 Connecticut
 Connie Chung
 Connie Seleca
+Connolly
+Connor
 Conny Bloom
 ConocoPhillips
 Conrad Lozano
@@ -2605,9 +2778,12 @@ Constantius Chlorus
 Constantius II
 Constellation Brands
 Constellation Energy
+Conway
 Conwy
 Cook Islands
+Cooke
 Cookie Monster
+Cooper
 Corbin Allred
 Corbin Bernsen
 Corbin Bleu
@@ -2649,7 +2825,9 @@ Courtney Love
 Courtney Taylor-Taylor
 Covasna
 Coventry
+Cox
 Cozy Powell
+Craig
 Craig David
 Craig Fairbaugh
 Craig Gannon
@@ -2658,6 +2836,7 @@ Craig Montoya
 Craig Nicholls
 Craig Scanlon
 Craig Wood
+Crawford
 Crawford Loritz
 Creamer, Timothy J.
 Creed Bratton
@@ -2679,6 +2858,7 @@ Croatia
 Croatia (HR)
 Croesus
 Crookshanks
+Cross
 Crotone
 Crown s
 Croydon
@@ -2693,12 +2873,14 @@ Culfa
 Cumbria
 Cummins
 Cuneo
+Cunningham
 Curaçao
 Curious George
 Curly Howard
 Curt Bisquera
 Curt Sachs
 Curt Smith
+Curtis
 CVS Health
 Cy Coleman
 Cyclops
@@ -2735,6 +2917,7 @@ Dalia Rabikovich
 Dalian
 Dallas
 Dallas Green
+Daly
 Dâmbovița
 Damian Kulash
 Damon Allen
@@ -2781,6 +2964,7 @@ Danger Mouse
 Dani Evans
 Dani Levy
 Danica Patrick
+Daniel
 Daniel "Chappie" James
 Daniel Al-Kumisi
 Daniel Antonsson
@@ -2823,8 +3007,10 @@ Daniel Stern
 Daniel Suher
 Daniel Wildenstein
 Daniel Yanofsky
+Daniela
 Daniella Barcelona
 Danielle Steel
+Daniels
 Danilovgrad
 Dankmar Adler
 Dann Gallucci
@@ -2859,6 +3045,7 @@ Darden Restaurants
 Daredevil
 Daria
 Darin Howard Pontell
+Dario
 Dario Argento
 Darius I of Persia
 Darius II of Persia
@@ -2945,6 +3132,7 @@ Dave Thomas
 Dave Wakeling
 Dave Weckl
 Dave Winer
+Davey
 Davey Allison
 Davey Graham
 Davey Johnstone  & Elton John)
@@ -3092,11 +3280,17 @@ David Z
 David Zucker
 Davide Ragazzoni
 Davide Ropele
+Davidson
+Davies
+Davis
+Davison
 DaVita
 Davy Jones
 Dawn Marie Psaltis
+Dawson
 Dawson McAlister
 Dawson Trotman
+Dean
 Dean Bernardini
 Dean Corll
 Dean DeLeo
@@ -3137,6 +3331,7 @@ Delaware
 Delčevo
 Delek US
 Delhi
+Delilah
 Dell Technologies
 Della Reese
 Delmore Schwartz
@@ -3164,6 +3359,7 @@ Denise Scott Brown
 Denizli
 Denmark
 Denmark (DK)
+Dennis
 Dennis Bergkamp
 Dennis Byrd
 Dennis Chambers
@@ -3222,6 +3418,7 @@ Dhani Harrison
 Dhirubhai Ambani
 Diamondback Energy
 Dian Fossey
+Diana
 Diana Damrau
 Diana Deutsch
 Diana Krall
@@ -3249,11 +3446,13 @@ Dick Van Dyke
 Dick Vitale
 Dick's Sporting Goods
 Dickey Betts
+Dickinson
 Dida
 Diddy
 Didius Julianus
 Dido
 Didz Hammond
+Diego
 Diego Armando Maradona
 Diego Milito
 Diego Romagnoli
@@ -3282,6 +3481,7 @@ Discover Financial
 Discu Stu
 Divača
 Dixie Chicks
+Dixon
 Diyarbakır
 Dizzy Gillespie
 DJ Webstar
@@ -3305,12 +3505,15 @@ Dobrna
 Dobronak
 Dobrova-Polhov Gradec
 Dobrovnik
+Dobson
 Doc Pomus
 Doc Watson
 Doctor Doom
 Doctor Evazan
 Doctor Strange
+Dodd
 Dodekanisos
+Doherty
 Dojran
 Dol pri Ljubljani
 Dolan Ellis
@@ -3379,6 +3582,7 @@ Donna Dougla
 Donna Dubinsky
 Donna Karan
 Donna Troy
+Donnelly
 Donnie Dacus
 Donnie Iris
 Donny Dee
@@ -3415,6 +3619,7 @@ Doug Wimbish
 Doug Yule
 Dougie Poynter
 Dougie Thomson
+Douglas
 Douglas D. Osheroff
 Douglas Fairbanks
 Douglas Feith
@@ -3427,6 +3632,7 @@ Dov Zakheim
 Dovber of Mezeritch
 Dover
 Dow
+Doyle
 DR Congo
 Dr Hibbert
 Dr Nico Kasanda
@@ -3472,6 +3678,7 @@ Duddly Dersly
 Dudley
 Dudley Dooright
 Duff McKagan
+Duffy
 Dugan McNeill
 Duke Duffau
 Duke Ellington
@@ -3480,11 +3687,13 @@ Dumbo
 Dumfries and Galloway
 Dunash ben Labrat
 Dunaújváros
+Duncan
 Duncan Coutts
 Duncan James
 Dundagas novads
 Dundee City
 Dungeons and Dragons
+Dunn
 Duplek
 DuPont
 Durbes novads
@@ -3505,6 +3714,8 @@ Dwight Moody
 Dwight Yoakam
 DXC Technology
 Dyan Cannon
+Dyer
+Dylan
 Dylan Dog
 Dylan Flannigan
 Dylan Keefe
@@ -3566,6 +3777,7 @@ Eddie Ojeda
 Eddie Rabbitt
 Eddie Van Halen
 Eddie Vedder
+Eden
 Edgar Allan Poe
 Edgar Allen Poe
 Edgar Bones
@@ -3621,6 +3833,7 @@ Edward VI of England
 Edward Witten
 Edward Zorinsky
 Edward Zwick
+Edwards
 Edwin H. Land
 Edwin Lowe
 Edwin Moses
@@ -3650,13 +3863,16 @@ Elan Atias of the Wailers
 Elayne Boosler
 Elazığ
 Elbasan
+Eleanor
 Eleanor Branstone
 Eleanor of Aquitaine
 Eleazar Kalir
 Electronic Arts
+Elena
 Elena Lappin
 Elevance Health
 Elfriede Jelinek
+Eli
 Eli Broad
 Eli Cohen
 Eli E Hertz
@@ -3664,7 +3880,10 @@ Eli Lilly
 Eli Manning
 Eli Pariser
 Eli Wallach
+Elia
+Eliana
 Eliane Elias
+Elias
 Elias Canetti
 Elias Levy
 Elias Stein
@@ -3693,6 +3912,7 @@ Elisabeth Shue
 Elisha
 Eliyahu Eliezer Dessler
 Eliza Schneider
+Elizabeth
 Elizabeth Báthory
 Elizabeth Berkley
 Elizabeth Blackwell
@@ -3704,6 +3924,7 @@ Elizabeth Loftus
 Elizabeth Taylor
 Elizebeth Friedman
 Elkanah
+Ella
 Ella Baker
 Ella Fitzgerald
 Ellen Barkin
@@ -3712,6 +3933,7 @@ Ellen Goodman
 Ellen Greene
 Ellen Markman
 Ellen Muth
+Ellie
 Ellie Greenwich
 Elliot
 Elliot Easton
@@ -3721,17 +3943,21 @@ Elliot Maddox
 Elliot N. Dorff
 Elliot Sharp
 Elliot Spitzer
+Elliott
 Elliott Abrams
 Elliott Erwitt
 Elliott Gould
+Ellis
 Elmer Bernstein
 Elmer Fudd
 Elmer Rice
 Elmo from Sesame Street
 Elmore James
+Eloise
 Eloise Midgeon
 Elphaba
 Elroy Jetson
+Elsa
 Elton John
 Elvin Jones
 Elvis Costello
@@ -3745,6 +3971,7 @@ Emanuela Borzi
 EMCOR
 Emeric Pressburger
 Emerson Electric
+Emery
 Emil Hirsch
 Emil Kleber
 Emil Post
@@ -3753,13 +3980,16 @@ Emile Berliner
 Emile Durkheim
 Émile Durkheim
 Émile Zola
+Emilia
 Emilia-Romagna
 Emilio Estevez
 Emilio G. Segre
+Emily
 Emily Brontë
 Emily Browning
 Emily Dickinson
 Eminem
+Emma
 Emma Destinnova
 Emma Dobbs
 Emma Frost
@@ -3796,6 +4026,7 @@ Ennio Morricone
 Enrico Fermi
 Entergy
 Enterprise Products Partners
+Enzo
 Enzo Liberto
 Enzo Zirilli
 EOG Resources
@@ -3813,6 +4044,7 @@ Eratosthenes
 Érd
 Erevan
 Ērgļu novads
+Eric
 Eric "Baron" Behrenfeld
 Eric Althaus
 Eric Avery
@@ -3862,6 +4094,7 @@ Erich Segal
 Erich Von Stroheim
 Erich Wolfgang Korngold
 Erie Insurance
+Erik
 Erik Eriksson
 Erik Gustafsson
 Erik Hargrove
@@ -3929,6 +4162,7 @@ Eswatini
 Etelä-Karjala
 Etelä-Pohjanmaa
 Etelä-Savo
+Ethan
 Ethan Coen
 Ethan Hawke
 Ethan Winogrand
@@ -3955,6 +4189,7 @@ Eure-et-Loir
 Euripides
 Euronymous
 Eusebius of Caesarea
+Eva
 Eva Braun
 Eva Green
 Eva Hesse
@@ -3972,12 +4207,16 @@ Evan Wolfson
 Evander Holyfield
 Evanescence
 Evangelista Torricelli
+Evans
 Evans Blue
 Eve Arnold
 Eve Ensler
 Eve Fertig
 Eve Kosofsky Sedgwick
+Evelyn
 Evelyn Fox Keller
+Everett
+Everly
 Eversource Energy
 Évora
 Evros
@@ -3993,12 +4232,15 @@ Expeditors International of Washington
 Extremadura
 Exxon Mobil
 Eydie Gorme
+Ezekiel
 Ezer Weizman
 Ezio Pinza
 Ezio Zaccagnini
+Ezra
 F. Lee Bailey
 F. Scott Fitzgerald
 Fabien Barthez
+Fabio
 Fabio Cannavaro
 Fabio Rotondo
 Faetano
@@ -4029,6 +4271,7 @@ Faro
 Faroe Islands
 Faroe Islands (FO)
 Farrah Fawcett
+Farrell
 Fastenal
 Fat Albert
 Fat Albert and the Cosby Kids
@@ -4036,6 +4279,8 @@ Fat Fryer
 Fat Joe
 Fat Lady
 Fat Mike
+Fatima
+Faulkner
 Faye Valentine
 Federacija Bosne i Hercegovine
 Federico Fellini
@@ -4070,6 +4315,7 @@ Ferguson
 Ferguson, Christopher J.
 Fermanagh and Omagh
 Fermo
+Fernando
 Fernando Hernandez Leyva
 Fernando Medina
 Fernando Sor
@@ -4081,6 +4327,7 @@ Fidel Castro
 Fidel Morales
 Fidelity National Financial
 Fidelity National Information
+Field
 Fier
 Fife
 Fifth Third Bancorp
@@ -4104,8 +4351,10 @@ Firenze
 First Citizens BancShares
 FirstEnergy
 Fiserv
+Fisher
 Fisher Stevens
 Fito Messina
+Fitzgerald
 Flanders
 Flannery O'Connor
 Flash
@@ -4114,6 +4363,8 @@ Flashlight Brown
 Flattus Maximus
 Flavius Aëtius
 Flavius Josephus
+Fleming
+Fletcher
 Fleur Delacour
 Flevoland
 Flintshire; Sir y Fflint
@@ -4130,6 +4381,7 @@ Floyd Mayweather Jr.
 Fluffy
 Fluor
 Flyleaf
+Flynn
 FM
 Foale, C. Michael
 Foggia
@@ -4138,6 +4390,7 @@ Fokida
 Fontana
 Fontvieille
 Foot Locker
+Ford
 Ford Motor
 Ford, Kevin A.
 Foreststorn "Chico" Hamilton
@@ -4146,8 +4399,11 @@ Forrest Gump
 Forrest J. Ackerman
 Forrest Kline
 Forrest Robinson
+Forster
 Foshan
 Fossum, Michael E.
+Foster
+Fowler
 Fox
 Fox Mulder
 Fra Angelico
@@ -4163,6 +4419,7 @@ Francesco Corbetta
 Francesco Corvino
 Francesco Cusa
 Francesco Totti
+Francis
 Francis  Ford Coppola
 Francis "Rocco" Prestia
 Francis Bacon
@@ -4176,6 +4433,7 @@ Francis Rossi
 Francis Salvador
 Francis Schaeffer
 Francis Scott Key
+Francisco
 Francisco Franco
 Francisco Goya
 Francisco Pizarro
@@ -4220,6 +4478,7 @@ Frankie Armstrong
 Frankie Banali
 Frankie Poullain
 Frankie Sullivan
+Franklin
 Franklin D. Roosevelt
 Franklin Graham
 Franklin M. Fisher
@@ -4239,6 +4498,7 @@ Franz Schreker
 Franz Schubert
 Franz Waxman
 Franz-Joseph Selig
+Fraser
 Frasier
 Fred & Rose West
 Fred Astaire
@@ -4288,6 +4548,7 @@ Frederick Wiseman
 Fredric March
 Fredrik Isaksson
 Fredy Studer
+Freeman
 Freeport-McMoRan
 French Guiana
 French Polynesia
@@ -4324,6 +4585,7 @@ Fthiotida
 Fù
 Fu Hsi
 Fukuoka
+Fuller
 Furio Chirico
 Futoshi Uehara
 Füzuli
@@ -4337,17 +4599,20 @@ Gabe Nelson
 Gabe Saporta
 Gabe Serbian
 Gabon
+Gabriel
 Gabriel García Márquez
 Gabriel Kaplan
 Gabriel Lippmann
 Gabriel Macht
 Gabriel Riesser
+Gabriela
 Gabriela Mistral
 Gabriela Szabo
 Gabrielle Carteris
 Gabrielle Delacour
 Gabrovo
 Gaby Hoffmann
+Gael
 Gaetano Donizetti
 Gaetano Nicolosi
 Găgăuzia, Unitatea teritorială autonomă
@@ -4355,6 +4620,7 @@ Gail Ann Dorsey
 Gail Devers
 Gaius Maecenas
 Gaius Marius
+Gala
 Galadriel
 Galați
 Galba
@@ -4362,6 +4628,7 @@ Galen
 Galerius
 Galicia
 Galileo Galilei
+Gallagher
 Gallienus
 Galway
 Gambit
@@ -4374,10 +4641,12 @@ Gaozu of Han
 Gap
 Garan, Ronald J., Jr.
 Gard
+Gardiner
 Garey Williams
 Garfield
 Gargoyle
 Garkalnes novads
+Garner
 Garrett Augustus Morgan
 Garrett Easley
 Garrett Zablocki
@@ -4462,6 +4731,7 @@ General Madine
 General Mills
 General Motors
 General Norman Schwarzkopf
+Genesis
 Genève
 Genghis Khan
 Genji Hakuryu
@@ -4479,6 +4749,7 @@ Georg Solti
 Georg Voros
 Georg Wilhelm Friedrich Hegel
 Georg Wilhelm Pabst
+George
 George Akerlof
 George Axelrod
 George Benson
@@ -4593,15 +4864,20 @@ Gian Lorenzo Bernini
 Gian Pyres
 Giancarlo Ippolito
 Gianfranco Masi
+Gianna
 Gianni Branca
 Gianni Insalata
+Gibbons
+Gibbs
 Gibraltar
 Gibraltar (GI)
+Gibson
 Gideon
 Gil
 Gil Kane
 Gil Shaham
 Gilad Pellaeon
+Gilbert
 Gilbert Adrian
 Gilbert Gottfried
 Gilbert Montagné
@@ -4611,6 +4887,7 @@ Gilby Clarke
 Gilda Radner
 Gildaroy Lockheart
 Gilead Sciences
+Giles
 Gilgamesh
 Gilles De Rays
 Gimli
@@ -4681,10 +4958,13 @@ Gloria Gaynor
 Gloria Leonard
 Gloria Steinem
 Gloucestershire
+Glover
 Gluckl of Hamelin
 Gntarl
 Gob Bluth
 Goby Catt
+Goddard
+Godfrey
 Godfrey of Bouillon
 Godric Gryffindor
 Goku
@@ -4694,11 +4974,14 @@ Goldman Sachs
 Goldy McJohn
 Gollum
 Gōng
+Gonzalo
+Goodwin
 Goodyear Tire & Rubber
 Goofy
 Goranboy
 Gord Sinclair
 Gordian III
+Gordon
 Gordon Banks
 Gordon Brown
 Gordon Bunshaft
@@ -4721,9 +5004,12 @@ Gornji Petrovci
 Gostivar
 Gotlands län
 Gottfried Wilhelm von Leibniz
+Gough
+Gould
 Gouldman
 Göyçay
 Göygöl
+Grace
 Grace Kelly
 Grace Murray Hopper
 Grace Paley
@@ -4732,6 +5018,7 @@ Grad Zagreb
 Gradsko
 Graeme Nicholls
 Graeme Taylor
+Graham
 Graham Coxon
 Graham Gouldman
 Graham Lewis
@@ -4756,6 +5043,7 @@ Graphic Packaging
 Graubünden
 Grawp
 Graybar Electric
+Grayson
 Great Britain
 Greece
 Greece (GR)
@@ -4766,6 +5054,7 @@ Greena Davis
 Greenland
 Greenland (GL)
 Greenwich
+Greenwood
 Greg "G-Mo" Moore
 Greg Camp
 Greg Christian
@@ -4793,6 +5082,7 @@ Gregg Rolie
 Gregg Turner
 Gregor Mendel
 Gregori Chad Petree
+Gregory
 Gregory Chaitin
 Gregory Goyle
 Gregory Hines
@@ -4804,6 +5094,8 @@ Greta Garbo
 Grevena
 Grevenmacher
 Grey Lady
+Griffin
+Griffiths
 Grigori Perelman
 Grigori Rasputin
 Grigory Zinoviev
@@ -4832,6 +5124,7 @@ Guglielmo Marconi
 GuideWell Mutual
 Guido Alberto Fano
 Guillaume Apollinaire
+Guillermo
 Guinea
 Guinea-Bissau
 Guion Bluford
@@ -4883,6 +5176,7 @@ Hadrian
 Hagar the Horrible
 Hagrid
 Haifa Wehbe
+Hailey
 Haim Saban
 Hainaut
 Haiti
@@ -4895,6 +5189,7 @@ Hal Blaine
 Hal David
 Hal Jordan
 Hal Lindsey
+Hale
 Hallands län
 Halle Berry
 Halliburton
@@ -4902,8 +5197,10 @@ Halpern Jeff
 Halton
 Hamburg
 Hamilcar Barca
+Hamilton
 Hamish Stuart
 Hammersmith and Fulham
+Hammond
 Hammurabi
 Hampshire
 Ħamrun
@@ -4944,9 +5241,12 @@ Hans Moleman
 Hans Rosenberg
 Hans-Juergen Syberberg
 Hansi Kürsch
+Hanson
 Hǎo
 Harbin
+Harding
 Harghita
+Hargreaves
 Haringey
 Harjumaa
 Harlan Ellison
@@ -4969,10 +5269,13 @@ Harold Robbins
 Harold Rosen
 Harold Smiley Davis
 Harold Varmus
+Harper
 Harper Lee
 Harpo Marx
+Harris
 Harris Barton
 Harris Eisenstad
+Harrison
 Harrison Ford
 Harrow
 Harry Belafonte
@@ -4988,13 +5291,16 @@ Harry Reid
 Harry S. Truman
 Harry Shearer
 Harry Turtledove
+Hart
 Hart Bochner
 Hartford Insurance
 Hartlepool
+Hartley
 Haruhara Haruko
 Haruhi Suzumiya
 Haruko Haruhara
 Harun al-Rashid
+Harvey
 Harvey Atkin
 Harvey Bainbridge
 Harvey Brooks
@@ -5030,12 +5336,17 @@ Havlíčkův Brod
 Hawaii
 Hawkeye
 Hawkgirl
+Hawkins
 Hawkman
 Hayao Miyazaki
 Hayden Christensen
 Hayden Epstein
 Hayden Panettiere
+Hayes
 Haym Solomon
+Haynes
+Hayward
+Hazel
 Hazel Dawn
 HCA Healthcare
 Hé
@@ -5050,6 +5361,7 @@ Heather Whitestone
 Heather Young
 Heckle and Jeckle
 Hecter Dagworth Granger
+Hector
 Hector Berlioz
 Hedmark
 Hedwig
@@ -5070,6 +5382,7 @@ Helen Levitt
 Helen Mirren
 Helen Slater
 Helen Suzman
+Helena
 Helena Kagan
 Helena of Constantinople
 Helena Paparizou
@@ -5080,6 +5393,7 @@ Helga Hufflepuff
 Hellmaster Phibrizo
 Hello Kitty
 Helmut Newton
+Henderson
 Hendrik S. Houthakker
 Henkka Seppälä
 Henny Youngman
@@ -5137,6 +5451,7 @@ Herb Kohl
 Herb Lubalin
 Herb Ritts
 Herb Stempel
+Herbert
 Herbert A. Hauptman
 Herbert Aptheker
 Herbert Becker
@@ -5199,9 +5514,11 @@ Hesiod
 Hess
 Hessen
 Heves
+Hewitt
 Hewlett Packard
 HF Sinclair
 Hieronymus Bosch
+Higgins
 Highland
 Hiiumaa
 Hilary Duff
@@ -5236,14 +5553,21 @@ Ho Chi Minh
 Ho Chi Minh City
 Hobaugh, Charles O.
 Hobbes
+Hobbs
 Hoče-Slivnica
+Hodgson
 Hódmezővásárhely
 Hodonín
 Hodoš/Hodos
 Höfuðborgarsvæðið
 Hokusai
+Holden
 Holger Czukay
+Holland
+Holloway
 Holly Dunn
+Holmes
+Holt
 Holy See (Vatican City State) (VA)
 Home Depot
 Homer
@@ -5259,6 +5583,8 @@ Hong Kong Phooey
 Honoré Daumier
 Honoré de Balzac
 Hoobastank
+Hooper
+Hopkins
 Hor-Aha
 Horace
 Horace Goldin
@@ -5271,12 +5597,15 @@ Hordaland
 Horemheb
 Horjul
 Hormel Foods
+Horton
 Hosea
 Hóu
 Houdini
+Houghton
 Hounslow
 Houston
 Hovedstaden
+Howard
 Howard Ashman
 Howard Becker
 Howard Berman
@@ -5301,7 +5630,11 @@ Howard Stern
 Howard Temin
 Howard Zieff
 Howard Zinn
+Howarth
+Howe
+Howell
 Howell Raines
+Howells
 Howie Epstein
 Howie Mandel
 Howie Pyro
@@ -5320,6 +5653,7 @@ Hub
 Hubert Dreyfus
 Hubert Lindsey
 Huckleberry Hound
+Hudson
 Hudson Taylor
 Huelva
 Huesca
@@ -5329,7 +5663,9 @@ Hugh Grant
 Hugh Hopper
 Hugh Jackman
 Hugh McDonald
+Hughes
 Hughie Thomasson
+Hugo
 Hugo Gernsback
 Hugo Munsterberg
 Hugo von Hofmannsthal
@@ -5340,6 +5676,8 @@ Human Torch
 Humana
 Humphrey Belcher
 Humphrey Bogart
+Humphreys
+Humphries
 Hunedoara
 Hungary
 Hungary (HU)
@@ -5347,7 +5685,11 @@ Hunter Burgan
 Huntington Bancshares
 Huntington Ingalls Industries
 Hurley, Douglas G.
+Hurst
 Hurt
+Hussain
+Hutchinson
+Hyde
 Hyderabad
 Hyman Epstein
 Hyman Golden
@@ -5358,6 +5700,7 @@ I. L. Peretz
 I. P. Meshkovsky
 Ialomița
 Ialoveni
+Ian
 Ian "Lemmy" Kilmister
 Ian Anderson
 Ian Bairnson
@@ -5401,6 +5744,7 @@ IG-88
 Iğdır
 Iggy Pop
 Ignac Helfy
+Ignacio
 Ignatius of Loyola
 Ignatz von Kolisch
 Igor Cavalera
@@ -5409,6 +5753,7 @@ Igor Olshansky
 Igor Sikorsky
 Igor Stravinsky
 Igor Tamm
+Iker
 Iklin
 Ikšķiles novads
 Ilan Ramon
@@ -5447,8 +5792,10 @@ Indonesia
 Indra Thomas
 Indre
 Indre-et-Loire
+Ines
 Ingmaar Bergman
 Ingmar Bergman
+Ingram
 Ingram Micro
 Ingredion
 Ingrid Bergman
@@ -5469,6 +5816,7 @@ Ioannina
 Ionia Nisia
 Iowa
 Ipeiros
+Iqbal
 Iqbal Masih
 IQVIA s
 Ira Einhorn
@@ -5484,8 +5832,11 @@ Iraq
 Ireland
 Ireland (IE)
 Irenaeus
+Irene
 Irene Leidolf
+Iria
 Irina Levitina
+Iris
 Iris Chacon
 Irkutiskaya oblast'
 Iron Kiba
@@ -5539,7 +5890,9 @@ Isaac Rosenberg
 Isaac Slade
 Isaac Stern
 Isaak Levitan
+Isabel
 Isabel Fonseca
+Isabella
 Isabelle Peretz
 Isador Straus
 Isadore S. Jachman
@@ -5563,6 +5916,7 @@ Isle of Man (IM)
 Isle of Wight
 Isles of Scilly
 Islington
+Ismael
 Ismar Schorsch
 İsmayıllı
 Isocrates
@@ -5591,6 +5945,7 @@ Italy (IT)
 Itchy
 Itzhak Perlman
 Itzik Feffer
+Ivan
 Ivan Boesky
 Ivan Chernyakhovsky
 Ivan IV of Russia
@@ -5605,9 +5960,11 @@ Ivanovskaya oblast'
 Ivor Cutler
 Ivor the Engine
 Ivory Coast
+Ivy
 Ivy Queen
 Iwatetsu
 Izaak Kolthoff
+Izan
 İzmir
 Izola/Isola
 Izzy Stradlin
@@ -5637,6 +5994,7 @@ Jablonec nad Nisou
 Jac Holzman
 Jacen Solo
 Jaci Velazquez
+Jack
 Jack Abramoff
 Jack Albertson
 Jack Arnold
@@ -5689,10 +6047,12 @@ Jackie Mason
 Jackie Presser
 Jackie Robinson
 Jackie Wilson
+Jackson
 Jackson Browne
 Jackson Pollock
 Jaclyn Smith
 Jaco Pastorius
+Jacob
 Jacob A. Marinsky
 Jacob Abendana
 Jacob Beck
@@ -5733,10 +6093,12 @@ Jacques Louis David
 Jacques Offenbach
 Jacques Rivette
 Jacques-Louis David
+Jade
 Jade Puget
 Jaén
 Jah Wobble
 Jaileen Cintron
+Jaime
 Jaimie Pressly
 Jaina Solo
 Jakarta
@@ -5752,6 +6114,7 @@ Jakob Dylan
 Jakob Moreno
 Jalal ad-Din Muhammad Rumi
 Jamaica
+James
 James "JY" Young
 James Anton
 James Blunt
@@ -5843,6 +6206,7 @@ Jan Lechon
 Jan Mayen (Arctic Region)
 Jan Schakowsky
 Jan van Eyck
+Jana
 Jandek
 Jane Austen
 Jane Bowles
@@ -5925,9 +6289,11 @@ Jaunjelgavas novads
 Jaunpiebalgas novads
 Jaunpils novads
 Javed Iqbal
+Javier
 Javier Zanetti
 Jawa
 Jaws
+Jaxon
 Jaxxon
 Jay Adler
 Jay and the Americans
@@ -5952,6 +6318,7 @@ Jay Siegel of The Tokens
 Jay Terrien
 Jay Z
 Jaycee Chan
+Jayden
 Jayne Mansfield
 Jeal Auel
 Jean Auguste Dominique Ingres
@@ -6043,6 +6410,7 @@ Jelgava
 Jelgavas novads
 Jemaine Clement
 Jen Yu
+Jenkins
 Jenna Dewan
 Jennifer Aniston
 Jennifer Arroyo
@@ -6057,6 +6425,7 @@ Jennifer Lopez
 Jennifer Love Hewitt
 Jennifer O'Neil
 Jennifer Parker
+Jennings
 Jenny Joseph
 Jenny McCarthy
 Jenny Saffran
@@ -6066,6 +6435,7 @@ Jens Lehman
 Jeoff Kinde
 Jeordie White
 Jerec
+Jeremiah
 Jeremy Boorda
 Jeremy Camp
 Jeremy Castle
@@ -6183,6 +6553,7 @@ Jessica Savitch
 Jessica Simpson
 Jessica Walter
 Jessie McCartney
+Jesus
 Jesus Christ
 Jet Black
 Jet Harris
@@ -6235,8 +6606,10 @@ Jim Rodford
 Jim Ross
 Jim Shapiro
 Jim Steinman
+Jim Sullivan
 Jim Wales
 Jim Webb
+Jimena
 Jimi Goodwin
 Jimi Hendrix
 Jimmie Johnson
@@ -6350,6 +6723,7 @@ Joe Strummer
 Joe Stump
 Joe Walsh
 Joe Wilson
+Joel
 Joel Benjamin
 Joel Berryhill
 Joel Coen
@@ -6407,6 +6781,7 @@ Johannes Vermeer
 Johannes Vermeer , Dutch Painter
 Johannes Zuckertort
 Johannesburg
+John
 John 'Rhino' Edwards
 John 5
 John Abercrombie
@@ -6615,8 +6990,10 @@ Johnny Thunders
 Johnny Viadacovich
 Johnny Whitaker
 Johnny Winter
+Johnson
 Johnson & Johnson
 Johnson, Gregory H.
+Johnston
 Jojo
 Joker
 Jol Dantzig
@@ -6654,6 +7031,7 @@ Jonas Hellborg
 Jonas Kaufmann
 Jonas Renkse
 Jonas Salk
+Jonathan
 Jonathan Ahdout
 Jonathan Ames
 Jonathan Butler
@@ -6678,6 +7056,7 @@ Jonathan Sachs
 Jonathan Safran Foer
 Jonathan Silverman
 Jonathan Swift
+Jones
 Jones Lang LaSalle
 Joni Eareckson Tada
 Joni Mitchell
@@ -6691,12 +7070,14 @@ Jordan Pruitt
 Jordan Rudess
 Jordin Sparks
 Jörg Fischer
+Jorge
 Jorge Luis Borges
 Jorge Porcel
 Jorge Sampaio
 Jorie Graham
 Jorma Kaukonen
 Joruus C'baoth
+Jose
 Jose Carioca
 Jose Cura
 Jose Feliciano
@@ -6705,6 +7086,7 @@ Josef Mengele
 Josef Nassy
 Josef Ratzinger
 Josef Von Sternberg
+Joseph
 Joseph Albo
 Joseph Anh Cao
 Joseph Brodsky
@@ -6748,6 +7130,7 @@ Joseph Trohman
 Joseph Trumpeldor
 Joseph Weizenbaum
 Joseph Wolpe
+Josephine
 Josephine Baker
 Josephine Brawley Hughes
 Joséphine de Beauharnais
@@ -6780,15 +7163,19 @@ Joshua Micah Marshall
 Joshua Redman
 Joshua Reynolds
 Joshua Schachter
+Josiah
+Josie
 Josip Broz Tito
 Josquin Des Prez
 Josuke Higashikata
 Jotaro Kujo
+Joyce
 Joyce DiDonato
 Joyce Maynard
 Jozef Israels
 JPMorgan Chase
 Ju-ken
+Juan
 Juan Alderete
 Juan Calleros
 Juan Carlos I of Spain
@@ -6844,6 +7231,7 @@ Jughead
 Jughead Jones
 Jule Gregory Charney
 Jule Styne
+Julen
 Jules Dassin
 Jules Feiffer
 Jules Harlow
@@ -6852,8 +7240,10 @@ Jules Massenet
 Jules Pascin
 Jules Verne
 Jules Winnfield
+Julia
 Julia Child
 Julia Roberts
+Julian
 Julian  Stryjkowski
 Julian Beck
 Julian Bream
@@ -6871,6 +7261,7 @@ Julie Andrews
 Julie Kavner
 Julie Taymor
 Juliet Landau
+Julieta
 Julius and Ethel Rosenberg
 Julius Axelrod
 Julius Caesar
@@ -6922,6 +7313,7 @@ K’vemo K’art’li
 Kabardino-Balkarskaya Respublika
 Kagato
 Kahramanmaraş
+Kai
 Kai Eckhardt
 Kai Hansen
 Kai Ortmann
@@ -7021,11 +7413,13 @@ Katie Melua
 Katie Price
 Katy Perry
 Kauno Apskritis
+Kaur
 Kavadarci
 Kavajë
 Kavala
 Kavalier and Clay
 Kavyen Temperley
+Kay
 Kay Arthur
 Kayseri
 Kazakhstan
@@ -7064,6 +7458,7 @@ Kele Okereke
 Kellanova
 Kellie Coffey
 Kellie Pickler
+Kelly
 Kelly Clarkson
 Kelly Groucutt
 Kelly Hayes
@@ -7080,6 +7475,7 @@ Kelly, Scott J.
 Kelsey Grammer
 Kelvin Tan Weilian
 Kemerovskaya oblast'
+Kemp
 Ken
 Ken Casey
 Ken Doane
@@ -7105,6 +7501,7 @@ Ken Wales
 Kengo Aiba/Tekkaman Omega
 Kenji Mizoguchi
 Kenne Thomas
+Kennedy
 Kenneth Anger
 Kenneth Appel
 Kenneth Arrow
@@ -7140,6 +7537,7 @@ Kenya
 Kerċem
 Kerkyra
 Kermit the Frog
+Kerr
 Kerri Strug
 Kerri Walsh
 Kerry
@@ -7189,6 +7587,7 @@ Khafra
 Khakasiya, Respublika
 Khalid Al-Thawadi
 Khalil Gibran
+Khan
 Khanty-Mansiysky avtonomnyy okrug-Yugra
 Kharkivs'ka Oblast'
 Khartoum
@@ -7234,12 +7633,15 @@ Kingston upon Thames
 Kinky Friedman
 Kinnikuken Banboro
 Kinshasa
+Kinsley
 Kip Winger
 Kir Kanos
 Kira Roessler
+Kirby
 Kirby Puckett
 Kiri Te Kanawa
 Kiribati
+Kirk
 Kirk Cameron
 Kirk Douglas
 Kirk Hammet
@@ -7270,6 +7672,7 @@ Klaus Suonsaari
 Klaus Voorman
 Klauss Weiss
 Kleo Thomas
+Knowles
 Knowsley
 Knut Hamsun
 Kobarid
@@ -7431,13 +7834,16 @@ Lady Jane Grey
 Lagos
 Lahore
 Lài
+Laia
 Lain Iwakura
+Lainey
 Lainie Kazan
 Lajos Venetianer
 Lakonia
 Lakshmi Mittal
 Lalo Guerrero
 Lam Research
+Lambert
 Lambeth
 Lana Lang
 Lancashire
@@ -7452,6 +7858,7 @@ Laois
 Laos
 Laozi
 Lappi
+Lara
 Lara Croft
 Laraine Day
 Laraine Newman
@@ -7511,6 +7918,7 @@ Latina
 Latka Gravas
 Latvia
 Latvia (LV)
+Laura
 Laura Madley
 Laura Nyro
 Laura Petrie
@@ -7528,6 +7936,7 @@ Laurent Schwartz
 Lauri Porra
 Laurie Jenkins
 Lavender Brown
+Lawrence
 Lawrence Donegan
 Lawrence Ellison
 Lawrence Harvey
@@ -7539,12 +7948,16 @@ Lawrence Rabiner
 Lawrence Schimel
 Lawrence Summers
 Lawrie MacMillan
+Lawson
+Layan
+Layla
 Lazar Berman
 Lazar Gulkowitsch
 Lazar Kaganovich
 Lazio
 Le Corbusier
 Lea Thompson
+Leah
 Leah Goldberg
 Leandro Bartorelli
 Leann Rimes
@@ -7579,6 +7992,7 @@ Lee Ryan
 Lee Smolin
 Lee Strasberg
 Leeds
+Lees
 Lefkada
 Lefkosía
 Legolas
@@ -7589,7 +8003,9 @@ Leidos s
 Leif Edling
 Leif Ericson
 Leigh Stephens
+Leilani
 Leinster
+Leire
 Leiria
 Leitrim
 Leland Sklar
@@ -7615,6 +8031,7 @@ Lenny Kravitz
 Lenny Krayzelburg
 Lenny Wilkens
 Lenore Jacobson
+Leo
 Leo Baeck
 Leo Frank
 Leo Gorcey
@@ -7650,6 +8067,7 @@ Leon Uris
 Leon Wilkeson
 Leona Helmsley
 Leona Lewis
+Leonard
 Leonard A. Lauder
 Leonard Baskin
 Leonard Bernstein
@@ -7670,6 +8088,7 @@ Leonard Rosenman
 Leonard Slatkin
 Leonard Stern
 Leonard Susskind
+Leonardo
 Leonardo da Vinci
 Leonardo Da Vinci
 Leonardo Di Caprio
@@ -7725,6 +8144,7 @@ Levon Helm
 Levy Myers Harby
 Lew Tendler
 Lew Wasserman
+Lewis
 Lewis A. Coser
 Lewis Black
 Lewis Caroll
@@ -7734,12 +8154,15 @@ Lewis Milestone
 Lewis R. Goldberg
 Lewisham
 Lex Luthor
+Leyre
 Lezhë
 Lənkəran
 Lhasa de Sela
 Lí
 Lǐ
 Li Bai
+Lia
+Liam
 Liam Gallagher
 Liam Neeson
 Liam Wilson
@@ -7770,13 +8193,16 @@ Lil Wayne
 Lil' Abner
 Lila Murillo
 Lilian Thuram
+Liliana
 Liliana Chacon
 Lilli Palmer
+Lillian
 Lillian Copeland
 Lillian Ellison
 Lillian Garcia
 Lillian Hellman
 Lillix
+Lily
 Lily Potter
 Lilyan Tashman
 Lima
@@ -7784,9 +8210,11 @@ Limbažu novads
 Limburg
 Limerick
 Lín
+Lina
 Lina Inverse
 Lina Stern
 Linc-Tones
+Lincoln
 Lincoln Kirstein
 Lincoln National
 Lincolnshire
@@ -7858,6 +8286,7 @@ Ljutomer
 LKQ
 LL Cool J
 Lleida
+Lloyd
 Lloyd Kaufman
 Lobot
 Lockheed Martin
@@ -7865,6 +8294,7 @@ Lodi
 Łódzkie
 Loews
 Log-Dragomer
+Logan
 Logatec
 Loir-et-Cher
 Loire
@@ -7872,6 +8302,7 @@ Loire-Atlantique
 Loiret
 Lois Griffin
 Lois Lane
+Lola
 Lombardia
 Lon Myers
 London
@@ -7958,6 +8389,7 @@ Louny
 Louth
 Lovech
 Lovrenc na Pohorju
+Lowe
 Lowe's
 Lowell "Bud" Paxxon
 Lowell George
@@ -7973,13 +8405,16 @@ Lubelskie
 Lubuskie
 Luc Besson
 Luc Hensill
+Luca
 Luca Pisaroni
 Luca Turilli
+Lucas
 Lucas Glover
 Lucas Grabeel
 Lucca
 Luče
 Luchino Visconti
+Lucia
 Lucian
 Luciano Pavarotti
 Lucille Ball
@@ -7990,6 +8425,7 @@ Lucius Verus
 Lucky Lehrer
 Lucky Oceans  of Asleep at the Wheel
 Lucretius
+Lucy
 Lucy Kaplansky
 Ludacris
 Ludovic "Ludo" Bagman
@@ -8003,12 +8439,15 @@ Ludwig Zamenhof
 Ludzas novads
 Lugo
 Luhans'ka Oblast'
+Luis
 Luis Alfredo Gavarito
 Luis Bunuel
 Luís Mariutti
 Luis Munoz
 Luise Rainer
+Luka
 Lukas Foss
+Luke
 Luke Cage
 Luke Ford
 Luke Paquin
@@ -8021,6 +8460,7 @@ Lululemon athletica
 Lumen Technologies
 Luminara Unduli
 Lumiya
+Luna
 Luna Lovegood
 Luna Vachon
 Luó
@@ -8035,6 +8475,8 @@ Luton
 Luxembourg
 Luxembourg (LU)
 Luzern
+Lydia
+Lyla
 Lyle Alzado
 Lyle Berman
 Lyndon B. Johnson
@@ -8042,6 +8484,7 @@ Lynn Ahrens
 Lynn Margulis
 Lynn Swann
 Lynval Golding
+Lyons
 Lysimachus
 Lysippos
 M. J. Nurenberger
@@ -8050,6 +8493,8 @@ M.D. Geist
 M&T Bank
 Mǎ
 Macao
+Macarena
+Macdonald
 Mace Windu
 Macerata
 Macrinus
@@ -8067,14 +8512,18 @@ Maddam Maxime
 Madea
 Madeleine Albright
 Madeleine M. Kunin
+Madeline
 Madeline Albright
 Madeline Kahn
+Madelyn
+Madison
 Madonas novads
 Madonna
 Madrid
 Madrid, Comunidad de
 Mae Jemison
 Mae West
+Maeve
 Magadanskaya oblast'
 Magdalena Kozena
 Maggie Gyllenhaal
@@ -8092,6 +8541,7 @@ Magnus, Sandra H.
 Mahalia Jackson
 Mahatma Gandhi
 Mahilioŭskaja voblasć
+Mahmood
 Mahoro Ando
 Maimonides
 Maine
@@ -8141,14 +8591,19 @@ Manfred Mann
 Manila
 Manisa
 Manitoba
+Mann
+Manning
 Manny Charlton
 Manpower
 Mantova
+Manuel
 Manuel Blum
 Manuel Göttsching
 Manuel M. Noah
+Manuela
 Máo
 Mao Zedong
+Mara
 Mara Jade
 Maramureș
 Marathon Petroleum
@@ -8190,12 +8645,14 @@ Marcia Cross
 Marcia Falk
 Marcie Bolen
 Marcion of Sinope
+Marco
 Marco Biazzi
 Marco Hietala
 Marco Mendoza
 Marco Minnemann
 Marco Polo
 Marco Zanoli
+Marcos
 Marcos Witt
 Marcus Adoro
 Marcus Aurelius
@@ -8225,6 +8682,7 @@ Marge Simpson
 Margret Rey
 Marguerite Pewterschmidt
 Marho Bateren
+Maria
 Maria Callas
 Maria Guleghina
 Maria Kanellis
@@ -8249,7 +8707,9 @@ Marilyn Manson
 Marilyn Mazur
 Marilyn Monroe
 Marilyn Vos Savant
+Marina
 Marina Domashenko
+Mario
 Mario Calandrelli
 Mario Calire
 Mario Castelnuovo-Tedesco
@@ -8347,20 +8807,25 @@ Marriott International
 Marsa
 Marsaskala
 Marsaxlokk
+Marsden
 Marsh & McLennan
+Marshall
 Marshall Goldberg
 Marshall Holman
 Marshall Islands
 Marshall Nirenberg
 Marshall Sahlins
+Marta
 Marta Kauffman
 Marten Andersson
 Martha Farah
 Martha Nussbaum
 Martha Stewart
 Martha Williamson
+Marti
 Martial
 Martian Manhunter
+Martin
 Martin Balsam
 Martin Barre
 Martin Bengtsson
@@ -8403,6 +8868,7 @@ Martin Slattery
 Martin Taylor
 Martin Turner
 Martin Verdonk
+Martina
 Martina Navratilova
 Martinique
 Marty Balin
@@ -8457,6 +8923,7 @@ Maryland
 Masaccio
 Masallı
 Masco
+Mason
 Mason Williams
 Mass Mutual
 Massa-Carrara
@@ -8473,11 +8940,13 @@ Mastracchio, Richard A.
 Mat
 Mat Osman
 Mata Hari
+Mateo
 Matera
 Mathias Bush
 Mathieu Schneider
 Mathieu Soucy
 Mathilde Krim
+Matias
 Matisyahu
 Matoi Shinkai
 Mats-Peter Sernrot
@@ -8514,6 +8983,7 @@ Matt Wachter
 Matt Willis
 Matt Wong
 Matteo Cigna
+Matthew
 Matthew Bellamy
 Matthew Bloom
 Matthew Broderick
@@ -8528,6 +8998,7 @@ Matthew Rabin
 Matthew Sweet
 Matthew Underwood
 Matthew Winter
+Matthews
 Matthias Jabs
 Mattias Eklundh
 Matty Lewis
@@ -8557,12 +9028,15 @@ Mauritania
 Mauritius
 Mauritz Stiller
 Maurizio Boco
+Mauro
 Mauro Beggio
 Mauro Gatto
 Mauro Pezzente
 Maury Povich
 Maury Yeston
+Maverick
 Mavrovo-i-Rostuša
+Max
 Max Apple
 Max Baer
 Max Baer Jr.
@@ -8614,6 +9088,7 @@ Maximilien Robespierre
 Maximinus Thrax
 Maximus
 Maxine Kumin
+Maya
 Maya Angelou
 Maya Deren
 Mayenne
@@ -8628,8 +9103,12 @@ MC Hammer
 MC Paul Barman
 MC Serch
 McArthur, K. Megan
+Mccarthy
+Mcdonald
 McDonald's
+Mckenzie
 McKesson
+Mclean
 Mcnair
 Mdina
 Me'shell Ndegeocello
@@ -8674,7 +9153,9 @@ Melissa Gilbert
 Melissa Hiatt
 Melissa Rivers
 Mellieħa
+Mellor
 Mělník
+Melody
 Melville Shavelson
 Melvin "Wah-Wah Watson" Ragin
 Melvin Calvin
@@ -8722,6 +9203,7 @@ Messina
 Messinia
 Meta
 Metcalf-Lindenburger, Dorothy M.
+Metcalfe
 Methuselah
 MetLife
 Metlika
@@ -8737,9 +9219,13 @@ Mezz Mezzrow
 Mġarr
 MGM Resorts International
 MH Abrams
+Mia
 Mia Hamm
 Mia Kirshner
+Miah
 Miami
+Micah
+Michael
 Michael Albert
 Michael Amott
 Michael Andersson
@@ -8909,6 +9395,7 @@ Mid and East Antrim
 Mid Ulster
 middle east
 Middlesbrough
+Middleton
 Midge Decter
 Midge Ure
 Midlothian
@@ -8916,6 +9403,7 @@ Midtjylland
 Migé Amour
 Might Guy
 Mighty Mouse
+Miguel
 Miguel Cotto
 Miguel de Cervantes
 Miguel Najdorf
@@ -9010,9 +9498,11 @@ Mikko Paananen
 Mikko Viljami Lindström
 Miklavž na Dravskem polju
 Miklos Radnoti
+Mila
 Milan Kundera
 Milano
 Milena Kunis
+Miles
 Miles Davis
 Miley Cyrus
 Milford H. Wolpoff
@@ -9021,6 +9511,7 @@ Milla Jovovich
 Millard Powers
 Millicent Bagnold
 Millicent Bulstrode
+Millie
 Millions Knives
 Milos Forman
 Milt Gabler
@@ -9065,12 +9556,14 @@ Miss Swan
 Mississippi
 Missouri
 Missy Elliott
+Mistry
 Misty May Treanor
 Mitch Daniels
 Mitch Kapor
 Mitch Leigh
 Mitch McConnell
 Mitch Mitchell
+Mitchell
 Mitchell Feigenbaum
 Mitchell Parish
 Mitt Romney
@@ -9096,6 +9589,7 @@ Moe Howard
 Moe Sczyslak
 Mogila
 Mogli
+Mohamed
 Mohammed Ali
 Mohandas Gandhi
 Mohawk Industries
@@ -9142,6 +9636,7 @@ Montserrat
 Montserrat Caballe
 Monty Hall
 Monza e Brianza
+Moran
 Moravče
 Moravički okrug
 Moravske Toplice
@@ -9161,13 +9656,16 @@ Mordoviya, Respublika
 Møre og Romsdal
 Morey Amsterdam
 Morfin Gaunt
+Morgan
 Morgan Agren
 Morgan Freeman
 Morgan Pressel
 Morgan Stanley
+Morley
 Morley Safer
 Morocco
 Morpheus
+Morris
 Morris Bright
 Morris Cohen
 Morris Halle
@@ -9177,6 +9675,7 @@ Morris Markin
 Morris Michtom
 Morris Raphael Cohen
 Morris Swadesh
+Morrison
 Mort Sahl
 Mort Shuman
 Mort Weisinger
@@ -9184,6 +9683,7 @@ Mort Zuckerman
 Morten Veland
 Mortimer Adler
 Mortimer Mishkin
+Morton
 Morton Feldman
 Morton Gould
 Morton Shulman
@@ -9268,7 +9768,9 @@ Mureș
 Muriel Rukeyser
 Muriel Siebert
 Murmanskaya oblast'
+Murphy
 Murphy USA
+Murray
 Murray Foster
 Murray Gell-Mann
 Murray Perahia
@@ -9283,7 +9785,9 @@ Muzz Skillings
 Mya
 Myanmar
 Myer Prinstein
+Myers
 Mykolaïvs'ka Oblast'
+Myles
 Myles Goodwyn
 Mylon Lefevr
 Myron Scholes
@@ -9304,6 +9808,7 @@ Nagini
 Nagoya
 Nagykanizsa
 Nahmanides
+Naia
 Naklo
 Namibia
 Namor
@@ -9323,6 +9828,7 @@ Nanjing
 Nanni Moretti
 Nannie Doss
 Naoki Ryo
+Naomi
 Naomi Watts
 Naomi Wolf
 Naoshi Mizuta
@@ -9335,9 +9841,11 @@ Narciso Yepes
 Narcissa Malfoy
 Narmer
 Narrator
+Nash
 Nasreddin
 Nat Holman
 Nat King Cole
+Natalie
 Natalie Appleton of All Saints
 Natalie Dessay
 Natalie Goldberg
@@ -9355,6 +9863,7 @@ Natasi Daala
 Nate Albert
 Nate Mendel
 Nate Query
+Nathan
 Nathan Divinsky
 Nathan East
 Nathan Gunn
@@ -9372,6 +9881,7 @@ Navarra / Nafarroa
 Navarra, Comunidad Foral de / Nafarroako Foru Komunitatea
 Naxçıvan
 Naxxar
+Naylor
 Nazarje
 Ne-Yo
 Neal Doughty
@@ -9401,6 +9911,7 @@ Neil Simon
 Neil Stubenhaus
 Neil Walk
 Neil Young
+Neizan
 Neji Hyuuga
 Neko Case
 Nell Carter
@@ -9413,6 +9924,7 @@ Nelson Mandela
 Nemo
 Nenetskiy avtonomnyy okrug
 Nepal
+Nerea
 Neretas novads
 Nero
 Netflix
@@ -9441,6 +9953,7 @@ Newport; Casnewydd
 Newry, Mourne and Down
 News Corp.
 Newt Gingrich
+Newton
 NextEra Energy
 Nic Cester
 Nicaragua
@@ -9457,6 +9970,8 @@ Nicholas of Cusa
 Nicholas Roeg
 Nicholas Tse
 Nichole Richie
+Nicholls
+Nicholson
 Nick Beggs
 Nick Berg
 Nick Carter
@@ -9487,6 +10002,8 @@ Nicky Cruz
 Nicky Gebhard
 Nicky Hopkins
 Nicky Wire
+Nico
+Nicolas
 Nicolas Cage
 Nicolas Godin
 Nicolas Poussin
@@ -9530,6 +10047,7 @@ Nikolai Fraiture
 Nikolai Gogol
 Nikolai Rimsky-Korsakov
 Nikšić
+Nil
 Nimphodorah Tonks
 Nimrod
 Nina Gordon
@@ -9542,7 +10060,9 @@ Nissim of Gerona
 Nita Lowey
 Nitriansky kraj
 Niue
+Nixon
 Nizhegorodskaya oblast'
+Noa
 Noa Briqualon
 Noah
 Noah Cantor
@@ -9557,10 +10077,12 @@ Noggin the Nog
 Nógrád
 Noid
 Nokie Edwards
+Nolan
 Nono
 Noodles
 Noord-Brabant
 Noord-Holland
+Nora
 Nora Ephron
 Nora Greenwald
 Nora Roberts
@@ -9584,6 +10106,7 @@ Norm Crosby
 Norm MacDonald
 Norm Miller
 Norma Shearer
+Norman
 Norman Abramson
 Norman Blake
 Norman Cantor
@@ -9612,6 +10135,7 @@ Norman Vincent Peale
 Norman Watt-Roy
 Normandie
 Norrbottens län
+Norris
 North Ayrshire
 North Carolina
 North Dakota
@@ -9632,6 +10156,7 @@ Northrop Grumman
 Northumberland
 Northwest Territories
 Northwestern Mutual
+Norton
 Norway
 Norway (NO)
 Nosson Zvi Finkel
@@ -9640,9 +10165,11 @@ Notio Aigaio
 Nott, Theodore
 Nottingham
 Nottinghamshire
+Nour
 Nouvelle-Aquitaine
 Nouvelle-Calédonie
 NOV
+Nova
 Nova Gorica
 Nova Scotia
 Novaci
@@ -9666,7 +10193,12 @@ Nyberg, Karen L.
 Nyíregyháza
 Nymburk
 Nymphadora Tonks
+O’Brien
+O’Connor
+O’Donnell
+O’Neill
 O'Reilly Automotive
+O’Sullivan
 Obadiah ben Abraham
 Obadiah ben Jacob Sforno
 Oberösterreich
@@ -9701,6 +10233,7 @@ Ole-Johan Dahl
 Olga Sosnovska
 Olivander
 Olive Oyl
+Oliver
 Oliver Cromwell
 Oliver Hudson
 Oliver Kahn
@@ -9708,6 +10241,7 @@ Oliver Riedel
 Oliver Sacks
 Oliver Stone
 Oliver Wood
+Olivia
 Olivia Goldsmith
 Olivia Newton
 Olivier Manchion
@@ -9728,6 +10262,7 @@ Omnicom
 Omnisoul
 Omri Katz
 Omskaya oblast'
+Ona
 Onel A. de Guzman
 Oneok
 Onsokumaru
@@ -9762,6 +10297,7 @@ Orson Welles
 Orville Wright
 Osaka
 Osama Bin Laden
+Osborne
 Oscar De La Hoya
 Oscar Goldstein
 Oscar Goodman
@@ -9818,9 +10354,11 @@ Ovadia Yosef
 Overijssel
 Ovid
 Ovintiv
+Owen
 Owen Biddle
 Owen Cauldwell
 Owen Wilson
+Owens
 Owens & Minor
 Owens Corning
 Oxfordshire
@@ -9830,6 +10368,7 @@ Ozzy Osbourne
 P.F. Sloan
 P.J. Clevenger
 P.J. Thomas
+Pablo
 Pablo Aimar
 Pablo Neruda
 Pablo Picasso
@@ -9854,11 +10393,13 @@ Paige Davis
 Paige Haley
 Päijät-Häme
 País Vasco / Euskal Herria
+Paisley
 Pakistan
 Palau
 Palencia
 Palermo
 Palestine
+Palmer
 Palo Alto Networks
 Pamela Anderson
 Pamela Dennis
@@ -9885,10 +10426,15 @@ Pardubický kraj
 Pārgaujas novads
 Paris
 Paris Hilton
+Parker
 Parker-Hannifin
+Parkes
+Parkin
+Parkinson
 Parma
 Parmenides
 Pärnumaa
+Parsons
 Parvatie Patil
 Pas-de-Calais
 Pat Badger
@@ -9904,6 +10450,7 @@ Pat Quinn
 Pat Robertson
 Pat Smear
 Pat Travers
+Patel
 Patrice Guers
 Patricia Arquette
 Patricia Bath
@@ -9923,11 +10470,13 @@ Patrick Vieira
 Patrick Walden
 Patrick, Nicholas J. M.
 Patsy Cline
+Patterson
 Patti Label
 Patti Loveless
 Patti Smith
 Patty Hewes
 Patty Selma
+Pau
 Paul "Mac"Mc Kinnon
 Paul "Pab" Brown
 Paul "Wix" Wickens
@@ -10024,6 +10573,7 @@ Paul Winchell
 Paul Wittgenstein
 Paul Wolfowitz
 Paul Wyle
+Paula
 Paula Abdul
 Paula Tallal
 Paulette Goddard
@@ -10038,6 +10588,7 @@ Pauly Shore
 Pavel Axelrod
 Pavia
 Pāvilostas novads
+Payne
 Payne Stewart
 PayPal
 Pays-de-la-Loire
@@ -10047,9 +10598,11 @@ PBF Energy
 Pčinjski okrug
 Peaches
 Pearl the Landlord
+Pearson
 Pebbles
 Pećki okrug
 Pécs
+Pedro
 Pedro Alonso Lopez
 Pedro Aznar
 Pedro Lopez
@@ -10066,6 +10619,7 @@ Pella
 Peloponnisos
 Pembroke
 Pembrokeshire; Sir Benfro
+Penelope
 Penelope Clearwater
 Penelope Cruz
 Péng
@@ -10085,6 +10639,7 @@ Percy Lavon Julian
 Percy Weasly
 Performance Food
 Pericles
+Perkins
 Përmet
 Permskiy kray
 Pernik
@@ -10195,6 +10750,7 @@ Peter White
 Peter Wolf
 Peter Yarrow
 Peterborough
+Peters
 Petr Cech
 Petrarch
 Petre Roman
@@ -10256,6 +10812,7 @@ Philippines
 Phillip Klutznick
 Phillip Knight
 Phillipe Jaloussky
+Phillips
 Phillips 66
 Philly Jo Jones
 Philo
@@ -10268,6 +10825,7 @@ Phoebus Levene
 Phranc
 Phyllis Bennis
 Piacenza
+Pickering
 Piemonte
 Pier Paolo Pasolini
 Pierce Brosnan
@@ -10348,11 +10906,13 @@ Pohjanmaa
 Pohjois-Karjala
 Pohjois-Pohjanmaa
 Pohjois-Savo
+Pol
 Pol Pot
 Poland
 Poland (PL)
 Polansky, Mark L.
 Poljčane
+Pollard
 Poltavs'ka Oblast'
 Põlvamaa
 Polybius
@@ -10393,6 +10953,9 @@ Posavski
 Post s
 Postojna
 Potenza
+Potter
+Powell
+Power
 Powys
 Požeško-slavonska županija
 PPG Industries
@@ -10406,6 +10969,7 @@ Praha, Hlavní mešto
 Prahova
 Prairie Prince
 Prato
+Pratt
 Praxiteles
 Prebold
 Preddvor
@@ -10413,6 +10977,7 @@ Preiļu novads
 Přerov
 Prescott Niles
 Prešovský kraj
+Preston
 Preston R Tisch
 Preston Reed
 Preston Sturges
@@ -10435,6 +11000,7 @@ Princess Mononoke
 Princess Superstar
 Principal Financial
 Priss S. Asagiri
+Pritchard
 Prizrenski okrug
 Probištip
 Procter & Gamble
@@ -10468,6 +11034,7 @@ Public Service Enterprise
 Publix Super Markets
 Puconci
 Puerto Rico
+Pugh
 Puglia
 Pukë
 Pulte
@@ -10520,6 +11087,7 @@ Quicksilver
 Quietdrive
 Quincy Jones
 Quinlan Vos
+Quinn
 Quinn Allman
 Quinn Martin
 Quintilian
@@ -10565,10 +11133,12 @@ Radenci
 Radlje ob Dravi
 Radoviš
 Radovljica
+Rafael
 Rafael Nadal
 Raffi
 Ragusa
 Rahm Emanual
+Rahman
 Rahsaan Roland Kirk
 Rainer Maria Rilke
 Rainer Wolf Fassbinder
@@ -10598,6 +11168,7 @@ Rami Jaffe
 Ramon Rossi
 Ramon Vargas
 Ramzi Abed
+Randall
 Randall Batinkoff
 Randall Cunningham
 Randall Franks
@@ -10626,6 +11197,7 @@ Raplamaa
 Rashi
 Rasinski okrug
 Raški okrug
+Raul
 Raul Hilberg
 Raunas novads
 Rav Ashi
@@ -10653,6 +11225,7 @@ Ray Shulman
 Ray Solomonoff
 Ray Styajit
 Ray Toro
+Rayan
 Raymond Federman
 Raymond James Financial
 Raymond Kurzweil
@@ -10678,8 +11251,10 @@ Red Rhodes
 Red Rodney
 Redbridge
 Redcar and Cleveland
+Rees
 Rees Howells
 Reese Witherspoon
+Reeves
 Regeneron Pharmaceuticals
 Reggie Jackson
 Reggie Mantle
@@ -10737,12 +11312,14 @@ Rex Brown
 Rex Harrison
 Rey Mysterio
 Reykjavík
+Reynolds
 Rēzekne
 Rēzeknes novads
 Rezina
 Rhea Perlman
 Rheinland-Pfalz
 Rhode Island
+Rhodes
 Rhonda Byrne
 Rhonda Fleming
 Rhondda, Cynon, Taff; Rhondda, Cynon, Taf
@@ -10846,6 +11423,8 @@ Richard Tucker
 Richard Wagner
 Richard Willstatter
 Richard Wright
+Richards
+Richardson
 Richie Edwards
 Richie Furay
 Richie Kotzen
@@ -10891,6 +11470,7 @@ Rihanna
 Rik Emmett
 Rikki Lake
 Rikki Rockett
+Riley
 Rimini
 Ringo Starr
 Rino Cavalli
@@ -10945,6 +11525,7 @@ Robbin Crosby
 Robby Benson
 Robby Krieger
 Robby Takac
+Robert
 Robert "Bucket" Hingley
 Robert "Pops" Popwell
 Robert A. M. Stern
@@ -11052,6 +11633,8 @@ Roberto García
 Roberto Gatto
 Roberto Iniesta
 Roberto Rossellini
+Roberts
+Robertson
 Robin
 Robin "Graves" Eaglestone
 Robin Adnan Anders
@@ -11064,10 +11647,13 @@ Robin Trower
 Robin Washington
 Robin Williams
 Robin Zander
+Robinson
 Robinson, Stephen K.
+Robson
 Rocco Salzano
 Rocco Siffredi
 Rochdale
+Rocio
 Rock Lee
 Rock Whittington
 Rockette Morton
@@ -11089,6 +11675,7 @@ Rodney Frelinghuysen
 Rodney Holmes
 Rodney Sheppard
 Rodopi
+Rodrigo
 Rodrigo González
 Rogaland
 Rogaška Slatina
@@ -11113,6 +11700,7 @@ Roger Taylor
 Roger W. Straus Jr.
 Roger Waters
 Rogerio Jardim
+Rogers
 Rogue
 Rojas novads
 Rokycany
@@ -11124,6 +11712,7 @@ Roland Orzabal
 Roma
 Roma Downey
 Romain Rolland
+Roman
 Roman Abramovich
 Roman Dzindzichashvili
 Roman Jakobson
@@ -11199,6 +11788,7 @@ Roseanne Conner
 Rosie Grier
 Rosko Gee
 Rosoman
+Ross
 Ross Bleckner
 Ross Friedman
 Ross Perot
@@ -11208,8 +11798,11 @@ Ross Valory
 Rostovskaya oblast'
 Rotherham
 Rovigo
+Rowan
 Rowdy Roddy Piper
+Rowe
 Rowena Ravenclaw
+Rowley
 Roxana
 Roxelana
 Roy Bittan
@@ -11232,8 +11825,10 @@ Roz Chast
 Rožaje
 RTX
 Rube Goldberg
+Ruben
 Ruben Studdard
 Rubeus Hagrid
+Ruby
 Rucavas novads
 Rudi Gernreich
 Rudolf Diesel
@@ -11270,6 +11865,7 @@ Russ Blades
 Russ Miller
 Russ Tamblyn
 Russel Feingold
+Russell
 Russell Batiste
 Russell Crowe
 Russell Kunkel
@@ -11290,6 +11886,7 @@ Ruud Adrianus Jolie
 Rwanda
 RX-24
 Ry Cooder
+Ryan
 Ryan "Judas" DePaolo
 Ryan Adams
 Ryan Giggs
@@ -11334,6 +11931,7 @@ Sachsen-Anhalt
 Sad Sack
 Sada Jacobson
 Saddam Hussein
+Sadie
 Safi
 Saharon Shelah
 Şahbuz
@@ -11430,6 +12028,7 @@ Samson
 Samson Raphael Hirsch
 Samsun
 Samts’khe-Javakhet’i
+Samuel
 Samuel Avital
 Samuel Beckett
 Samuel ben Judah ibn Tibbon
@@ -11467,6 +12066,8 @@ San Marino (SM)
 San Pawl il-Baħar
 Sander Gommans
 Sander Levin
+Sanders
+Sanderson
 Sandra Bernhard
 Sandra Bullock
 Sandra Day O'Conner
@@ -11503,6 +12104,7 @@ São Paulo
 São Tomé and Príncipe
 Saône-et-Loire
 Sappho
+Sara
 Sara DeCosta
 Sara Gilbert
 Sara Jane Moore
@@ -11539,6 +12141,7 @@ Satakunta
 Satcher, Robert L., Jr.
 Satu Mare
 Saudi Arabia
+Saul
 Saul Alinsky
 Saul Bellow
 Saul Kripke
@@ -11548,6 +12151,7 @@ Saul Rubinek
 Saul Steinberg
 Saul the King
 Saulkrastu novads
+Saunders
 Sauron
 Saviely Tartakover
 Šavnik
@@ -11556,14 +12160,17 @@ Savona
 Scabbers
 Scarl
 Scarlet Witch
+Scarlett
 Scarlett Johansson
 Schaan
 Schaffhausen
 Schellenberg
 Schleswig-Holstein
+Schofield
 Schwyz
 Science Applications International
 Scotland
+Scott
 Scott Amendola
 Scott Asheton
 Scott Caan
@@ -11608,6 +12215,7 @@ Sean Paul
 Sean Penn
 Sean Watkins
 Sean Yseult
+Sebastian
 Sebastian Deisler
 Sebastian Steinberg
 Sebastian Whittaker
@@ -11657,6 +12265,7 @@ Sergei Parajanov
 Sergei Rachmaninoff
 Sergei Slonimsky
 Sergey Brin
+Sergio
 Sergio Assad
 Sergio Bellotti
 Sergio Di Natale
@@ -11698,6 +12307,7 @@ Shabtai Tzvi
 Shae-Lynn Bourne
 Shafi Goldwasser
 Shaggy
+Shah
 Shah Rukh Khan
 Shakira
 Shalom Aleichem
@@ -11722,10 +12332,12 @@ Sharlee d'Angelo
 Sharmell Sullivan
 Sharon Osbourne
 Sharon Stone
+Sharpe
 Shaul Mofaz
 Shaun Cooper
 Shaun White
 Shavo Odadjian
+Shaw
 Shawn Dale Barnett
 Shawn Economaki
 Shawn Green
@@ -11799,6 +12411,7 @@ Sho Fukamachi
 Sholem Aleichem
 Sholem Asch
 Sholom Dovber
+Short
 Shraga Feivel Mendlowitz
 Shrek
 Shrimp Howard
@@ -11845,6 +12458,7 @@ Sigmund Romberg
 Sigourney Weaver
 Siguldas novads
 Siirt
+Silas
 Silistra
 Silvan Shalom
 Silver Surfer
@@ -11854,6 +12468,7 @@ Sima Qian
 Simba
 Simeon bar Yohai
 Simeon Dimanstein
+Simmons
 Simon Andersson
 Simon Ash
 Simon Bamberger
@@ -11879,9 +12494,12 @@ Simon Winawer
 Simone de Beauvoir
 Simone Signoret
 Simone Weil
+Simpson
+Sinclair
 Sinclair Lewis
 Singapore
 Sîngerei
+Singh
 Sinop
 Sint Eustatius
 Sint Maarten
@@ -11913,6 +12531,7 @@ Skrundas novads
 Skwisgaar Skwigelf
 Slash
 Śląskie
+Slater
 Sleepthief
 Sliema
 Sligo
@@ -11995,7 +12614,9 @@ Sonia Sotomayor
 Sonic Automotive
 Sonny Shroyer
 Sons of the San Joaquin
+Sophia
 Sophia Loren
+Sophie
 Sophie Okonedo
 Sophie Tucker
 Sophocles
@@ -12032,6 +12653,7 @@ SpartanNash
 Speed Buggy
 Speed Racer
 Spélugues
+Spencer
 Spencer Dryden of Jefferson Airplane
 Spencer Raymond
 Spencer Tracy
@@ -12076,6 +12698,7 @@ Stanford Olsen
 Stanford Ovshinsky
 Stanislaw Jerzy Lec
 Stanislaw Ulam
+Stanley
 Stanley Bing
 Stanley Black & Decker
 Stanley Cavell
@@ -12107,6 +12730,7 @@ State Farm
 State Street
 Stavropol'skiy kray
 Steel Dynamics
+Steele
 Steely Dan
 Stefan Grossman
 Stefan Lessard
@@ -12120,6 +12744,7 @@ Stefano Pesapane
 Stefy
 Steiermark
 Steinar Eikum
+Stella
 Stella Adler
 Stella McCartney
 Stendhal
@@ -12162,6 +12787,8 @@ Stephen Spielberg
 Stephen Stills
 Stephen Wiesner
 Stephen Wozniak
+Stephens
+Stephenson
 Sterea Ellada
 Sterling Morrison
 Stet Howland
@@ -12274,9 +12901,12 @@ Steven T. Katz
 Steven Weber
 Steven Weinberg
 Steven Wilson
+Stevens
+Stevenson
 Stevie Benton
 Stevie Ray Vaughan
 Stevie Wonder
+Stewart
 Stewart Copeland
 Stewie Griffin
 Stieg Larsson
@@ -12336,6 +12966,7 @@ Sugar Ray Leonard
 Suikakuju
 Suleiman the Magnificent
 Sulley Ali Muntari
+Sullivan
 Sully Sullenberger
 Šumadijski okrug
 Sumner Redstone
@@ -12412,6 +13043,7 @@ Syddanmark
 Sydney Brenner
 Sydney Bristow
 Sydney Pollack
+Sykes
 Sylvain Sylvain
 Sylvan Goldman
 Sylvester and Tweetie Pie
@@ -12452,6 +13084,7 @@ Taka Hirose
 Takahiro Yamada
 Takeshi Ueda
 Tal Wilkenfeld
+Talbot
 Talena Atfield
 Talon Karrde
 Talsu novads
@@ -12598,12 +13231,14 @@ Theda Bara
 Thelma and Louise
 Thelma Griffin
 Themistocles
+Theo
 Theo Epstein
 Theocritus
 Theodor Adorno
 Theodor Herzl
 Theodor Mommsen
 Theodor Reik
+Theodore
 Theodore Bikel
 Theodore Maiman
 Theodore Nott
@@ -12617,11 +13252,13 @@ Thermo Fisher Scientific
 Thesprotia
 Thessalia
 Thessaloniki
+Thiago
 Thierry Amar
 Thierry Arpino
 Thierry Henry
 Thing
 Thom Yorke
+Thomas
 Thomas A. Dorsey
 Thomas Aquinas
 Thomas Edison
@@ -12647,8 +13284,12 @@ Thomas Seltzer
 Thomas Tallis
 Thomas Thacker
 Thomas the Apostle
+Thompson
+Thomson
 Thor
 THOR Industries
+Thornton
+Thorpe
 Thrivent Financial for Lutherans
 Thucydides
 Thurgau
@@ -12744,6 +13385,7 @@ Tobias Exxel
 Tobias Ralph
 Tobias Sammet
 Toby Keith
+Todd
 Todd Barry
 Todd Bosley
 Todd Fancey
@@ -12813,8 +13455,10 @@ Tom Verlaine
 Tom Waits
 Tom Wolfe
 Tom Wright
+Tomas
 Tomaso Albinoni
 Tomasz "Orion" Wróblewsky
+Tomlinson
 Tommy "Mugs" Cain
 Tommy Aldridge
 Tommy Bolin
@@ -12901,6 +13545,7 @@ Toucan Sam
 Tovah Feldshuh
 Tovuz
 Tower Hamlets
+Townsend
 Toyotomi Hideyoshi
 Traa Daniels
 Trabzon
@@ -12944,6 +13589,7 @@ Trey Anastasio
 Trey Azagthoth
 Trey Gunn
 Trey Spruance
+Triana
 Tribe Called Quest
 Tricia Helfer
 Triesen
@@ -12976,6 +13622,7 @@ Trutnov
 Tržič
 Trzin
 Tsutomu Shimomura
+Tucker
 Tukuma novads
 Tul'skaya oblast'
 Tulcea
@@ -12991,6 +13638,7 @@ Turkey (TR)
 Türkiye
 Turkmenistan
 Turks and Caicos Islands
+Turnbull
 Turnišče
 Tusken Raiders
 Tutankhamun
@@ -13007,6 +13655,7 @@ Two-Gun Cohen
 Ty Dennis
 Ty Tabor
 Tycho Brahe
+Tyler
 Tyler Connolly
 Tyler Durden
 Tyler Perry
@@ -13043,6 +13692,7 @@ Umberto Cassuto
 Umberto Eco
 Umberto Trombetta
 Umbria
+Unai
 Uncle Owen
 Uncle Scrooge
 Underdog
@@ -13108,9 +13758,11 @@ Vale of Glamorgan, The; Bro Morgannwg
 Valencia / València
 Valenciana, Comunidad / Valenciana, Comunitat
 Valens
+Valentina
 Valentinian I
 Valentinian III
 Valentino Rossi
+Valeria
 Valerie Harper
 Valerie Jarrett
 Valero Energy
@@ -13156,9 +13808,11 @@ Västra Götalands län
 Vatican City
 Vaucluse
 Vaud
+Vaughan
 Vayoc Jor
 Vecpiebalgas novads
 Vecumnieku novads
+Vega
 Vegeta
 Velenje
 Veles
@@ -13173,6 +13827,7 @@ Venom
 Ventspils
 Ventspils novads
 Venus Williams
+Vera
 Vera Katz
 Verbano-Cusio-Ossola
 Vercelli
@@ -13213,6 +13868,7 @@ Vicki Blue
 Vicki Genfan
 Vicki Peterson
 Vicki Valentine
+Victor
 Victor Bailey
 Victor Borge
 Victor David Brenner
@@ -13227,6 +13883,7 @@ Victor Vekselberg
 Victor Weisskopf
 Victor Wooten
 Victor Young
+Victoria
 Victoria Beckham
 Victoria Frobisher
 Victoria Justice
@@ -13253,6 +13910,7 @@ Vince Gill
 Vince McMahon
 Vince Russo
 Vince White
+Vincent
 Vincent Crabbe
 Vincent Crane
 Vincent van Gogh
@@ -13270,6 +13928,7 @@ Vinnyts'ka Oblast'
 Violet
 Violet Nine
 Violet Weston
+Violeta
 Vipava
 Virgil
 Virgil Donati
@@ -13289,6 +13948,7 @@ Vitellius
 Viterbo
 Vito Bratta
 Vittorio De Sica
+Vivian
 Vivian Campbell
 Vivian Leigh
 Vivian Ward
@@ -13353,15 +14013,19 @@ Walfredo Reyes Jr.
 Walfredo Reyes Sr.
 Walgreens
 Walheim, Rex J.
+Walker
+Wallace
 Wallace and Gromit
 Wallace Berman
 Wallace Shawn
+Wallis
 Wallis and Futuna
 Wallis-et-Futuna
 wallonne, Région
 Wally West
 Walmart
 Walsall
+Walsh
 Walt Disney
 Walt Weiss
 Walt Whitman
@@ -13385,9 +14049,11 @@ Walter Mosley
 Walter Scott
 Walter White
 Walter Winchell
+Walters
 Walters Barbara
 Waltham Forest
 Walther Rathenau
+Walton
 Waltraud Meier
 Wàn
 Wanda Landowska
@@ -13395,6 +14061,7 @@ Wandsworth
 Wáng
 Wāng
 Warmińsko-mazurskie
+Warner
 Warner Bros. Discovery
 Warren "Baby" Dodds
 Warren Barfield
@@ -13418,20 +14085,26 @@ Wassily Leontief
 Waste Management
 Waterford
 Watership Down
+Watkins
 Watsco
+Watson
 Watto
 Wayfair
+Waylon
 Wayne Gretzky
 Wayne Johnson
 Wayne Kramer
 Wayne Rooney
 Wayne Williams
+Webb
+Webster
 WEC Energy
 Wedge Antilles
 Weegee
 Wéi
 Wèi
 Weird Al Yankovick
+Welch
 Wells Fargo
 Welltower
 Wén
@@ -13444,8 +14117,10 @@ Wes Borland
 Wes Crawford
 Wes Montgomery
 WESCO International
+Wesley
 Wesley Clark
 Wesley Snipes
+West
 West Berkshire
 West Dunbartonshire
 West Lothian
@@ -13459,10 +14134,14 @@ Westinghouse Air Brake Technologies
 Westlake
 Westmeath
 Westminster
+Weston
 Wexford
 Whirlpool
 White Hat Hackers
+Whitehead
+Whitehouse
 Whitney Houston
+Whittaker
 Whoopi Goldberg
 Wicket
 Wicklow
@@ -13479,6 +14158,8 @@ Wilhelm II
 Wilhelm Keitel
 Wilhelm Steinitz
 Wilhelmina
+Wilkins
+Wilkinson
 Will Boyd
 Will Calhoun
 Will Carruthers
@@ -13492,6 +14173,7 @@ Will Rahmer
 Will Self
 Will Smith
 Willey Mays
+William
 William Ackerman
 William Blake
 William Butler Yeats
@@ -13543,6 +14225,7 @@ Williams
 Williams-Sonoma
 Williams, Jeffrey N.
 Williams, Sunita L.
+Williamson
 Willie "The Lion" Smith
 Willie Aames
 Willie Adler
@@ -13552,8 +14235,11 @@ Willie Mays
 Willie Nelson
 Willie Nile
 Willie Weeks
+Willis
 Willo the Wisp
+Willow
 Wilmore, Barry E.
+Wilson
 Wilson Laurencin
 Wilson, Stephanie D.
 Wilt Chamberlain
@@ -13582,9 +14268,11 @@ Wolverhampton
 Wolverine
 Wonder Man
 Wonder Woman
+Wong
 Wong Kar Wai
 Woodchuck
 Woodrow Wilson
+Woodward
 Woody
 Woody Allen
 Woody Woodpecker
@@ -13593,12 +14281,14 @@ Workday
 World Kinect
 Wormtongue
 Wrexham; Wrecsam
+Wright
 Wú
 Wǔ
 Wu Zetian
 Wu-Tang Clan
 Wuhan
 WWE Divas
+Wyatt
 Wyclef Jean
 Wyne June
 Wynona Ryder
@@ -13652,9 +14342,11 @@ Yaphet Kotto
 Yardımlı
 Yaroslavskaya oblast'
 Yasaburo Manajiri
+Yasmin
 Yasmine Bleeth
 Yasser Arafat
 Yasujiro Ozu
+Yates
 Yavuz Çetin
 Yè
 Yechiel Michel Epstein
@@ -13802,9 +14494,11 @@ Zlatiborski okrug
 Zlín
 Zlínský kraj
 Znojmo
+Zoe
 Zoe Saldana
 Zoe Wanamaker
 Zoetis
+Zoey
 Zohar Sharon
 Zonguldak
 Zora Arkus-Duntov

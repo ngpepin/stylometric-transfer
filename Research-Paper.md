@@ -56,12 +56,14 @@ Humanization in this system is not a vague “make it sound human” instruction
 
 - **Conflict‑filtered guidelines**: generic humanization rules are only applied when they do not contradict the fingerprint’s statistical baselines (for example, avoiding “don’t use em‑dashes” when the author’s corpus uses them frequently).
 - **Mandatory hygiene rules**: optional hard constraints (such as removing em‑dashes or replacing emojis) are enforced deterministically and recorded in the deviations log.
-- **Structural preservation**: blockquotes, citations, footnotes, and code spans are shielded from stylistic edits to prevent false “humanization” changes in non‑authorial content.
+- **Structural preservation**: blockquotes, citations, footnotes, code spans, and (for non‑fiction) multi‑word quotations are shielded from stylistic edits to prevent false “humanization” changes in non‑authorial content.
 - **Bounded stochastic variance**: when enabled, a small, seeded number of micro‑edits (e.g., swapping transition words or dropping filler terms) introduce controlled irregularity without semantic drift.
 
 The practical benefit is a *measurable reduction in AI‑typical uniformity* while keeping the transformation aligned to the author’s measurable habits. Because the humanization layer is explicit, deterministic by default, and logged, it can be audited and tuned without introducing opaque behaviour. In short, humanization is treated as a constrained post‑processing step integrated into the same interpretability framework as stylometric profiling itself.
 
 After rewriting, the system can emit a compact quantitative report for **both the input and output** (via `--metrics`) in the deviations log—lexical diversity variants (TTR, Herdan’s C, Guiraud’s R, Maas), Yule’s K and Simpson’s D, repetition inverse, sentence/paragraph burstiness, punctuation variety/entropy, function‑word entropy and KL‑inverse vs fingerprint, sentence‑length JS‑inverse vs fingerprint, character trigram entropy, and average word length—plus an aggregate 0–100 humanization score for quick inspection.
+
+**Genre‑aware quotation handling**: the pipeline auto‑detects fiction vs non‑fiction using quote‑density signals (multi‑word quote spans, quoted‑word ratio, and quote‑paragraph ratio). In non‑fiction, multi‑word quotations are excluded from profiling and preserved verbatim during rewriting; in fiction they remain part of the author’s voice. These thresholds are tunable and can be overridden explicitly (`--fiction` / `--non‑fiction`).
 
 ---
 
@@ -347,7 +349,7 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
         t ← read_and_normalize(f)
         t ← normalize_ocr(t)  # ligatures, hyphenated line breaks
         t ← strip_base64_images(t)
-        t ← filter_non_voice(t)  # blockquotes, references, footnotes, inline citations
+        t ← filter_non_voice(t)  # blockquotes, references, footnotes, inline citations, boilerplate; drop multi‑word quotes if non‑fiction
         if length(t) ≥ MIN_LEN:
             texts.append(t)
 
@@ -412,9 +414,9 @@ Rare‑word selection can be optionally ranked by the same LLM validation call (
 procedure APPLY_FINGERPRINT(fingerprint F, markdown_path in, output_path out, llm_config C):
     x ← read_text(in)
     x ← strip_base64_images(x)
-    x ← mask_non_voice_blocks(x)  # blockquotes, references, footnotes
+    x ← mask_non_voice_blocks(x)  # blockquotes, references, footnotes (and multi‑word quotes if non‑fiction)
     x ← mask_inline_citations(x)
-    Mx ← compute_measurements(filter_non_voice(x))
+    Mx ← compute_measurements(filter_non_voice(x))  # non‑fiction excludes multi‑word quotes
     Hraw ← load_humanizer_guidelines(optional)
     H ← parse_humanizer_rules_llm(Hraw)  # default
     if H is empty:

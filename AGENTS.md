@@ -58,7 +58,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - If chunking excerpts, merge partial fingerprints via a dedicated LLM merge prompt
     - Prefilter likely proper-name phrases (honorifics + capitalization-ratio heuristics) and rank phrase candidates with the LLM to drop proper names
     - Optionally rank rare-word candidates with the LLM (shared with common-phrase validation) to de-prioritize proper names
-    - Validate common phrases via a separate LLM pass to remove OCR/citation noise (with deterministic prefilters for proper names, place names, and date patterns; disable with `--no-phrase-validation`)
+    - Validate common phrases via a separate LLM pass to remove OCR/citation noise (with deterministic prefilters for proper names, entity blacklist matches, and date patterns; disable with `--no-phrase-validation`)
     - Repair invalid JSON if necessary
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-a` (archive), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold

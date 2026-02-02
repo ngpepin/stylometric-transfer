@@ -200,7 +200,7 @@ Notes:
 - Genre handling: by default the tools auto-detect fiction vs non-fiction; override with `--fiction` or `--non-fiction`. In non-fiction, multi-word quotations are excluded from fingerprinting and preserved verbatim during rewriting.
 - When fingerprinting, the current `config.tunables.json` can be embedded as `metadata.extraction.tunables_snapshot` for auditability
 - If the fingerprint prompt exceeds `max_prompt_tokens`, excerpts are chunked and **partial fingerprints are merged using a second LLM merge pass** (pairwise merge with a dedicated merge prompt).
-- Common-phrase validation now includes a deterministic prefilter (honorifics + capitalization‑ratio heuristics, place‑name blacklist, date patterns) and an optional LLM phrase‑ranking step that drops likely proper‑name phrases before final selection.
+- Common-phrase validation now includes a deterministic prefilter (honorifics + capitalization‑ratio heuristics, entity blacklist, date patterns) and an optional LLM phrase‑ranking step that drops likely proper‑name phrases before final selection.
 - Rare‑word selection can be ranked by the same LLM validation call used for common phrases, to de‑prioritize proper names before truncation.
 - **Corpus size guidance:** diminishing returns typically appear once core style statistics stabilize. As a rule of thumb, ~20–50k words often yields a stable fingerprint for a single author/genre; ~100k words usually captures most steady signals. If key rates (sentence/paragraph distributions, punctuation per 1k words, function‑word profile, stance rates) drift by <1–2% after adding another 10–20k words, you’re likely in the diminishing‑returns zone. More data still helps when you’re mixing genres/eras or chasing rare rhetorical/lexical signals.
 
