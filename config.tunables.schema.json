@@ -61,6 +61,16 @@
       },
       "additionalProperties": false
     },
+    "fiction_detection": {
+      "type": "object",
+      "properties": {
+        "quote_span_min": { "type": "integer", "minimum": 0 },
+        "quoted_ratio_min": { "type": "number", "minimum": 0, "maximum": 1 },
+        "quote_para_ratio_min": { "type": "number", "minimum": 0, "maximum": 1 },
+        "quoted_ratio_force": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
     "chunking": {
       "type": "object",
       "properties": {

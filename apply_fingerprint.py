@@ -72,6 +72,7 @@ EMOJI_SUBSTITUTIONS: list[tuple[str, str]] | None = None
 ANSI_RED = "\x1b[31m"
 ANSI_YELLOW = "\x1b[33m"
 ANSI_RESET = "\x1b[0m"
+QUOTE_MODE: str | None = None
 DEFAULT_TUNABLES = {
     "humanizer_conflicts": {
         "em_dash_keep_rate": 0.5,
@@ -127,6 +128,9 @@ HTML_PLACEHOLDER_RE = re.compile(r"\[\[HTML_BLOCK_\d+\]\]")
 INLINE_MATH_PLACEHOLDER_RE = re.compile(r"\[\[INLINE_MATH_\d+\]\]")
 DISPLAY_MATH_PLACEHOLDER_RE = re.compile(r"\[\[DISPLAY_MATH_\d+\]\]")
 HTML_ENTITY_PLACEHOLDER_RE = re.compile(r"\[\[HTML_ENTITY_\d+\]\]")
+QUOTE_SPAN_RE = re.compile(r"\"([^\"]+)\"", re.S)
+QUOTE_SPAN_CURLY_RE = re.compile(r"“([^”]+)”", re.S)
+QUOTE_PLACEHOLDER_RE = re.compile(r"\[\[QUOTE_\d+\]\]")
 
 SECTION_HEADING_RE = re.compile(r"^###\s+(\d+\\.)?\s*(.+)$")
 WORDS_TO_WATCH_RE = re.compile(r"^\*\*Words to watch:\*\*\s*(.+)$")
@@ -519,6 +523,53 @@ def words(text: str) -> List[str]:
     # Tokenize into simple word-like units for lightweight stats.
     return WORD_RE.findall(text)
 
+
+def _quote_spans(text: str) -> List[tuple[int, int, str]]:
+    spans: List[tuple[int, int, str]] = []
+    for match in QUOTE_SPAN_RE.finditer(text):
+        spans.append((match.start(), match.end(), match.group(1)))
+    for match in QUOTE_SPAN_CURLY_RE.finditer(text):
+        spans.append((match.start(), match.end(), match.group(1)))
+    spans.sort(key=lambda s: s[0])
+    return spans
+
+
+def is_multiword_quote(inner: str) -> bool:
+    return len(words(inner)) >= 2
+
+
+def detect_fiction_from_text(
+    text: str,
+    quote_span_min: int,
+    quoted_ratio_min: float,
+    quote_para_ratio_min: float,
+    quoted_ratio_force: float
+) -> bool:
+    total_words = len(words(text))
+    quoted_words = 0
+    quote_spans = 0
+    quote_para = 0
+    total_para = 0
+    for _start, _end, inner in _quote_spans(text):
+        if is_multiword_quote(inner):
+            quote_spans += 1
+            quoted_words += len(words(inner))
+    for para in split_paragraphs(text):
+        if not para.strip():
+            continue
+        total_para += 1
+        if para.lstrip().startswith(("\"", "“")):
+            quote_para += 1
+    quoted_ratio = quoted_words / max(1, total_words)
+    quote_para_ratio = quote_para / max(1, total_para)
+    if quote_spans >= quote_span_min and quoted_ratio >= quoted_ratio_min:
+        return True
+    if quote_para_ratio >= quote_para_ratio_min and quoted_ratio >= quoted_ratio_min:
+        return True
+    if quoted_ratio >= quoted_ratio_force:
+        return True
+    return False
+
 def split_sentences(text: str) -> List[str]:
     # Naive sentence splitter to keep stats interpretable and dependency-free.
     text = re.sub(r"\s+", " ", text).strip()
@@ -748,11 +799,31 @@ def strip_inline_citations(text: str) -> str:
     return text.strip()
 
 
+def strip_quoted_passages(text: str) -> str:
+    # Remove multi-word quoted passages (used for non-fiction measurements).
+    spans = _quote_spans(text)
+    if not spans:
+        return text
+    out: List[str] = []
+    last = 0
+    for start, end, inner in spans:
+        if start < last:
+            continue
+        out.append(text[last:start])
+        if not is_multiword_quote(inner):
+            out.append(text[start:end])
+        last = end
+    out.append(text[last:])
+    return "".join(out)
+
+
 def filter_author_voice_text(text: str) -> str:
     # Remove non-author voice segments and inline citations for measurements.
     text = strip_fenced_code_blocks(text)
     text = strip_inline_code(text)
     text = strip_non_voice_sections(text)
+    if QUOTE_MODE == "non-fiction":
+        text = strip_quoted_passages(text)
     text = strip_latex_math(text)
     text = strip_html(text)
     text = strip_html_entities(text)
@@ -842,6 +913,31 @@ def mask_inline_citations(text: str) -> tuple[str, Dict[str, str]]:
 
     text = PAREN_GROUP_RE.sub(repl_paren, text)
     return text, mapping
+
+
+def mask_quoted_passages(text: str) -> tuple[str, Dict[str, str]]:
+    # Replace multi-word quoted passages with placeholders to preserve them verbatim.
+    mapping: Dict[str, str] = {}
+    counter = 0
+    spans = _quote_spans(text)
+    if not spans:
+        return text, mapping
+    out: List[str] = []
+    last = 0
+    for start, end, inner in spans:
+        if start < last:
+            continue
+        out.append(text[last:start])
+        if is_multiword_quote(inner):
+            placeholder = f"[[QUOTE_{counter}]]"
+            mapping[placeholder] = text[start:end]
+            counter += 1
+            out.append(placeholder)
+        else:
+            out.append(text[start:end])
+        last = end
+    out.append(text[last:])
+    return "".join(out), mapping
 
 
 def restore_placeholders(text: str, mapping: Dict[str, str]) -> str:
@@ -2587,6 +2683,18 @@ def main() -> int:
         default=1,
         help="Maximum number of style retry passes (default: 1)"
     )
+    mode_group = ap.add_mutually_exclusive_group()
+    mode_group.add_argument(
+        "--fiction",
+        action="store_true",
+        help="Treat input as fiction (quoted passages may be rewritten)."
+    )
+    mode_group.add_argument(
+        "--non-fiction",
+        dest="non_fiction",
+        action="store_true",
+        help="Treat input as non-fiction (multi-word quotes preserved)."
+    )
     ap.add_argument(
         "--metrics",
         action="store_true",
@@ -2672,6 +2780,33 @@ def main() -> int:
             emoji_policy = mandatory.get("emoji_policy")
     input_md = args.inp.read_text(encoding="utf-8")
     original_input_md = input_md
+    fiction_conf = {}
+    if isinstance(tunables, dict):
+        fiction_conf = tunables.get("fiction_detection", {}) or {}
+    quote_span_min = int(fiction_conf.get("quote_span_min", 6))
+    quoted_ratio_min = float(fiction_conf.get("quoted_ratio_min", 0.03))
+    quote_para_ratio_min = float(fiction_conf.get("quote_para_ratio_min", 0.2))
+    quoted_ratio_force = float(fiction_conf.get("quoted_ratio_force", 0.08))
+    if args.fiction:
+        fiction_mode = True
+        print("Assuming fiction: quoted passages may be rewritten.")
+    elif args.non_fiction:
+        fiction_mode = False
+        print("Assuming non-fiction: multi-word quotations will be preserved.")
+    else:
+        fiction_mode = detect_fiction_from_text(
+            original_input_md,
+            quote_span_min=quote_span_min,
+            quoted_ratio_min=quoted_ratio_min,
+            quote_para_ratio_min=quote_para_ratio_min,
+            quoted_ratio_force=quoted_ratio_force
+        )
+        if fiction_mode:
+            print("Detected fiction: quoted passages may be rewritten.")
+        else:
+            print("Detected non-fiction: multi-word quotations will be preserved.")
+    global QUOTE_MODE
+    QUOTE_MODE = "fiction" if fiction_mode else "non-fiction"
     # Strip base64 images to keep prompts within token limits.
     input_md, base64_map = strip_base64_images(input_md)
     if base64_map:
@@ -2681,6 +2816,9 @@ def main() -> int:
     input_md, math_map = mask_math_notation(input_md)
     input_md, entity_map = mask_html_entities(input_md)
     input_md, inline_code_map = mask_inline_code(input_md)
+    quote_map: Dict[str, str] = {}
+    if not fiction_mode:
+        input_md, quote_map = mask_quoted_passages(input_md)
     if not args.no_humanizer_guidelines:
         raw_guidelines, guidelines_path = load_general_guidelines()
         if raw_guidelines:
@@ -2763,6 +2901,7 @@ def main() -> int:
         restored = restore_placeholders(restored, math_map)
         restored = restore_placeholders(restored, entity_map)
         restored = restore_placeholders(restored, inline_code_map)
+        restored = restore_placeholders(restored, quote_map)
         restored = restore_placeholders(restored, citation_map)
         restored = restore_base64_images(restored, base64_map, find_base64_placeholders(restored))
         section_blocks_restored.append({
@@ -2981,6 +3120,7 @@ def main() -> int:
         final_md = restore_placeholders(final_md, math_map)
         final_md = restore_placeholders(final_md, entity_map)
         final_md = restore_placeholders(final_md, inline_code_map)
+        final_md = restore_placeholders(final_md, quote_map)
         final_md = restore_placeholders(final_md, citation_map)
         final_md = restore_base64_images(final_md, base64_map, find_base64_placeholders(final_md))
         outputs.append(final_md)
@@ -3091,6 +3231,7 @@ def main() -> int:
             final_md = restore_placeholders(final_md, math_map)
             final_md = restore_placeholders(final_md, entity_map)
             final_md = restore_placeholders(final_md, inline_code_map)
+            final_md = restore_placeholders(final_md, quote_map)
             final_md = restore_placeholders(final_md, citation_map)
             final_md = restore_base64_images(final_md, base64_map, find_base64_placeholders(final_md))
             outputs.append(final_md)

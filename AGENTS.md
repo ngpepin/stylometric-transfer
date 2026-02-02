@@ -51,6 +51,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Read text files
     - Compute stylometric measurements locally
     - Filter out blockquotes, reference sections, footnotes, inline citation markers, and boilerplate notices (copyright/terms/privacy) from style analysis
+    - Detect fiction vs non-fiction; in non-fiction, multi-word quotations are excluded from profiling (override with `--fiction` / `--non-fiction`)
     - Strip embedded BASE64 images from prompts
     - Select representative excerpts
     - Call LLM to synthesise fingerprint JSON
@@ -68,6 +69,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Output: rewritten Markdown + deviations report
   - Responsibilities:
     - Measure input text
+    - Detect fiction vs non-fiction; in non-fiction, multi-word quotations are preserved verbatim (override with `--fiction` / `--non-fiction`)
     - Preserve blockquotes, reference sections, footnotes, and inline citations verbatim (excluded from style transfer)
     - Strip embedded BASE64 images before prompt and re-insert after rewrite
     - Call LLM with fingerprint + measurements

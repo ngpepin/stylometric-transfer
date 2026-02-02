@@ -78,6 +78,8 @@ BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\
 BASE64_PLACEHOLDER_RE = re.compile(r"\[\[BASE64_IMAGE(?:_\d+)?\]\]")
 HTML_TAG_RE = re.compile(r"<[A-Za-z/][^>]*>")
 HTML_ENTITY_RE = re.compile(r"&[A-Za-z0-9#]+;")
+QUOTE_SPAN_RE = re.compile(r"\"([^\"]+)\"", re.S)
+QUOTE_SPAN_CURLY_RE = re.compile(r"“([^”]+)”", re.S)
 BOILERPLATE_LINE_RE = re.compile(
     r"(?i)\\b("
     r"copyright|all rights reserved|rights reserved|"
@@ -100,6 +102,7 @@ LICENSE_FILENAME = "LICENSE.md"
 LEXICON_HINTS_FILENAME = "lexicon_hints.json"
 AVOID_LIST_FILENAME = "config.avoid.txt"
 ENTITY_BLACKLIST_FILENAME = "config.entity_blacklist.txt"
+QUOTE_MODE: str | None = None
 
 def load_prompts() -> Dict[str, Any]:
     # Load externalized prompt templates located alongside this script.
@@ -586,6 +589,73 @@ def strip_html_entities(text: str) -> str:
     return HTML_ENTITY_RE.sub("", text)
 
 
+def _quote_spans(text: str) -> List[tuple[int, int, str]]:
+    spans: List[tuple[int, int, str]] = []
+    for match in QUOTE_SPAN_RE.finditer(text):
+        spans.append((match.start(), match.end(), match.group(1)))
+    for match in QUOTE_SPAN_CURLY_RE.finditer(text):
+        spans.append((match.start(), match.end(), match.group(1)))
+    spans.sort(key=lambda s: s[0])
+    return spans
+
+
+def is_multiword_quote(inner: str) -> bool:
+    return len(words(inner)) >= 2
+
+
+def strip_quoted_passages(text: str) -> str:
+    # Remove multi-word quoted passages (used for non-fiction).
+    spans = _quote_spans(text)
+    if not spans:
+        return text
+    out: List[str] = []
+    last = 0
+    for start, end, inner in spans:
+        if start < last:
+            continue
+        out.append(text[last:start])
+        if not is_multiword_quote(inner):
+            out.append(text[start:end])
+        last = end
+    out.append(text[last:])
+    return "".join(out)
+
+
+def detect_fiction_from_texts(
+    texts: List[str],
+    quote_span_min: int,
+    quoted_ratio_min: float,
+    quote_para_ratio_min: float,
+    quoted_ratio_force: float
+) -> bool:
+    total_words = 0
+    quoted_words = 0
+    quote_spans = 0
+    quote_para = 0
+    total_para = 0
+    for text in texts:
+        total_words += len(words(text))
+        for _start, _end, inner in _quote_spans(text):
+            if is_multiword_quote(inner):
+                quote_spans += 1
+                quoted_words += len(words(inner))
+        for para in split_paragraphs(text):
+            if not para.strip():
+                continue
+            total_para += 1
+            if para.lstrip().startswith(("\"", "“")):
+                quote_para += 1
+    quoted_ratio = quoted_words / max(1, total_words)
+    quote_para_ratio = quote_para / max(1, total_para)
+    if quote_spans >= quote_span_min and quoted_ratio >= quoted_ratio_min:
+        return True
+    if quote_para_ratio >= quote_para_ratio_min and quoted_ratio >= quoted_ratio_min:
+        return True
+    if quoted_ratio >= quoted_ratio_force:
+        return True
+    return False
+
+
 def is_parenthetical_citation(inner: str) -> bool:
     if not re.search(r"\b(19|20)\d{2}[a-z]?\b", inner):
         return False
@@ -626,6 +696,8 @@ def filter_author_voice_text(text: str) -> str:
     text = strip_fenced_code_blocks(text)
     text = strip_non_voice_sections(text)
     text = strip_boilerplate_sections(text)
+    if QUOTE_MODE == "non-fiction":
+        text = strip_quoted_passages(text)
     text = strip_inline_code(text)
     text = strip_latex_math(text)
     text = strip_html(text)
@@ -659,7 +731,6 @@ def iter_corpus_texts(root: Path, max_files: int, max_bytes_per_file: int) -> Li
             continue
 
         txt = strip_base64_images(txt)
-        txt = filter_author_voice_text(txt)
 
         # Skip tiny/empty
         if len(txt) < 200:
@@ -1946,6 +2017,18 @@ def main() -> int:
         action="store_true",
         help="Disable the LLM pass that validates common phrases (OCR/citation noise filtering)"
     )
+    mode_group = ap.add_mutually_exclusive_group()
+    mode_group.add_argument(
+        "--fiction",
+        action="store_true",
+        help="Treat input as fiction (quoted passages are part of author voice)."
+    )
+    mode_group.add_argument(
+        "--non-fiction",
+        dest="non_fiction",
+        action="store_true",
+        help="Treat input as non-fiction (multi-word quotes excluded from author voice)."
+    )
     ap.add_argument(
         "--license",
         action="store_true",
@@ -2002,7 +2085,44 @@ def main() -> int:
 
         corpus_documents = build_corpus_documents(files_and_texts)
         vprint(f"Found {len(files_and_texts)} files; computing measurements...")
-        texts = [t for _, t in files_and_texts]
+        raw_texts = [t for _, t in files_and_texts]
+        fiction_conf = {}
+        if isinstance(tunables_snapshot, dict):
+            fiction_conf = tunables_snapshot.get("fiction_detection", {}) or {}
+        quote_span_min = int(fiction_conf.get("quote_span_min", 8))
+        quoted_ratio_min = float(fiction_conf.get("quoted_ratio_min", 0.03))
+        quote_para_ratio_min = float(fiction_conf.get("quote_para_ratio_min", 0.2))
+        quoted_ratio_force = float(fiction_conf.get("quoted_ratio_force", 0.08))
+        if args.fiction:
+            fiction_mode = True
+            print("Assuming fiction: quoted passages will be included in fingerprinting.")
+        elif args.non_fiction:
+            fiction_mode = False
+            print("Assuming non-fiction: multi-word quotations will be excluded from fingerprinting.")
+        else:
+            fiction_mode = detect_fiction_from_texts(
+                raw_texts,
+                quote_span_min=quote_span_min,
+                quoted_ratio_min=quoted_ratio_min,
+                quote_para_ratio_min=quote_para_ratio_min,
+                quoted_ratio_force=quoted_ratio_force
+            )
+            if fiction_mode:
+                print("Detected fiction: quoted passages will be included in fingerprinting.")
+            else:
+                print("Detected non-fiction: multi-word quotations will be excluded from fingerprinting.")
+        global QUOTE_MODE
+        QUOTE_MODE = "fiction" if fiction_mode else "non-fiction"
+        filtered_files_and_texts: List[Tuple[str, str]] = []
+        for rel, txt in files_and_texts:
+            filtered = filter_author_voice_text(txt)
+            if len(filtered) < 200:
+                continue
+            filtered_files_and_texts.append((rel, filtered))
+        if not filtered_files_and_texts:
+            print("No usable corpus text after filtering.", file=sys.stderr)
+            return 3
+        texts = [t for _, t in filtered_files_and_texts]
         rare_words_limit = None
         rare_words_limit_avoid = None
         if isinstance(tunables_snapshot, dict):
@@ -2170,7 +2290,7 @@ def main() -> int:
                     "notes": ["No common phrases to validate."]
                 }
         vprint("Selecting representative excerpts...")
-        excerpts = pick_representative_excerpts(files_and_texts, max_total_chars=args.excerpt_char_budget)
+        excerpts = pick_representative_excerpts(filtered_files_and_texts, max_total_chars=args.excerpt_char_budget)
 
         vprint("Calling LLM to synthesize fingerprint...")
         messages = build_fingerprint_prompt(measurements, excerpts, cfg, prompts, lexicon_hints)

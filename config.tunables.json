@@ -45,6 +45,12 @@
   "lexical_avoidance": {
     "rare_words_limit": 80
   },
+  "fiction_detection": {
+    "quote_span_min": 6,
+    "quoted_ratio_min": 0.03,
+    "quote_para_ratio_min": 0.2,
+    "quoted_ratio_force": 0.08
+  },
   "chunking": {
     "max_input_tokens": 6000
   },
