@@ -3,21 +3,15 @@
 # Multi-word names are supported (e.g., "new york", "acme corp").
 # If present in the project root or next to fingerprint_style.py, phrases
 # containing these entities are dropped as likely proper‑name noise.
-middle east
-south korea
-economist newspaper
-'Big' Jim Sullivan
-prime minister
-economist com
-economist.com
+Jim Sullivan
 1 Automotive
 3M
 50 Cent
 A Coruña
 A-Mark Precious Metals
-A. J. Levin
-A. J. Liebling
-A. J. Sebastian
+A.J. Levin
+A.J. Liebling
+A.J. Sebastian
 A.C. Green
 A.J. Mogis
 A.J. Styles
@@ -1091,6 +1085,7 @@ Baghdad
 Bahamas
 Bahrain
 Bahya ibn Paquda
+Bái
 Bail Organa
 Bailey Gatzert
 Baker Hughes
@@ -1958,6 +1953,7 @@ Caesars Entertainment
 Cafu
 Cagliari
 Cahul
+Cài
 Cai Lun
 Čair
 Cairo
@@ -2005,6 +2001,7 @@ Cannonball
 Cantabria
 Cantal
 Cantemir
+Cáo
 Cao Cao
 Cao Pi
 Cap'n Crunch
@@ -2202,6 +2199,7 @@ Chaim Weizmann
 Chalkidiki
 Chamitoff, Gregory E.
 Chandra Levy
+Cháng
 Chania
 Channing Tatum
 Chantal Akerman
@@ -2298,8 +2296,10 @@ Cheetah Girls
 Chelsea Noble
 Chely Right
 Chelyabinskaya oblast'
+Chén
 Chen Ing-hau
 Chen Kaige
+Chéng
 Chengdu
 Cheniere Energy
 Chennai
@@ -2688,6 +2688,7 @@ Cuba
 Cuba Gooding Jr.
 Čučer Sandevo
 Cuenca
+Cuī
 Culfa
 Cumbria
 Cummins
@@ -2719,6 +2720,7 @@ Daffy Duck
 Dagdas novads
 Dagestan, Respublika
 Dagwood
+Dài
 Daisy
 Daisy Duck
 Dak
@@ -3150,6 +3152,7 @@ Demond Wilson
 Demosthenes
 Denbighshire; Sir Ddinbych
 Denethor
+Dèng
 Dengar
 Denis D'Amour
 Denis Diderot
@@ -3261,6 +3264,7 @@ Dilbert
 Dimebag Darrell
 Dimitri Tiomkin
 Dinah Shore
+Dīng
 Dingli
 Dino
 Dio Brando
@@ -3368,6 +3372,7 @@ Doncaster
 Dondușeni
 Donegal
 Donets'ka Oblast'
+Dǒng
 Dongguan
 Donita Sparks
 Donna Dougla
@@ -3454,7 +3459,9 @@ Drôme
 Droopy Dog
 Drugovo
 DTE Energy
+Dù
 Du Fu
+Duàn
 Duane Allman
 Duane Denison , ,
 Duane Eddy
@@ -3523,6 +3530,9 @@ Eastman Chemical
 Ebay
 EchoStar
 Ecolab
+economist com
+economist newspaper
+economist.com
 Ecuador
 Ed
 Ed Ames
@@ -4000,7 +4010,9 @@ Falkirk
 Falkland Islands
 Fall Out Boy
 Family Guy
+Fàn
 Fang
+Fāng
 Fannie Hurst
 Fannie Mae
 Fanny Brice
@@ -4044,6 +4056,7 @@ Felix Mendelssohn-Bartholdy
 Felix Pappalardi
 Felix the Cat
 Felix Tikotin
+Féng
 Fenrir Greyback
 Ferdie
 Ferdinand Cohn
@@ -4308,6 +4321,7 @@ Frosinone
 Frosty
 Frýdek Místek
 Fthiotida
+Fù
 Fu Hsi
 Fukuoka
 Furio Chirico
@@ -4355,6 +4369,7 @@ Gamprin
 Gandalf
 Ganon
 Ganzack
+Gāo
 Gaozu of Han
 Gap
 Garan, Ronald J., Jr.
@@ -4678,6 +4693,7 @@ Goldie Hawn
 Goldman Sachs
 Goldy McJohn
 Gollum
+Gōng
 Goodyear Tire & Rubber
 Goofy
 Goranboy
@@ -4799,6 +4815,7 @@ Grosseto
 Grosuplje
 Groucho Marx
 Grutle Kjellson
+Gù
 Guadalajara
 Guadeloupe
 Guam
@@ -4821,6 +4838,7 @@ Guion Bluford
 Gulbenes novads
 Gummo Marx
 Gümüşhane
+Guō
 Guria
 Gustav I of Sweden
 Gustav Ludwig Hertz
@@ -4889,6 +4907,7 @@ Hammersmith and Fulham
 Hammurabi
 Hampshire
 Ħamrun
+Hán
 Han Solo
 Hancock
 Handsome Dick Manitoba
@@ -4925,6 +4944,7 @@ Hans Moleman
 Hans Rosenberg
 Hans-Juergen Syberberg
 Hansi Kürsch
+Hǎo
 Harbin
 Harghita
 Haringey
@@ -5018,6 +5038,8 @@ Hayden Panettiere
 Haym Solomon
 Hazel Dawn
 HCA Healthcare
+Hé
+Hè
 He-man
 Head Automatica
 Heard and McDonald Islands
@@ -5231,6 +5253,7 @@ Homieĺskaja voblasć
 Hondo Ohnaka
 Honduras
 Honeywell
+Hóng
 Hong Kong
 Hong Kong Phooey
 Honoré Daumier
@@ -5249,6 +5272,7 @@ Horemheb
 Horjul
 Hormel Foods
 Hosea
+Hóu
 Houdini
 Hounslow
 Houston
@@ -5288,7 +5312,9 @@ Hradec Králové
 Hrastnik
 Hrodzienskaja voblasć
 Hrpelje-Kozina
+Hú
 Hu Jintao
+Huáng
 Huang Xian Fan
 Hub
 Hubert Dreyfus
@@ -6164,6 +6190,9 @@ JetBlue Airways
 Jethro
 Jezersko
 Ji Sung Park
+Jiǎ
+Jiǎng
+Jiāng
 Jičín
 Jihlava
 Jihočeský kraj
@@ -6235,6 +6264,7 @@ Jimmy Page
 Jimmy Superfly Snuka
 Jimmy Webb
 Jin
+Jīn
 Jin Yong
 Jinan
 Jindřichův Hradec
@@ -6913,6 +6943,7 @@ Kamnik
 Kanal
 Kandavas novads
 Kane
+Kāng
 Kang Kodos
 Kansas
 Kanta-Häme
@@ -7000,6 +7031,7 @@ Kayseri
 Kazakhstan
 Kazuo Kiriyama
 KBR
+Kē
 Keanu Reeves
 Keaton Simons
 Kecskemét
@@ -7263,6 +7295,7 @@ Komi, Respublika
 Kommune Kujalleq
 Kommuneqarfik Sermersooq
 Konče
+Kǒng
 Konrad Adenauer
 Konrad Bloch
 Konrad Zuse Builder
@@ -7397,6 +7430,7 @@ Lady Godiva
 Lady Jane Grey
 Lagos
 Lahore
+Lài
 Lain Iwakura
 Lainie Kazan
 Lajos Venetianer
@@ -7548,6 +7582,7 @@ Leeds
 Lefkada
 Lefkosía
 Legolas
+Léi
 Leicester
 Leicestershire
 Leidos s
@@ -7702,10 +7737,14 @@ Lex Luthor
 Lezhë
 Lənkəran
 Lhasa de Sela
+Lí
+Lǐ
 Li Bai
 Liam Gallagher
 Liam Neeson
 Liam Wilson
+Liáng
+Liào
 Libby Johnson
 Liberace
 Liberec
@@ -7744,6 +7783,7 @@ Lima
 Limbažu novads
 Limburg
 Limerick
+Lín
 Lina Inverse
 Lina Stern
 Linc-Tones
@@ -7800,6 +7840,7 @@ Litoměřice
 Little Bad   Wolf
 Little Dot
 Little Richard
+Liú
 Liu Bei
 Liv Tyler
 Līvānu novads
@@ -7835,6 +7876,7 @@ Lombardia
 Lon Myers
 London
 London, City of
+Lóng
 Longford
 Lopez-Alegria, Michael E.
 Lord Granion
@@ -7922,6 +7964,9 @@ Lowell George
 Lozère
 Lozovo
 LPL Financial s
+Lú
+Lù
+Lǚ
 Luanda
 Lubānas novads
 Lubelskie
@@ -7978,6 +8023,7 @@ Luminara Unduli
 Lumiya
 Luna Lovegood
 Luna Vachon
+Luó
 Lüpüs Thünder
 Luqa
 Lushnjë
@@ -8002,6 +8048,7 @@ M. J. Nurenberger
 M.C. Hammer
 M.D. Geist
 M&T Bank
+Mǎ
 Macao
 Mace Windu
 Macerata
@@ -8100,6 +8147,7 @@ Mantova
 Manuel Blum
 Manuel Göttsching
 Manuel M. Noah
+Máo
 Mao Zedong
 Mara Jade
 Maramureș
@@ -8647,6 +8695,7 @@ Menander
 Menasseh ben Israel
 Mencius
 Menes
+Mèng
 Mengeš
 Menkaura
 Mental Complex
@@ -8858,6 +8907,7 @@ Micronesia
 Microsoft
 Mid and East Antrim
 Mid Ulster
+middle east
 Middlesbrough
 Midge Decter
 Midge Ure
@@ -9027,6 +9077,7 @@ Mitt Romney
 Miyamoto Musashi
 MJ Hibbett
 Mladá Boleslav
+Mò
 Mo Foster
 Mo Ostin
 Mo Udall
@@ -9760,6 +9811,7 @@ Otto Stern
 Otto von Bismarck
 Otto Wallach
 Otto Weininger
+Ōu
 Ourense
 Ovadia A. Vaknin
 Ovadia Yosef
@@ -9810,6 +9862,7 @@ Palestine
 Palo Alto Networks
 Pamela Anderson
 Pamela Dennis
+Pān
 Panama
 Pancho Villa
 Panevėžio Apskritis
@@ -10015,6 +10068,7 @@ Pembroke
 Pembrokeshire; Sir Benfro
 Penelope Clearwater
 Penelope Cruz
+Péng
 Pennsylvania
 Penske Automotive
 Penzenskaya oblast'
@@ -10369,6 +10423,7 @@ Příbram
 Priekules novads
 Priekuļu novads
 Prilep
+prime minister
 Primo Levi
 Primorskiy kray
 Primorsko-goranska županija
@@ -10436,8 +10491,13 @@ Qax
 Qazax
 Qeqqata Kommunia
 Qəbələ
+Qián
+Qiáo
+Qín
 Qin Shi Huang
 Qingdao
+Qiū
+Qiū1
 Qobustan
 Qormi
 Qrendi
@@ -10646,6 +10706,7 @@ Reki
 Reliance
 Rembrandt
 Remus Lupin
+Rén
 Ren and Stimpy
 Rena Mero
 Rena Sofer
@@ -11652,6 +11713,7 @@ Shanne Bradley
 Shannon Curfman
 Shannon Sharp
 Shannon Walker
+Shào
 Shapiro Keats
 Shaquille O'Neal
 Share Pedersen
@@ -11697,6 +11759,7 @@ Shelton Benjamin
 Shem
 Shemaya
 Shemp Howard
+Shěn
 Shennong
 Shenyang
 Shenzhen
@@ -11708,6 +11771,9 @@ Sherwin-Williams
 Sherwood Schwartz
 Sheryl Crow
 Shetland Islands
+Shí
+Shǐ
+Shī
 Shia LaBeouf
 Shida K’art’li
 Shigure Sohma
@@ -11922,6 +11988,7 @@ Somerset
 Somme
 Somogy
 Sondrio
+Sòng
 Sonia
 Sonia Ganassi
 Sonia Sotomayor
@@ -11948,6 +12015,7 @@ South Carolina
 South Dakota
 South Georgia and South Sandwich Islands
 South Gloucestershire
+south korea
 South Korea
 South Lanarkshire
 South Sudan
@@ -12253,6 +12321,7 @@ Stuart Zender
 Studeničani
 Studs Terkel
 Sturckow, Frederick W.
+Sū
 Suceava
 Sudan
 Suðurland
@@ -12273,6 +12342,7 @@ Sumner Redstone
 Šumperk
 Sumqayıt
 Sums 'ka Oblast'
+Sūn
 Sun Quan
 Sun Tzu
 Sun Yat-sen
@@ -12393,10 +12463,14 @@ Tameside
 Tami Inuyama
 Tammy Cochran
 Tammy Lynn Sytch
+Tán
+Táng
+Tāng
 Tani, Daniel M.
 Tanya Reinhart
 Tanya Roberts
 Tanzania
+Táo
 Tara Lapinski
 Tara Reid
 Taraclia
@@ -12587,6 +12661,7 @@ Thutmose III
 Tia and Tamer Mowry
 Tia Mowry
 TIAA
+Tián
 Tianjin
 Tiberius
 Ticino
@@ -13314,8 +13389,11 @@ Walters Barbara
 Waltham Forest
 Walther Rathenau
 Waltraud Meier
+Wàn
 Wanda Landowska
 Wandsworth
+Wáng
+Wāng
 Warmińsko-mazurskie
 Warner Bros. Discovery
 Warren "Baby" Dodds
@@ -13351,9 +13429,12 @@ Wayne Williams
 WEC Energy
 Wedge Antilles
 Weegee
+Wéi
+Wèi
 Weird Al Yankovick
 Wells Fargo
 Welltower
+Wén
 Wendy Melvoin
 Wendy Penney
 Wendy Wasserstein
@@ -13512,6 +13593,8 @@ Workday
 World Kinect
 Wormtongue
 Wrexham; Wrecsam
+Wú
+Wǔ
 Wu Zetian
 Wu-Tang Clan
 Wuhan
@@ -13532,11 +13615,21 @@ Xerxes I of Persia
 Xewkija
 Xgħajra
 Xi'an
+Xià
 Xiahou Dun
+Xiàng
+Xiāo
+Xiè
+Xīn
+Xióng
 Xızı
 Xocalı
 Xocavənd
 XPO
+Xú
+Xǔ
+Xǔ[17]
+Xuē
 Xylem
 Ya'acov Al-Kirkisani
 Yaakov Agam
@@ -13550,8 +13643,11 @@ Yakov Smirnov
 Yalova
 Yamalo-Nenetskiy avtonomnyy okrug
 Yambol
+Yán
+Yáng
 Yangon
 Yankel Rosenbaum
+Yáo
 Yaphet Kotto
 Yardımlı
 Yaroslavskaya oblast'
@@ -13560,6 +13656,7 @@ Yasmine Bleeth
 Yasser Arafat
 Yasujiro Ozu
 Yavuz Çetin
+Yè
 Yechiel Michel Epstein
 Yefim Bronfman
 Yehoshua Bar-Hillel
@@ -13573,7 +13670,9 @@ Yeshayahu Liebowitz
 Yevgeny Primakov
 Yevlax
 Yevreyskaya avtonomnaya oblast'
+Yì
 Yigal Amir
+Yǐn
 Yip Harburg
 Yisrael Lipkin Salanter
 Yisrael Meir Kagan
@@ -13600,6 +13699,8 @@ Youji Yagami
 Young Jeezy
 Youzou Torii
 Yozgat
+Yú
+Yuán
 Yuki Sohma
 Yukino Miyazawa
 Yukio Mishima
@@ -13663,6 +13764,7 @@ Zelenikovo
 Želino
 Zellig Harris
 Zelman Cowen
+Zēng
 Zeničko-dobojski
 Zeno of Citium
 Zeno of Elea
@@ -13673,9 +13775,16 @@ Zerubbabel
 Zev Siegal
 Zəngilan
 Zərdab
+Zhāng
 Zhang Fei
+Zhào
+Zhèng
 Zheng He
+Zhōng
+Zhōu
+Zhū
 Zhu Xi
+Zhuāng
 Zhuge Liang
 Zhytomyrs'ka Oblast'
 Zig Ziggler
@@ -13703,6 +13812,7 @@ Zora Neale Hurston
 Zoran Redžić
 Zoro
 Zoroaster
+Zōu
 Zreče
 Zrnovci
 Zsa Zsa Gabor
