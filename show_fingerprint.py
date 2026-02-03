@@ -19,6 +19,7 @@ import argparse
 import html
 import json
 import math
+import re
 import textwrap
 import webbrowser
 from pathlib import Path
@@ -63,41 +64,116 @@ def take_items(items: Iterable[Any], limit: int = 10) -> List[Any]:
     return out
 
 
-def svg_bar_chart(labels: List[str], values: List[float], width: int = 420, height: int = 150, color: str = "#2E6DD8") -> str:
+def truncate_text(text: str, max_len: int = 60) -> str:
+    if len(text) <= max_len:
+        return text
+    return text[: max(0, max_len - 1)].rstrip() + "…"
+
+
+def clean_work_label(text: str) -> str:
+    text = text.replace("\\_", "_")
+    text = text.replace("_", " ")
+    text = text.replace("/", " ")
+    text = text.replace("\\", " ")
+    text = re.sub(r"[^\w\s\-&:'’]", " ", text, flags=re.UNICODE)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def is_quality_label(text: str) -> bool:
+    if not text:
+        return False
+    alnum = sum(ch.isalnum() for ch in text)
+    return alnum >= 4 and (alnum / max(1, len(text))) >= 0.35
+
+
+def render_work_list(documents: List[Dict[str, Any]], limit: int = 8, max_len: int = 60) -> str:
+    if not documents:
+        return "<p class='muted'>No works listed</p>"
+    labels: List[str] = []
+    for doc in documents:
+        if not isinstance(doc, dict):
+            continue
+        title = doc.get("title") or ""
+        name = doc.get("name") or ""
+        path = doc.get("path") or ""
+        options: List[str] = []
+        if isinstance(title, str):
+            options.append(clean_work_label(title))
+        if isinstance(name, str):
+            options.append(clean_work_label(name))
+        if isinstance(path, str) and path:
+            options.append(clean_work_label(Path(path).stem))
+        label = ""
+        for opt in options:
+            if is_quality_label(opt):
+                label = opt
+                break
+        if not label:
+            for opt in options:
+                if opt:
+                    label = opt
+                    break
+        label = label.strip()
+        if label:
+            labels.append(label)
+    if not labels:
+        return "<p class='muted'>No works listed</p>"
+    shown = take_items(labels, limit)
+    items = "".join(
+        f"<li class='doc-item' title='{esc(name)}'>{esc(truncate_text(name, max_len))}</li>"
+        for name in shown
+    )
+    remainder = len(labels) - len(shown)
+    suffix = f"<li class='doc-item muted'>+{remainder} more</li>" if remainder > 0 else ""
+    return f"<ul class='doc-list'>{items}{suffix}</ul>"
+
+
+def svg_bar_chart(labels: List[str], values: List[float], width: int = 840, height: int = 300, color: str = "#2E6DD8") -> str:
     if not values:
         return ""
     max_val = max(values) if max(values) > 0 else 1.0
     bar_w = width / max(1, len(values))
     bars = []
+    grid = []
+    for i in range(5):
+        y = (height - 30) * (i / 4) + 10
+        grid.append(f"<line x1='0' y1='{y:.1f}' x2='{width}' y2='{y:.1f}' stroke='#1f2937' stroke-width='1' />")
     for i, v in enumerate(values):
         h = (v / max_val) * (height - 30)
         x = i * bar_w + 6
         y = height - h - 16
         bars.append(
-            f"<rect x='{x:.1f}' y='{y:.1f}' width='{bar_w - 12:.1f}' height='{h:.1f}' rx='4' fill='{color}' />"
+            f"<rect x='{x:.1f}' y='{y:.1f}' width='{bar_w - 12:.1f}' height='{h:.1f}' rx='4' fill='{color}'>"
+            f"<title>{esc(labels[i])}: {fmt_num(v, 3)}</title></rect>"
         )
         bars.append(
-            f"<text x='{x + (bar_w - 12)/2:.1f}' y='{height - 2:.1f}' fill='#586069' font-size='10' text-anchor='middle'>{esc(labels[i])}</text>"
+            f"<text x='{x + (bar_w - 12)/2:.1f}' y='{height - 2:.1f}' fill='#94a3b8' font-size='12' text-anchor='middle'>{esc(labels[i])}</text>"
         )
         bars.append(
-            f"<text x='{x + (bar_w - 12)/2:.1f}' y='{max(12, y - 4):.1f}' fill='#e2e8f0' font-size='10' text-anchor='middle'>{fmt_num(v, 3)}</text>"
+            f"<text x='{x + (bar_w - 12)/2:.1f}' y='{max(16, y - 6):.1f}' fill='#e2e8f0' font-size='12' text-anchor='middle'>{fmt_num(v, 3)}</text>"
         )
-    return f"<svg viewBox='0 0 {width} {height}' width='{width}' height='{height}'>{''.join(bars)}</svg>"
+    return f"<svg viewBox='0 0 {width} {height}' width='{width}' height='{height}'>{''.join(grid)}{''.join(bars)}</svg>"
 
 
-def svg_dot_chart(labels: List[str], values: List[float], width: int = 420, height: int = 170, color: str = "#16A34A") -> str:
+def svg_dot_chart(labels: List[str], values: List[float], width: int = 840, height: int = 340, color: str = "#16A34A") -> str:
     if not values:
         return ""
     max_val = max(values) if max(values) > 0 else 1.0
     dots = []
+    grid = []
+    for i in range(5):
+        x = (width - 60) * (i / 4) + 50
+        grid.append(f"<line x1='{x:.1f}' y1='0' x2='{x:.1f}' y2='{height}' stroke='#1f2937' stroke-width='1' />")
     step = height / max(1, len(values))
     for i, v in enumerate(values):
         y = (i + 0.8) * step
-        x = 20 + (v / max_val) * (width - 40)
-        dots.append(f"<circle cx='{x:.1f}' cy='{y:.1f}' r='6' fill='{color}' />")
-        dots.append(f"<text x='0' y='{y + 4:.1f}' fill='#94a3b8' font-size='11'>{esc(labels[i])}</text>")
-        dots.append(f"<text x='{x + 10:.1f}' y='{y + 4:.1f}' fill='#e2e8f0' font-size='11'>{fmt_num(v, 3)}</text>")
-    return f"<svg viewBox='0 0 {width} {height}' width='{width}' height='{height}'>{''.join(dots)}</svg>"
+        x = 50 + (v / max_val) * (width - 80)
+        dots.append(f"<circle cx='{x:.1f}' cy='{y:.1f}' r='7' fill='{color}'>"
+                    f"<title>{esc(labels[i])}: {fmt_num(v, 3)}</title></circle>")
+        dots.append(f"<text x='0' y='{y + 4:.1f}' fill='#94a3b8' font-size='12'>{esc(labels[i])}</text>")
+        dots.append(f"<text x='{x + 12:.1f}' y='{y + 4:.1f}' fill='#e2e8f0' font-size='12'>{fmt_num(v, 3)}</text>")
+    return f"<svg viewBox='0 0 {width} {height}' width='{width}' height='{height}'>{''.join(grid)}{''.join(dots)}</svg>"
 
 
 def card(title: str, body: str, accent: str | None = None) -> str:
@@ -154,6 +230,7 @@ def render_dashboard(fp: Dict[str, Any], source_path: Path) -> str:
     validators = fp.get("validators", {}) or {}
     targets = fp.get("targets", {}) or {}
     extraction = safe_get(fp, "metadata", "extraction", default={}) or {}
+    corpus_docs = safe_get(fp, "metadata", "corpus", "documents", default=[]) or []
 
     header_kv = list_kv([
         ("Profile", profile_id),
@@ -169,6 +246,8 @@ def render_dashboard(fp: Dict[str, Any], source_path: Path) -> str:
         ("Sentences", totals.get("total_sentences_est", "")),
         ("Paragraphs", totals.get("total_paragraphs_est", "")),
     ])
+    works_list = render_work_list(corpus_docs, limit=8, max_len=64)
+    totals_block = totals_kv + f"<div class='subhead'>Works</div>{works_list}"
 
     sentence_chart = svg_bar_chart(
         [str(b) for b in sentence_bins],
@@ -201,6 +280,21 @@ def render_dashboard(fp: Dict[str, Any], source_path: Path) -> str:
         [float(v) for _, v in stance_items],
         color="#22C55E"
     ) if stance_items else ""
+
+    rhetoric = safe_get(fp, "measurements", "rhetoric_moves", default={}) or {}
+    rhetoric_keys = ["claim_rate", "evidence_rate", "counterpoint_rate", "concession_rate", "synthesis_rate"]
+    rhetoric_items = [(k.replace("_rate", ""), float(rhetoric.get(k, 0.0))) for k in rhetoric_keys if k in rhetoric]
+    rhetoric_chart = svg_dot_chart(
+        [k for k, _ in rhetoric_items],
+        [v for _, v in rhetoric_items],
+        color="#F472B6"
+    ) if rhetoric_items else ""
+    if rhetoric_chart and "claim_evidence_ratio" in rhetoric:
+        ratio_label = fmt_num(rhetoric.get("claim_evidence_ratio", 0.0), 3)
+        rhetoric_chart = (
+            rhetoric_chart
+            + f"<div class='ratio-pill'>claim/evidence ratio: {ratio_label}</div>"
+        )
 
     lex_prefer = take_items(lexicon.get("prefer_words", []) or [], 12)
     lex_avoid = take_items(lexicon.get("avoid_words", []) or [], 12)
@@ -292,7 +386,12 @@ header {{ padding: 28px 36px; border-bottom: 1px solid var(--border); }}
 header h1 {{ margin: 0 0 6px 0; font-size: 28px; letter-spacing: 0.2px; }}
 header p {{ margin: 0; color: var(--muted); }}
 main {{ padding: 24px 36px 48px; }}
+.layout {{ display: grid; grid-template-columns: 900px 1fr; gap: 24px; align-items: start; }}
+.charts-panel {{ display: flex; flex-direction: column; gap: 20px; }}
 .grid {{ display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }}
+.chart-card {{ background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: 0 10px 30px rgba(3,7,18,0.35); }}
+.chart-card h3 {{ margin: 0 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); }}
+.ratio-pill {{ display: inline-block; margin-top: 8px; padding: 6px 10px; border-radius: 999px; background: #1f2937; color: #fbcfe8; font-size: 12px; border: 1px solid #3f3f46; }}
 .card {{ background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: 0 10px 30px rgba(3,7,18,0.35); position: relative; overflow: hidden; }}
 .card:before {{ content: ""; position: absolute; inset: 0; opacity: 0.05; background: linear-gradient(135deg, #ffffff, transparent 60%); pointer-events: none; }}
 .card h3 {{ margin: 0 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); }}
@@ -301,6 +400,9 @@ main {{ padding: 24px 36px 48px; }}
 .kv .k {{ color: var(--muted); }}
 .kv .v {{ color: var(--text); font-weight: 600; max-width: 60%; text-align: right; }}
 .pill {{ display:flex; justify-content: space-between; background: #0b1225; border: 1px solid #1f2a44; border-radius: 10px; padding: 6px 10px; margin: 4px 0; font-size: 12px; }}
+.subhead {{ margin-top: 12px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }}
+.doc-list {{ list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; }}
+.doc-item {{ background: #0b1225; border: 1px solid #1f2a44; border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--text); }}
 .chip {{ display:inline-block; background: #1f2937; color: #e5e7eb; padding: 4px 8px; margin: 4px 4px 0 0; border-radius: 999px; font-size: 12px; }}
 .muted {{ color: var(--muted); font-size: 12px; }}
 .section {{ margin-top: 22px; }}
@@ -316,26 +418,46 @@ footer {{ color: var(--muted); padding: 24px 36px; font-size: 12px; border-top: 
   <p>{esc(profile_id)} - {esc(author)} - Schema {esc(schema_version)}</p>
 </header>
 <main>
-  <div class='grid'>
-    {card("Overview", header_kv, accent="#60A5FA")}
-    {card("Corpus Totals", totals_kv, accent="#38BDF8")}
-    {card("Sentence Lengths", sentence_chart or "<p class='muted'>No data</p>", accent="#A855F7")}
-    {card("Paragraph Lengths", para_chart or "<p class='muted'>No data</p>", accent="#0EA5E9")}
-    {card("Punctuation Density", punct_chart or "<p class='muted'>No data</p>", accent="#F97316")}
-    {card("Stance Signals", stance_chart or "<p class='muted'>No data</p>", accent="#22C55E")}
-    {card("Function Words", fn_list or "<p class='muted'>No data</p>", accent="#94A3B8")}
-    {card("Lexicon - Prefer", chips(lex_prefer) or "<p class='muted'>None</p>", accent="#38BDF8")}
-    {card("Lexicon - Avoid", chips(lex_avoid) or "<p class='muted'>None</p>", accent="#F87171")}
-    {card("Lexicon - Hard Avoid", chips(lex_hard) or "<p class='muted'>None</p>", accent="#EF4444")}
-    {card("Rare Words", rare_list or "<p class='muted'>None</p>", accent="#10B981")}
-    {card("Avoidance Words", avoidance_list or "<p class='muted'>None</p>", accent="#F59E0B")}
-    {card("Templates - Openers", chips(template_openers) or "<p class='muted'>None</p>", accent="#818CF8")}
-    {card("Templates - Transitions", chips(template_trans) or "<p class='muted'>None</p>", accent="#6366F1")}
-    {card("Controls", controls_kv or "<p class='muted'>None</p>", accent="#94A3B8")}
-    {card("Strictness", strictness_kv or "<p class='muted'>None</p>", accent="#94A3B8")}
-    {card("Validator Weights", validator_kv or "<p class='muted'>None</p>", accent="#FACC15")}
-    {card("Extraction", extraction_kv or "<p class='muted'>None</p>", accent="#22C55E")}
-    {card("Persona", persona_kv or "<p class='muted'>None</p>", accent="#4ADE80")}
+  <div class='layout'>
+    <div class='charts-panel'>
+      <section class='chart-card'>
+        <h3>Sentence Lengths</h3>
+        {sentence_chart or "<p class='muted'>No data</p>"}
+      </section>
+      <section class='chart-card'>
+        <h3>Paragraph Lengths</h3>
+        {para_chart or "<p class='muted'>No data</p>"}
+      </section>
+      <section class='chart-card'>
+        <h3>Punctuation Density</h3>
+        {punct_chart or "<p class='muted'>No data</p>"}
+      </section>
+      <section class='chart-card'>
+        <h3>Stance Signals</h3>
+        {stance_chart or "<p class='muted'>No data</p>"}
+      </section>
+      <section class='chart-card'>
+        <h3>Rhetorical Moves</h3>
+        {rhetoric_chart or "<p class='muted'>No data</p>"}
+      </section>
+    </div>
+    <div class='grid'>
+      {card("Overview", header_kv, accent="#60A5FA")}
+      {card("Corpus Totals", totals_block, accent="#38BDF8")}
+      {card("Function Words", fn_list or "<p class='muted'>No data</p>", accent="#94A3B8")}
+      {card("Lexicon - Prefer", chips(lex_prefer) or "<p class='muted'>None</p>", accent="#38BDF8")}
+      {card("Lexicon - Avoid", chips(lex_avoid) or "<p class='muted'>None</p>", accent="#F87171")}
+      {card("Lexicon - Hard Avoid", chips(lex_hard) or "<p class='muted'>None</p>", accent="#EF4444")}
+      {card("Rare Words", rare_list or "<p class='muted'>None</p>", accent="#10B981")}
+      {card("Avoidance Words", avoidance_list or "<p class='muted'>None</p>", accent="#F59E0B")}
+      {card("Templates - Openers", chips(template_openers) or "<p class='muted'>None</p>", accent="#818CF8")}
+      {card("Templates - Transitions", chips(template_trans) or "<p class='muted'>None</p>", accent="#6366F1")}
+      {card("Controls", controls_kv or "<p class='muted'>None</p>", accent="#94A3B8")}
+      {card("Strictness", strictness_kv or "<p class='muted'>None</p>", accent="#94A3B8")}
+      {card("Validator Weights", validator_kv or "<p class='muted'>None</p>", accent="#FACC15")}
+      {card("Extraction", extraction_kv or "<p class='muted'>None</p>", accent="#22C55E")}
+      {card("Persona", persona_kv or "<p class='muted'>None</p>", accent="#4ADE80")}
+    </div>
   </div>
 
   <div class='section'>
