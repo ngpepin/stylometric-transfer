@@ -424,6 +424,24 @@ Outputs:
 
 ---
 
+### Visualize a Fingerprint
+
+Generate an HTML dashboard to review key fingerprint settings and measurements:
+
+```bash
+python show_fingerprint.py path/to/fingerprint.json -o fingerprint_dashboard.html
+```
+
+Use `--open` to launch the dashboard in your browser.
+
+Wrapper script (can be called from anywhere):
+
+```bash
+./scripts/show_fingerprint.sh path/to/fingerprint.json -o fingerprint_dashboard.html --open
+```
+
+---
+
 ## Output Files
 
 ### Style Fingerprint (`*.json`)

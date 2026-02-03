@@ -84,6 +84,8 @@ Avoid ambiguous terms like “clone” in public documentation.
 - `scripts/fingerprint_style.sh` and `scripts/apply_fingerprint.sh`
   - Bash wrappers around the Python entry points
   - Pass all CLI args through unchanged
+- `show_fingerprint.py`
+  - Generates a standalone HTML dashboard for a fingerprint JSON
 
 - `prompts.json`
   - Externalized prompt templates used by both Python entry points
@@ -105,6 +107,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Includes chunking caps (max input tokens per chunk)
   - Includes lexical signal limits (rare word list size)
   - Includes lexical avoidance limits (rare word list size)
+  - Includes fiction-detection thresholds (quote span/ratio heuristics)
   - Includes section‑restore controls (fuzzy heading match + restoration caps)
   - Includes optional sanity checks such as line/word/paragraph count change warnings
   - The current tunables may be embedded into fingerprints as `metadata.extraction.tunables_snapshot` for auditability

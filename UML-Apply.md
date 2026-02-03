@@ -25,6 +25,8 @@ class LLMConfig {
 class ApplyPipeline {
   +load_fingerprint()
   +load_markdown()
+  +detect_fiction()
+  +mask_quoted_passages()
   +mask_non_voice_blocks()
   +mask_inline_citations()
   +mask_inline_code()
@@ -96,9 +98,11 @@ start
 :Read fingerprint JSON;
 :Merge avoid list into lexicon.avoid_words;
 :Read input Markdown;
+:Detect fiction vs non-fiction (can be forced by flags);
 
 :Strip base64 images;
 :Mask HTML, math, entities, inline code;
+:If non-fiction, mask multi-word quoted passages;
 :Mask blockquotes, references, footnotes, citations;
 
 :Compute input measurements (author-voice only);
@@ -155,6 +159,7 @@ AF -> FS : read config.avoid.txt (optional)
 AF -> FS : read fingerprint.json
 AF -> AF : merge avoid list into lexicon
 AF -> FS : read input.md
+AF -> AF : detect fiction vs non-fiction
 AF -> AF : mask non-voice blocks & placeholders
 AF -> AF : compute input measurements
 AF -> AF : compute input humanization metrics (optional)

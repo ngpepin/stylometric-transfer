@@ -63,7 +63,7 @@ The practical benefit is a *measurable reduction in AI‑typical uniformity* whi
 
 After rewriting, the system can emit a compact quantitative report for **both the input and output** (via `--metrics`) in the deviations log—lexical diversity variants (TTR, Herdan’s C, Guiraud’s R, Maas), Yule’s K and Simpson’s D, repetition inverse, sentence/paragraph burstiness, punctuation variety/entropy, function‑word entropy and KL‑inverse vs fingerprint, sentence‑length JS‑inverse vs fingerprint, character trigram entropy, and average word length—plus an aggregate 0–100 humanization score for quick inspection.
 
-**Genre‑aware quotation handling**: the pipeline auto‑detects fiction vs non‑fiction using quote‑density signals (multi‑word quote spans, quoted‑word ratio, and quote‑paragraph ratio). In non‑fiction, multi‑word quotations are excluded from profiling and preserved verbatim during rewriting; in fiction they remain part of the author’s voice. These thresholds are tunable and can be overridden explicitly (`--fiction` / `--non‑fiction`).
+**Genre‑aware quotation handling**: the pipeline auto‑detects fiction vs non‑fiction using quote‑density signals (multi‑word quote spans, quoted‑word ratio, and quote‑paragraph ratio). In non‑fiction, multi‑word quotations are excluded from profiling and preserved verbatim during rewriting; in fiction they remain part of the author’s voice. These thresholds are tunable via `config.tunables.json` (see `fiction_detection.*`) and can be overridden explicitly (`--fiction` / `--non‑fiction`).
 
 ---
 
