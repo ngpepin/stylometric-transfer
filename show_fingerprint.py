@@ -94,14 +94,14 @@ def render_work_list(documents: List[Dict[str, Any]], limit: int = 8, max_len: i
     for doc in documents:
         if not isinstance(doc, dict):
             continue
-        title = doc.get("title") or ""
         name = doc.get("name") or ""
+        title = doc.get("title") or ""
         path = doc.get("path") or ""
         options: List[str] = []
-        if isinstance(title, str):
-            options.append(clean_work_label(title))
         if isinstance(name, str):
             options.append(clean_work_label(name))
+        if isinstance(title, str):
+            options.append(clean_work_label(title))
         if isinstance(path, str) and path:
             options.append(clean_work_label(Path(path).stem))
         label = ""
