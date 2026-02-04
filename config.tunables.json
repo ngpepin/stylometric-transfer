@@ -47,7 +47,7 @@
   },
   "controls_normalization": {
     "rewrite_policy": {
-      "jaccard_threshold": 0.7,
+      "jaccard_threshold": 0.6,
       "dedupe_on_subset": true,
       "prefer_more_specific": true,
       "directive_verbs": [
