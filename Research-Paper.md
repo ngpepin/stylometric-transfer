@@ -183,7 +183,7 @@ The JSON format introduces practical control fields, such as `priority_order` an
 
 **Plain-language explanation:** The fingerprint functions as a weighted checklist. Certain items are strict (for example, “never use em-dashes”); others are soft (such as “prefer shorter sentences”). The system tracks how closely the output adheres to each requirement.
 
-**Constraint normalization and controller overlays:** To keep constraints compact and interpretable, the system deterministically de‑duplicates `rewrite_policy` clauses and filters `priority_order` to short, token‑like entries. In addition, a corpus‑derived variability baseline can drive per‑chunk target overlays during rewriting: a small, deterministic controller samples quantiles of within‑author variability (e.g., sentence length or punctuation density) and nudges chunk‑level targets so the output reflects natural intra‑author dispersion without changing the core fingerprint. These overlays are applied locally and logged for auditability.
+**Constraint normalization and controller overlays:** To keep constraints compact and interpretable, the system deterministically de‑duplicates `rewrite_policy` clauses and filters `priority_order` to short, token‑like entries. In addition, a corpus‑derived variability baseline can drive per‑chunk target overlays during rewriting: a small, deterministic controller samples quantiles of within‑author variability (e.g., sentence length or punctuation density) and nudges chunk‑level targets so the output reflects natural intra‑author dispersion without changing the core fingerprint. When perturbations are enabled (controller overlays or stochastic variance), the pipeline enforces a minimum chunk count so variability can be expressed. These overlays are applied locally and logged for auditability.
 
 ---
 
@@ -2094,6 +2094,18 @@ Rather than learning what style is, it defines where style may reside in feature
           "type": "integer",
           "minimum": 200
         },
+        "chunk_split_on": {
+          "type": "string",
+          "enum": [
+            "word",
+            "sentence",
+            "paragraph"
+          ]
+        },
+        "min_chunks_when_perturbing": {
+          "type": "integer",
+          "minimum": 1
+        },
         "recovery_split_max_depth": {
           "type": "integer",
           "minimum": 0
@@ -2220,6 +2232,7 @@ Rather than learning what style is, it defines where style may reside in feature
 - `lexical_signals.rare_words_limit`: maximum number of rare words included in `measurements.lexical_signals.rare_words`.
 - `lexical_avoidance.rare_words_limit`: maximum number of rare words included in `measurements.lexical_avoidance.rare_words`.
 - `chunking.max_input_tokens`: hard cap on input tokens per chunk (after prompt overhead). Lower values increase chunk count but reduce per‑request latency and timeouts.
+- `chunking.chunk_split_on`: primary chunking unit (`word`, `sentence`, or `paragraph`). If a paragraph exceeds the budget, it falls back to sentence splitting for that chunk; if a sentence is still oversized, it falls back to word splitting for that chunk. Bullet/numbered list lines are treated as sentence units.
 - `style_retry.enabled`: enable/disable the delta‑feedback retry pass after measuring style compliance.
 - `style_retry.threshold`: retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold‑based retries, while `1.0` retries unless the output is nearly perfect.
 - `style_retry.max_retries`: maximum number of retry passes (default `1`).

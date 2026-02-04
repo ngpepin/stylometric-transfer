@@ -157,6 +157,61 @@ class TestV17XRegression(unittest.TestCase):
         chunks_large = af.chunk_markdown(md, build_messages, max_prompt_tokens=2000, max_input_tokens_override=1000)
         self.assertGreater(len(chunks_small), len(chunks_large))
 
+    def test_chunk_split_on_paragraph_fallbacks(self) -> None:
+        md = " ".join(["word"] * 1200)
+
+        def build_messages(md_chunk: str, _feedback=None, _for_estimate=False):
+            return [{"role": "user", "content": md_chunk}]
+
+        chunks = af.chunk_markdown(
+            md,
+            build_messages,
+            max_prompt_tokens=500,
+            max_input_tokens_override=60,
+            split_on="paragraph",
+        )
+        max_chars = max(200, 60) * 4
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(len(c) <= max_chars for c in chunks))
+
+    def test_chunk_split_on_sentence_treats_list_lines(self) -> None:
+        md = "- item one\n- item two\n- item three"
+
+        def build_messages(md_chunk: str, _feedback=None, _for_estimate=False):
+            return [{"role": "user", "content": md_chunk}]
+
+        chunks = af.chunk_markdown(
+            md,
+            build_messages,
+            max_prompt_tokens=500,
+            max_input_tokens_override=200,
+            split_on="sentence",
+        )
+        self.assertEqual(len(chunks), 1)
+        self.assertIn("\n- item two\n", chunks[0])
+
+    def test_chunk_split_on_word_limits_size(self) -> None:
+        md = " ".join(["word"] * 500)
+
+        def build_messages(md_chunk: str, _feedback=None, _for_estimate=False):
+            return [{"role": "user", "content": md_chunk}]
+
+        chunks = af.chunk_markdown(
+            md,
+            build_messages,
+            max_prompt_tokens=300,
+            max_input_tokens_override=40,
+            split_on="word",
+        )
+        max_chars = max(200, 40) * 4
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(len(c) <= max_chars for c in chunks))
+
+    def test_enforce_min_chunks_splits(self) -> None:
+        text = "Paragraph one.\n\nParagraph two.\n\nParagraph three."
+        chunks = af.enforce_min_chunks(text, [text], 2)
+        self.assertGreaterEqual(len(chunks), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -113,6 +113,7 @@ REFERENCE_HEADINGS = {
     "notes"
 }
 ATX_HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.+?)\s*$")
+LIST_LINE_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
 SETEXT_H1_RE = re.compile(r"^\s*=+\s*$")
 SETEXT_H2_RE = re.compile(r"^\s*-+\s*$")
 BLOCKQUOTE_LINE_RE = re.compile(r"^\s*>")
@@ -2082,6 +2083,65 @@ def is_code_block(block: str) -> bool:
     return False
 
 
+def split_words_preserve(text: str) -> List[str]:
+    return re.findall(r"\S+", text)
+
+
+def split_sentences_for_chunking(text: str) -> List[str]:
+    lines = text.splitlines()
+    sentences: List[str] = []
+    buffer: List[str] = []
+    for line in lines:
+        if LIST_LINE_RE.match(line):
+            if buffer:
+                sentences.extend(split_sentences(" ".join(buffer)))
+                buffer = []
+            sentences.append(line.strip())
+        else:
+            if line.strip():
+                buffer.append(line.strip())
+    if buffer:
+        sentences.extend(split_sentences(" ".join(buffer)))
+    return [s for s in sentences if s.strip()]
+
+
+def split_block_units(block: str, split_on: str, max_chars: int, max_input_tokens: int) -> tuple[List[str], str]:
+    if is_code_block(block):
+        if estimate_tokens_for_text(block) <= max_input_tokens:
+            return [block], "\n\n"
+        return split_oversize_block(block, estimate_tokens_for_text, max_input_tokens), "\n\n"
+
+    if LIST_LINE_RE.search(block):
+        units = [ln.strip() for ln in block.splitlines() if ln.strip()]
+        refined: List[str] = []
+        for unit in units:
+            if len(unit) > max_chars:
+                refined.extend(split_words_preserve(unit))
+            else:
+                refined.append(unit)
+        return refined, "\n"
+
+    mode = split_on if split_on in ("paragraph", "sentence", "word") else "sentence"
+    if mode == "paragraph":
+        if len(block) <= max_chars:
+            return [block], "\n\n"
+        # Fallback to sentence mode for oversized paragraphs.
+        mode = "sentence"
+
+    if mode == "sentence":
+        sentences = split_sentences_for_chunking(block)
+        units: List[str] = []
+        for sent in sentences:
+            if len(sent) > max_chars:
+                units.extend(split_words_preserve(sent))
+            else:
+                units.append(sent)
+        return units, " "
+
+    # Word-level splitting (last resort)
+    return split_words_preserve(block), " "
+
+
 def mask_inline_code(text: str) -> tuple[str, Dict[str, str]]:
     # Replace inline code spans with placeholders to preserve verbatim.
     mapping: Dict[str, str] = {}
@@ -2234,11 +2294,48 @@ def split_oversize_block(
     return chunks
 
 
+def enforce_min_chunks(markdown: str, chunks: List[str], min_chunks: int) -> List[str]:
+    if min_chunks <= 1:
+        return chunks
+    work = [c for c in chunks if isinstance(c, str) and c.strip()]
+    if len(work) >= min_chunks:
+        return work
+    if not work:
+        work = [markdown]
+    # Split the largest chunk until we reach the minimum or can no longer split.
+    while len(work) < min_chunks:
+        idx = max(range(len(work)), key=lambda i: len(work[i]))
+        block = work.pop(idx)
+        if not block.strip():
+            work.insert(idx, block)
+            break
+        max_tokens = max(1, estimate_tokens_for_text(block) // 2)
+        parts = split_oversize_block(block, estimate_tokens_for_text, max_tokens)
+        if len(parts) <= 1:
+            mid = len(block) // 2
+            split_idx = block.rfind("\n", 0, mid)
+            if split_idx == -1:
+                split_idx = block.find("\n", mid)
+            if split_idx == -1:
+                split_idx = mid
+            left = block[:split_idx].rstrip()
+            right = block[split_idx:].lstrip()
+            parts = [p for p in (left, right) if p]
+        if len(parts) <= 1:
+            work.insert(idx, block)
+            break
+        for part in reversed(parts):
+            if part.strip():
+                work.insert(idx, part)
+    return [c for c in work if c.strip()]
+
+
 def chunk_markdown(
     markdown: str,
     build_messages_fn,
     max_prompt_tokens: int,
-    max_input_tokens_override: int | None = None
+    max_input_tokens_override: int | None = None,
+    split_on: str = "sentence"
 ) -> List[str]:
     # Chunk by paragraph with a fixed character budget derived from prompt overhead.
     # build_messages_fn signature is expected to be (md_chunk, style_feedback, for_estimate).
@@ -2251,48 +2348,42 @@ def chunk_markdown(
 
     blocks = split_markdown_blocks(markdown)
     chunks: List[str] = []
-    current: List[str] = []
-    current_len = 0
+    current = ""
 
     def flush() -> None:
-        nonlocal current, current_len
-        if current:
-            chunks.append("\n\n".join(current).strip())
-            current = []
-            current_len = 0
-
-    def split_oversize_text(text: str) -> List[str]:
-        if len(text) <= max_chars:
-            return [text]
-        parts: List[str] = []
-        lines = text.splitlines()
-        buf: List[str] = []
-        buf_len = 0
-        for line in lines:
-            line_len = len(line) + 1
-            if buf_len + line_len > max_chars and buf:
-                parts.append("\n".join(buf).strip())
-                buf = [line]
-                buf_len = len(line) + 1
-            else:
-                buf.append(line)
-                buf_len += line_len
-        if buf:
-            parts.append("\n".join(buf).strip())
-        return parts if parts else [text]
+        nonlocal current
+        if current.strip():
+            chunks.append(current.strip())
+        current = ""
 
     for block in blocks:
         if not block.strip():
             continue
-        sub_blocks = split_oversize_text(block.strip())
-        for sub in sub_blocks:
-            sub_len = len(sub) + 2
-            if current_len + sub_len > max_chars and current:
+        units, joiner = split_block_units(block.strip(), split_on, max_chars, max_input_tokens)
+        if not units:
+            continue
+        for idx, unit in enumerate(units):
+            sep = ""
+            if current:
+                sep = "\n\n" if idx == 0 else joiner
+            candidate = current + sep + unit if current else unit
+            if len(candidate) > max_chars and current:
                 flush()
-            current.append(sub)
-            current_len += sub_len
-
-    flush()
+                candidate = unit
+            if len(candidate) > max_chars and not current:
+                # Failsafe: force-split oversized unit at word level.
+                fallback_units = split_words_preserve(unit)
+                for word in fallback_units:
+                    sep2 = "" if not current else " "
+                    cand2 = current + sep2 + word if current else word
+                    if len(cand2) > max_chars and current:
+                        flush()
+                        cand2 = word
+                    current = cand2
+                continue
+            current = candidate
+        if current:
+            flush()
     return [c for c in chunks if c.strip()]
 
 def approx_rate_per_1000_words(count: int, total_words: int) -> float:
@@ -3949,12 +4040,27 @@ def main() -> int:
     base_messages = build_messages_for_chunk("", None, True)
     base_tokens = estimate_tokens_for_messages(base_messages)
     max_input_tokens = max(400, cfg.max_prompt_tokens - base_tokens)
+    min_chunks_when_perturbing = 1
+    chunk_split_on = "sentence"
+    perturbations_active = False
     if isinstance(tunables, dict):
         chunk_conf = tunables.get("chunking", {})
         if isinstance(chunk_conf, dict):
             cap = chunk_conf.get("max_input_tokens")
             if isinstance(cap, int) and cap > 0:
                 max_input_tokens = min(max_input_tokens, max(200, cap))
+            min_chunks = chunk_conf.get("min_chunks_when_perturbing")
+            if isinstance(min_chunks, int) and min_chunks > 0:
+                min_chunks_when_perturbing = min_chunks
+            split_on = chunk_conf.get("chunk_split_on")
+            if isinstance(split_on, str) and split_on.lower() in ("word", "sentence", "paragraph"):
+                chunk_split_on = split_on.lower()
+        humanizer_var = tunables.get("humanizer_variance", {})
+        if isinstance(humanizer_var, dict) and humanizer_var.get("enabled", False):
+            perturbations_active = True
+        controller_conf = tunables.get("humanization_controller", {})
+        if isinstance(controller_conf, dict) and controller_conf.get("enabled", False):
+            perturbations_active = True
         factor = compute_variance_aware_factor(fingerprint, tunables)
         if factor < 1.0:
             max_input_tokens = max(200, int(max_input_tokens * factor))
@@ -3967,7 +4073,12 @@ def main() -> int:
             f"Prompt overhead tokens: {base_tokens}; "
             f"input budget: {max_input_tokens}; input tokens: {input_tokens}"
         )
-    if input_tokens <= max_input_tokens:
+        vprint(
+            f"Chunk split strategy: {chunk_split_on} "
+            "(fallback to sentence/word if oversized; list lines treated as sentences)"
+        )
+    force_min_chunks = perturbations_active and min_chunks_when_perturbing > 1
+    if input_tokens <= max_input_tokens and not force_min_chunks:
         vprint("Calling LLM to apply fingerprint...")
         try:
             final_md, out_obj, compliance = rewrite_chunk(input_md)
@@ -4062,17 +4173,21 @@ def main() -> int:
             "deltas": compliance.get("deltas", [])
         })
     else:
-        vprint(f"Prompt too large ({initial_tokens} tokens); chunking input...")
+        if input_tokens > max_input_tokens:
+            vprint(f"Prompt too large ({initial_tokens} tokens); chunking input...")
+        elif force_min_chunks and args.verbose:
+            vprint(f"Perturbations enabled; enforcing minimum chunk count: {min_chunks_when_perturbing}")
         chunks = chunk_markdown(
             input_md,
             build_messages_for_chunk,
             cfg.max_prompt_tokens,
-            max_input_tokens_override=max_input_tokens
+            max_input_tokens_override=max_input_tokens,
+            split_on=chunk_split_on
         )
         non_empty = [c for c in chunks if isinstance(c, str) and c.strip()]
         if len(non_empty) != len(chunks):
             vprint(f"Filtered out {len(chunks) - len(non_empty)} empty chunk(s).")
-        chunks = non_empty
+        chunks = enforce_min_chunks(input_md, non_empty, min_chunks_when_perturbing) if force_min_chunks else non_empty
         vprint(f"Chunked into {len(chunks)} parts.")
         for idx, chunk in enumerate(chunks, start=1):
             vprint(f"Rewriting chunk {idx}/{len(chunks)}...")

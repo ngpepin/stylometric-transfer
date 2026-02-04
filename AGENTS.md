@@ -109,7 +109,8 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Includes humanization metric weights for the aggregate 0–100 score
   - Includes corpus-derived humanization baseline settings (rolling windows embedded in fingerprints for auditability; stripped from what the LLM sees during rewriting)
   - Includes humanization controller overlays (per-chunk target variation derived from baseline)
-  - Includes chunking caps (max input tokens per chunk)
+  - Includes chunking caps (max input tokens per chunk) and split strategy (`chunk_split_on`)
+  - Includes minimum chunk counts when perturbations are enabled
   - Includes chunk-recovery split controls when the LLM repeatedly returns invalid output
   - Includes variance-aware chunk sizing (smaller chunks for higher-variance styles)
   - Includes lexical signal limits (rare word list size)

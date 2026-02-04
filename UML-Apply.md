@@ -111,6 +111,8 @@ start
 :Read input Markdown;
 :Detect fiction vs non-fiction (can be forced by flags);
  :Compute variance-aware chunk size (optional; based on baseline);
+ :Choose chunk split strategy (word/sentence/paragraph; fallback to sentence/word if oversized);
+ :Enforce minimum chunks when perturbations are enabled (optional);
 
 :Strip base64 images;
 :Mask HTML, math, entities, inline code;
