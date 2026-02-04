@@ -253,9 +253,9 @@ Example (defaults shown):
     "emoji_policy": "replace"
   },
   "humanizer_variance": {
-    "enabled": false,
-    "seed": 0,
-    "max_ops_per_1000w": 0.0,
+    "enabled": true,
+    "seed": 12345,
+    "max_ops_per_1000w": 0.5,
     "allowed_ops": ["swap_transition", "drop_filler"]
   },
   "humanization_metrics": {
@@ -278,6 +278,33 @@ Example (defaults shown):
       "avg_word_length": 1.0
     }
   },
+  "humanization_baseline": {
+    "enabled": true,
+    "window_words": 800,
+    "stride_words": 400,
+    "min_window_words": 250,
+    "max_windows": 200
+  },
+  "humanization_controller": {
+    "enabled": true,
+    "seed": 12345,
+    "quantiles": [0.25, 0.5, 0.75],
+    "range_pct": 0.15,
+    "min_width": 0.05,
+    "max_width": 6.0,
+    "allowed_metrics": [
+      "sentence_length_mean",
+      "sentence_length_stdev",
+      "one_sentence_paragraph_rate",
+      "comma_density_per_100w",
+      "punctuation_semicolons_per_1000w",
+      "punctuation_colons_per_1000w",
+      "punctuation_em_dashes_per_1000w"
+    ],
+    "feedback_enabled": true,
+    "feedback_tolerance": 0.35,
+    "max_feedback_retries": 2
+  },
   "lexical_signals": {
     "rare_words_limit": 100
   },
@@ -289,6 +316,7 @@ Example (defaults shown):
       "jaccard_threshold": 0.7,
       "dedupe_on_subset": true,
       "prefer_more_specific": true,
+      "compress_directives": true,
       "directive_verbs": [
         "preserve",
         "avoid",
@@ -347,12 +375,21 @@ Example (defaults shown):
     "quoted_ratio_force": 0.08
   },
   "chunking": {
-    "max_input_tokens": 4000
+    "max_input_tokens": 6000,
+    "recovery_split_max_depth": 2,
+    "recovery_split_min_chars": 800,
+    "variance_aware": {
+      "enabled": true,
+      "sentence_stdev_ref": 18.0,
+      "paragraph_burst_ref": 0.7,
+      "min_factor": 0.6,
+      "max_factor": 1.0
+    }
   },
   "style_retry": {
     "enabled": true,
     "threshold": 0.75,
-    "max_retries": 1
+    "max_retries": 2
   },
   "section_restore": {
     "enabled": true,
@@ -387,24 +424,47 @@ Example (defaults shown):
   - `swap_transition`: swaps a transition phrase with another compatible transition to vary surface rhythm without changing meaning.
   - `drop_filler`: removes low‑information filler words/phrases when safe (bounded by the ops budget).
 - `humanization_metrics.weights` (object): optional weighting for the 0–100 aggregate humanization score. Any metric with a weight of 0 is excluded.
+- `humanization_baseline.enabled` (boolean): when true, fingerprinting computes rolling “within-author variability” baselines (stored under `measurements.humanization_baseline`). These baselines are for auditability/controller logic and are stripped from what the LLM sees during rewriting.
+- `humanization_baseline.window_words` (integer): rolling window size (in words) used to compute baseline variability stats.
+- `humanization_baseline.stride_words` (integer): stride size (in words) between windows.
+- `humanization_baseline.min_window_words` (integer): minimum usable window size; if a window is smaller, baseline computation stops early.
+- `humanization_baseline.max_windows` (integer): cap on how many windows are computed (keeps runtime bounded on very large corpora).
+- `humanization_controller.enabled` (boolean): enables per‑chunk target overlays derived from the baseline (embedded in fingerprint, stripped from LLM prompt except as derived overlay targets).
+- `humanization_controller.seed` (integer): deterministic seed for overlay sampling.
+- `humanization_controller.quantiles` (array of 0–1): which baseline quantiles are eligible when sampling per‑chunk targets (e.g., `[0.25, 0.5, 0.75]`).
+- `humanization_controller.range_pct` (float): width of the target range around the sampled value (percentage of the value).
+- `humanization_controller.min_width` (float): minimum absolute width for a target range.
+- `humanization_controller.max_width` (float): maximum absolute width for a target range.
+- `humanization_controller.allowed_metrics` (array): which overlay metrics are used (e.g., `sentence_length_mean`, `sentence_length_stdev`, `one_sentence_paragraph_rate`, `comma_density_per_100w`, `punctuation_semicolons_per_1000w`).
+- `humanization_controller.feedback_enabled` (boolean): when true, style retry feedback includes overlay‑mismatch guidance.
+- `humanization_controller.feedback_tolerance` (float): how far outside the overlay range the output must be before controller feedback is added (fraction of range).
+- `humanization_controller.max_feedback_retries` (integer): cap on how many retries will include controller feedback.
 - `lexical_signals.rare_words_limit` (integer): maximum number of rare words to include in `measurements.lexical_signals.rare_words`.
 - `lexical_avoidance.rare_words_limit` (integer): maximum number of absent common words (from `config.common_words.txt`) to include in `measurements.lexical_avoidance.rare_words`.
 - `controls_normalization.rewrite_policy.jaccard_threshold` (0–1): similarity threshold for considering two rewrite-policy clauses duplicates (lower = more aggressive de‑dup).
 - `controls_normalization.rewrite_policy.dedupe_on_subset` (boolean): treat clauses as duplicates when one clause is a strict subset of another.
 - `controls_normalization.rewrite_policy.prefer_more_specific` (boolean): when near-duplicates are found, keep the clause with more unique tokens.
+- `controls_normalization.rewrite_policy.compress_directives` (boolean): merge repeated `preserve`/`avoid` directives into a smaller number of interpretable clauses (reduces redundancy and token overhead).
 - `controls_normalization.rewrite_policy.directive_verbs` (array): verbs that mark the start of new rewrite-policy clauses.
 - `controls_normalization.rewrite_policy.stopwords` (array): stopwords ignored when comparing clauses for de‑duplication.
 - `controls_normalization.priority_order.token_pattern` (regex string): which items are allowed to survive normalization (default keeps short token‑like priorities only).
 - `controls_normalization.priority_order.dedupe_case_insensitive` (boolean): de‑dup priorities ignoring case.
-- `controls_normalization.priority_order.exclude_tokens` (array): drop these token‑like entries even if they match the regex.
+- `controls_normalization.priority_order.exclude_tokens` (array): drop these token‑like entries even if they match the regex (the pipeline also drops generic `lexical`, `syntactic`, and `rhetorical` tokens by default).
 - `fiction_detection.quote_span_min` (integer): minimum multi‑word quote spans required before classifying as fiction (lower = more likely fiction).
 - `fiction_detection.quoted_ratio_min` (float 0–1): minimum fraction of words inside multi‑word quotes to classify as fiction (lower = more likely fiction).
 - `fiction_detection.quote_para_ratio_min` (float 0–1): minimum fraction of paragraphs starting with a quote to classify as fiction (lower = more likely fiction).
 - `fiction_detection.quoted_ratio_force` (float 0–1): if quoted word ratio exceeds this, force fiction regardless of other signals.
 - `chunking.max_input_tokens` (integer): hard cap on input tokens per chunk (after prompt overhead). Lower values increase chunk count but reduce per‑request latency and timeouts.
+- `chunking.recovery_split_max_depth` (integer): when the LLM repeatedly returns invalid output for a chunk, this controls how many recursive recovery splits may be attempted.
+- `chunking.recovery_split_min_chars` (integer): minimum chunk size (in characters) before attempting recovery splitting; smaller chunks are preserved verbatim instead.
+- `chunking.variance_aware.enabled` (boolean): when true, chunk sizes are scaled based on baseline variability (higher variance → smaller chunks).
+- `chunking.variance_aware.sentence_stdev_ref` (float): reference sentence-length stdev for scaling.
+- `chunking.variance_aware.paragraph_burst_ref` (float): reference paragraph burstiness for scaling.
+- `chunking.variance_aware.min_factor` (float): minimum multiplier applied to `max_input_tokens` when variance is high.
+- `chunking.variance_aware.max_factor` (float): maximum multiplier applied to `max_input_tokens` when variance is low.
 - `style_retry.enabled` (boolean): enable/disable the delta‑feedback retry pass after measuring style compliance.
 - `style_retry.threshold` (0–1): retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold-based retries, while `1.0` retries unless the output is nearly perfect.
-- `style_retry.max_retries` (integer): maximum number of retry passes (default `1`).
+- `style_retry.max_retries` (integer): maximum number of retry passes (default `2`).
 - `section_restore.enabled` (boolean): enable/disable restoration of missing sections detected after rewriting.
 - `section_restore.max_restore_sections` (integer): maximum number of missing sections to restore (0 disables restoration).
 - `section_restore.heading_similarity_threshold` (0–1): fuzzy heading match threshold for considering a rewritten heading “present”.
@@ -579,6 +639,14 @@ The v1.5.x regression suite (no API calls) is found in `tests/test_v1_5_X_regres
 ```bash
 ./tests/run_v1_5_X_regression.sh
 ```
+
+The v1.7.x regression suite (no API calls) is found in `tests/test_v1_7_X_regression.py` and is also executed by `run_smoke.sh`:
+
+```bash
+./tests/run_v1_7_X_regression.sh
+```
+
+An LLM connectivity check is also run by `run_smoke.sh` via `tests/test_llm_smoke.py` (uses the same `config.llm.json`); it is skipped when the endpoint is unreachable.
 
 ---
 

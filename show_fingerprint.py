@@ -263,6 +263,192 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
 
     if not deduped:
         return policy
+
+    # Optional higher-level compaction: merge repeated preserve/avoid directives into a
+    # smaller set of clauses. This keeps the policy interpretable while reducing noise.
+    compress_directives = bool(conf.get("compress_directives", True))
+    if compress_directives and len(clauses) > 1:
+        def split_directive(clause: str) -> tuple[str | None, str]:
+            c = clause.strip()
+            m = re.match(
+                r"(?i)^(do not|don't|preserve|avoid|maintain|ensure|keep|favor|use|prefer|minimize|maximize)\b",
+                c
+            )
+            if not m:
+                return None, c
+            verb = m.group(1).lower()
+            rest = c[m.end():].strip(" :-\t")
+            return verb, rest
+
+        preserve_rests: List[str] = []
+        avoid_rests: List[str] = []
+        other_clauses: List[str] = []
+
+        # Use the pre-deduped clauses to avoid losing unique aspects (e.g., "structure")
+        # when two preserve clauses have high lexical overlap.
+        for clause in clauses:
+            verb, rest = split_directive(clause)
+            if verb in ("preserve", "maintain", "ensure", "keep") and rest:
+                preserve_rests.append(rest)
+            elif verb in ("avoid", "do not", "don't") and rest:
+                avoid_rests.append(rest)
+
+        for clause in deduped:
+            verb, rest = split_directive(clause)
+            if verb in ("preserve", "maintain", "ensure", "keep", "avoid", "do not", "don't") and rest:
+                continue
+            other_clauses.append(clause)
+
+        def score_phrase(s: str) -> int:
+            return len([t for t in norm_tokens(s) if t])
+
+        aspect_penalties: Dict[str, List[str]] = {
+            "details": ["structure", "rhythm"],
+            "structure": ["detail", "details", "rhythm"],
+            "rhythm": ["detail", "details", "structure"],
+        }
+
+        def aspect_score(aspect: str, phrase: str) -> float:
+            base = float(score_phrase(phrase))
+            pl = phrase.lower()
+            penalty = 0.0
+            for kw in aspect_penalties.get(aspect, []):
+                if kw in pl:
+                    penalty += 2.0
+            return base - penalty
+
+        def pick_best(existing: str | None, candidate: str, aspect: str | None = None) -> str:
+            if not existing:
+                return candidate
+            if len(candidate) > 140:
+                return existing
+            if aspect:
+                if aspect_score(aspect, candidate) > aspect_score(aspect, existing):
+                    return candidate
+            elif score_phrase(candidate) > score_phrase(existing):
+                return candidate
+            return existing
+
+        preserve_aspects: Dict[str, str] = {}
+        for rest in preserve_rests:
+            rl = rest.lower()
+            if "tone" in rl:
+                preserve_aspects["tone"] = pick_best(preserve_aspects.get("tone"), rest, "tone")
+            if "detail" in rl:
+                preserve_aspects["details"] = pick_best(preserve_aspects.get("details"), rest, "details")
+            if "accuracy" in rl:
+                preserve_aspects["accuracy"] = pick_best(preserve_aspects.get("accuracy"), rest, "accuracy")
+            if "clarity" in rl:
+                preserve_aspects["clarity"] = pick_best(preserve_aspects.get("clarity"), rest, "clarity")
+            if "realism" in rl:
+                preserve_aspects["realism"] = pick_best(preserve_aspects.get("realism"), rest, "realism")
+            if "structure" in rl:
+                preserve_aspects["structure"] = pick_best(preserve_aspects.get("structure"), rest, "structure")
+            if "rhythm" in rl:
+                preserve_aspects["rhythm"] = pick_best(preserve_aspects.get("rhythm"), rest, "rhythm")
+
+        def extract_segment(phrase: str, keyword: str) -> str:
+            pl = phrase.lower()
+            keyword_hits = [keyword]
+            if keyword == "details":
+                keyword_hits = ["detail", "details"]
+            if not any(k in pl for k in keyword_hits):
+                return phrase
+            if keyword in ("structure", "rhythm") or (keyword == "details" and ("structure" in pl or "rhythm" in pl)):
+                parts = re.split(r"(?i)\band\b", phrase)
+                for p in parts:
+                    if any(k in p.lower() for k in keyword_hits):
+                        return re.sub(r"\s+", " ", p.strip(" ,;"))
+            return re.sub(r"\s+", " ", phrase.strip(" ,;"))
+
+        preserve_phrases: List[str] = []
+        for key in ("tone", "details", "accuracy", "clarity", "realism"):
+            if key in preserve_aspects:
+                preserve_phrases.append(extract_segment(preserve_aspects[key], key))
+
+        narrative_bits: List[str] = []
+        if "structure" in preserve_aspects:
+            narrative_bits.append(extract_segment(preserve_aspects["structure"], "structure"))
+        if "rhythm" in preserve_aspects:
+            narrative_bits.append(extract_segment(preserve_aspects["rhythm"], "rhythm"))
+        if len(narrative_bits) == 2:
+            a, b = narrative_bits
+            if a.lower().startswith("narrative ") and b.lower().startswith("narrative "):
+                a_tail = a[len("narrative "):].strip()
+                b_tail = b[len("narrative "):].strip()
+                narrative_bits = [f"narrative {a_tail} and {b_tail}"]
+        preserve_phrases.extend(narrative_bits)
+
+        preserve_clause = ""
+        if preserve_phrases:
+            if len(preserve_phrases) == 1:
+                preserve_clause = f"Preserve {preserve_phrases[0]}"
+            elif len(preserve_phrases) == 2:
+                preserve_clause = f"Preserve {preserve_phrases[0]} and {preserve_phrases[1]}"
+            else:
+                preserve_clause = "Preserve " + "; ".join(preserve_phrases[:-1]) + f"; {preserve_phrases[-1]}"
+
+        avoid_items: List[str] = []
+        dialogue_qual = False
+        for rest in avoid_rests:
+            rl = rest.lower()
+            if "dialogue" in rl:
+                dialogue_qual = True
+            base = rest
+            q_match = re.search(r"(?i)\b(?:except|unless)\b.*$", base)
+            if q_match:
+                base = base[:q_match.start()].strip(" ,;")
+                if "dialogue" in q_match.group(0).lower():
+                    dialogue_qual = True
+            looks_like_list = ("," in base) or bool(re.search(r"(?i)\b(?:and|or)\b", base))
+            starts_with_verb = bool(re.match(r"(?i)^(introduc|adding|add|insert|introduce|introducing)\b", base.strip()))
+            if looks_like_list and not starts_with_verb:
+                tmp = re.sub(r"(?i)\b(?:and|or)\b", ",", base)
+                parts = [re.sub(r"\s+", " ", p.strip(" ,;")) for p in tmp.split(",")]
+                avoid_items.extend([p for p in parts if p])
+            else:
+                base_clean = re.sub(r"\s+", " ", base.strip(" ,;"))
+                if base_clean:
+                    avoid_items.append(base_clean)
+
+        seen_items = set()
+        avoid_deduped: List[str] = []
+        for item in avoid_items:
+            key = item.lower()
+            if key in seen_items:
+                continue
+            seen_items.add(key)
+            avoid_deduped.append(item)
+
+        # Drop verb-phrased avoids like "introducing informal or emotional language" when their
+        # semantic content is already covered by other avoid items.
+        ignore_tokens = {"introduce", "introducing", "adding", "add", "insert", "language"}
+        token_sets = [set(norm_tokens(i)) - ignore_tokens for i in avoid_deduped]
+        filtered_avoid: List[str] = []
+        for i, item in enumerate(avoid_deduped):
+            tl = item.lower().strip()
+            starts_like_verb = tl.startswith(("introduc", "add", "insert"))
+            if starts_like_verb and token_sets[i]:
+                other = set().union(*(token_sets[j] for j in range(len(token_sets)) if j != i))
+                if token_sets[i].issubset(other):
+                    continue
+            filtered_avoid.append(item)
+        avoid_deduped = filtered_avoid
+
+        avoid_clause = ""
+        if avoid_deduped:
+            avoid_clause = "Avoid " + ", ".join(avoid_deduped[:-1]) + (f", and {avoid_deduped[-1]}" if len(avoid_deduped) > 1 else avoid_deduped[0])
+            if dialogue_qual:
+                avoid_clause += " (unless in dialogue)"
+
+        merged: List[str] = []
+        if preserve_clause:
+            merged.append(preserve_clause)
+        if avoid_clause:
+            merged.append(avoid_clause)
+        merged.extend(other_clauses)
+        deduped = merged or deduped
+
     cleaned = "; ".join(deduped)
     if cleaned and cleaned[-1] not in ".;:":
         cleaned += "."
@@ -288,6 +474,7 @@ def normalize_priority_order(value: Any, conf: Dict[str, Any] | None = None) -> 
         exclude = {str(item).lower() for item in exclude_tokens if isinstance(item, (str, int, float))}
     else:
         exclude = set()
+    exclude.update({"lexical", "syntactic", "rhetorical"})
     items: List[str] = []
     for item in raw_items:
         if not isinstance(item, str):

@@ -29,6 +29,7 @@ Notes:
 from __future__ import annotations
 
 import argparse
+import math
 import copy
 import collections
 import dataclasses
@@ -210,6 +211,10 @@ def parse_list_lines(text: str) -> List[str]:
         if line:
             items.append(line)
     return items
+
+
+def parse_avoid_list(text: str) -> List[str]:
+    return parse_list_lines(text)
 
 
 def load_avoid_list() -> List[str]:
@@ -497,6 +502,192 @@ def normalize_rewrite_policy(text: str, conf: Optional[Dict[str, Any]] = None) -
 
     if not deduped:
         return policy
+
+    # Optional higher-level compaction: merge repeated preserve/avoid directives into a
+    # smaller set of clauses. This keeps the policy interpretable while reducing noise.
+    compress_directives = bool(conf.get("compress_directives", True))
+    if compress_directives and len(clauses) > 1:
+        def split_directive(clause: str) -> tuple[Optional[str], str]:
+            c = clause.strip()
+            m = re.match(
+                r"(?i)^(do not|don't|preserve|avoid|maintain|ensure|keep|favor|use|prefer|minimize|maximize)\b",
+                c
+            )
+            if not m:
+                return None, c
+            verb = m.group(1).lower()
+            rest = c[m.end():].strip(" :-\t")
+            return verb, rest
+
+        preserve_rests: List[str] = []
+        avoid_rests: List[str] = []
+        other_clauses: List[str] = []
+
+        # Use the pre-deduped clauses to avoid losing unique aspects (e.g., "structure")
+        # when two preserve clauses have high lexical overlap.
+        for clause in clauses:
+            verb, rest = split_directive(clause)
+            if verb in ("preserve", "maintain", "ensure", "keep") and rest:
+                preserve_rests.append(rest)
+            elif verb in ("avoid", "do not", "don't") and rest:
+                avoid_rests.append(rest)
+
+        for clause in deduped:
+            verb, rest = split_directive(clause)
+            if verb in ("preserve", "maintain", "ensure", "keep", "avoid", "do not", "don't") and rest:
+                continue
+            other_clauses.append(clause)
+
+        def score_phrase(s: str) -> int:
+            return len([t for t in norm_tokens(s) if t])
+
+        aspect_penalties: Dict[str, List[str]] = {
+            "details": ["structure", "rhythm"],
+            "structure": ["detail", "details", "rhythm"],
+            "rhythm": ["detail", "details", "structure"],
+        }
+
+        def aspect_score(aspect: str, phrase: str) -> float:
+            base = float(score_phrase(phrase))
+            pl = phrase.lower()
+            penalty = 0.0
+            for kw in aspect_penalties.get(aspect, []):
+                if kw in pl:
+                    penalty += 2.0
+            return base - penalty
+
+        def pick_best(existing: Optional[str], candidate: str, aspect: Optional[str] = None) -> str:
+            if not existing:
+                return candidate
+            if len(candidate) > 140:
+                return existing
+            if aspect:
+                if aspect_score(aspect, candidate) > aspect_score(aspect, existing):
+                    return candidate
+            elif score_phrase(candidate) > score_phrase(existing):
+                return candidate
+            return existing
+
+        preserve_aspects: Dict[str, str] = {}
+        for rest in preserve_rests:
+            rl = rest.lower()
+            if "tone" in rl:
+                preserve_aspects["tone"] = pick_best(preserve_aspects.get("tone"), rest, "tone")
+            if "detail" in rl:
+                preserve_aspects["details"] = pick_best(preserve_aspects.get("details"), rest, "details")
+            if "accuracy" in rl:
+                preserve_aspects["accuracy"] = pick_best(preserve_aspects.get("accuracy"), rest, "accuracy")
+            if "clarity" in rl:
+                preserve_aspects["clarity"] = pick_best(preserve_aspects.get("clarity"), rest, "clarity")
+            if "realism" in rl:
+                preserve_aspects["realism"] = pick_best(preserve_aspects.get("realism"), rest, "realism")
+            if "structure" in rl:
+                preserve_aspects["structure"] = pick_best(preserve_aspects.get("structure"), rest, "structure")
+            if "rhythm" in rl:
+                preserve_aspects["rhythm"] = pick_best(preserve_aspects.get("rhythm"), rest, "rhythm")
+
+        def extract_segment(phrase: str, keyword: str) -> str:
+            pl = phrase.lower()
+            keyword_hits = [keyword]
+            if keyword == "details":
+                keyword_hits = ["detail", "details"]
+            if not any(k in pl for k in keyword_hits):
+                return phrase
+            if keyword in ("structure", "rhythm") or (keyword == "details" and ("structure" in pl or "rhythm" in pl)):
+                parts = re.split(r"(?i)\band\b", phrase)
+                for p in parts:
+                    if any(k in p.lower() for k in keyword_hits):
+                        return re.sub(r"\s+", " ", p.strip(" ,;"))
+            return re.sub(r"\s+", " ", phrase.strip(" ,;"))
+
+        preserve_phrases: List[str] = []
+        for key in ("tone", "details", "accuracy", "clarity", "realism"):
+            if key in preserve_aspects:
+                preserve_phrases.append(extract_segment(preserve_aspects[key], key))
+
+        narrative_bits: List[str] = []
+        if "structure" in preserve_aspects:
+            narrative_bits.append(extract_segment(preserve_aspects["structure"], "structure"))
+        if "rhythm" in preserve_aspects:
+            narrative_bits.append(extract_segment(preserve_aspects["rhythm"], "rhythm"))
+        if len(narrative_bits) == 2:
+            a, b = narrative_bits
+            if a.lower().startswith("narrative ") and b.lower().startswith("narrative "):
+                a_tail = a[len("narrative "):].strip()
+                b_tail = b[len("narrative "):].strip()
+                narrative_bits = [f"narrative {a_tail} and {b_tail}"]
+        preserve_phrases.extend(narrative_bits)
+
+        preserve_clause = ""
+        if preserve_phrases:
+            if len(preserve_phrases) == 1:
+                preserve_clause = f"Preserve {preserve_phrases[0]}"
+            elif len(preserve_phrases) == 2:
+                preserve_clause = f"Preserve {preserve_phrases[0]} and {preserve_phrases[1]}"
+            else:
+                preserve_clause = "Preserve " + "; ".join(preserve_phrases[:-1]) + f"; {preserve_phrases[-1]}"
+
+        avoid_items: List[str] = []
+        dialogue_qual = False
+        for rest in avoid_rests:
+            rl = rest.lower()
+            if "dialogue" in rl:
+                dialogue_qual = True
+            base = rest
+            q_match = re.search(r"(?i)\b(?:except|unless)\b.*$", base)
+            if q_match:
+                base = base[:q_match.start()].strip(" ,;")
+                if "dialogue" in q_match.group(0).lower():
+                    dialogue_qual = True
+            looks_like_list = ("," in base) or bool(re.search(r"(?i)\b(?:and|or)\b", base))
+            starts_with_verb = bool(re.match(r"(?i)^(introduc|adding|add|insert|introduce|introducing)\b", base.strip()))
+            if looks_like_list and not starts_with_verb:
+                tmp = re.sub(r"(?i)\b(?:and|or)\b", ",", base)
+                parts = [re.sub(r"\s+", " ", p.strip(" ,;")) for p in tmp.split(",")]
+                avoid_items.extend([p for p in parts if p])
+            else:
+                base_clean = re.sub(r"\s+", " ", base.strip(" ,;"))
+                if base_clean:
+                    avoid_items.append(base_clean)
+
+        seen_items = set()
+        avoid_deduped: List[str] = []
+        for item in avoid_items:
+            key = item.lower()
+            if key in seen_items:
+                continue
+            seen_items.add(key)
+            avoid_deduped.append(item)
+
+        # Drop verb-phrased avoids like "introducing informal or emotional language" when their
+        # semantic content is already covered by other avoid items.
+        ignore_tokens = {"introduce", "introducing", "adding", "add", "insert", "language"}
+        token_sets = [set(norm_tokens(i)) - ignore_tokens for i in avoid_deduped]
+        filtered_avoid: List[str] = []
+        for i, item in enumerate(avoid_deduped):
+            tl = item.lower().strip()
+            starts_like_verb = tl.startswith(("introduc", "add", "insert"))
+            if starts_like_verb and token_sets[i]:
+                other = set().union(*(token_sets[j] for j in range(len(token_sets)) if j != i))
+                if token_sets[i].issubset(other):
+                    continue
+            filtered_avoid.append(item)
+        avoid_deduped = filtered_avoid
+
+        avoid_clause = ""
+        if avoid_deduped:
+            avoid_clause = "Avoid " + ", ".join(avoid_deduped[:-1]) + (f", and {avoid_deduped[-1]}" if len(avoid_deduped) > 1 else avoid_deduped[0])
+            if dialogue_qual:
+                avoid_clause += " (unless in dialogue)"
+
+        merged: List[str] = []
+        if preserve_clause:
+            merged.append(preserve_clause)
+        if avoid_clause:
+            merged.append(avoid_clause)
+        merged.extend(other_clauses)
+        deduped = merged or deduped
+
     cleaned = "; ".join(deduped)
     if cleaned and cleaned[-1] not in ".;:":
         cleaned += "."
@@ -522,6 +713,7 @@ def normalize_priority_order(value: Any, conf: Optional[Dict[str, Any]] = None) 
         exclude = {str(item).lower() for item in exclude_tokens if isinstance(item, (str, int, float))}
     else:
         exclude = set()
+    exclude.update({"lexical", "syntactic", "rhetorical"})
     items: List[str] = []
     for item in raw_items:
         if not isinstance(item, str):
@@ -543,8 +735,6 @@ def normalize_priority_order(value: Any, conf: Optional[Dict[str, Any]] = None) 
         seen.add(key)
         deduped.append(item)
     return deduped
-    else:
-        lexicon.pop("avoid_words_soft", None)
 
 
 def merge_avoid_list_into_hints(
@@ -1700,6 +1890,231 @@ def compute_measurements(
     return measurements
 
 
+def _entropy_counts(counts: Dict[str, int]) -> float:
+    total = sum(v for v in counts.values() if isinstance(v, int) and v > 0)
+    if total <= 0:
+        return 0.0
+    ent = 0.0
+    for v in counts.values():
+        if not isinstance(v, int) or v <= 0:
+            continue
+        p = v / total
+        ent -= p * math.log(p, 2)
+    return ent
+
+
+def _quantile(sorted_vals: List[float], q: float) -> float:
+    if not sorted_vals:
+        return 0.0
+    if q <= 0:
+        return float(sorted_vals[0])
+    if q >= 1:
+        return float(sorted_vals[-1])
+    n = len(sorted_vals)
+    pos = (n - 1) * q
+    lo = int(math.floor(pos))
+    hi = int(math.ceil(pos))
+    if lo == hi:
+        return float(sorted_vals[lo])
+    frac = pos - lo
+    return float(sorted_vals[lo] * (1.0 - frac) + sorted_vals[hi] * frac)
+
+
+def compute_humanization_baseline(
+    texts: List[str],
+    conf: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Compute windowed (rolling) variability baselines from the corpus itself.
+
+    This is embedded into the fingerprint for auditability/control, but is intended
+    to be stripped from what the LLM "sees" during rewriting.
+    """
+    conf = conf or {}
+    enabled = bool(conf.get("enabled", True))
+    if not enabled:
+        return {"enabled": False, "notes": ["Disabled via tunables."]}
+
+    window_words = int(conf.get("window_words", 800))
+    stride_words = int(conf.get("stride_words", 400))
+    min_window_words = int(conf.get("min_window_words", 250))
+    max_windows = int(conf.get("max_windows", 200))
+
+    window_words = max(50, window_words)
+    stride_words = max(25, stride_words)
+    min_window_words = max(50, min_window_words)
+    max_windows = max(10, max_windows)
+
+    # Paragraph-driven rolling windows to preserve punctuation/sentence structure.
+    paras: List[str] = []
+    para_words: List[int] = []
+    for t in texts:
+        for p in split_paragraphs(t):
+            if not p.strip():
+                continue
+            wc = len(words(p))
+            if wc <= 0:
+                continue
+            paras.append(p)
+            para_words.append(wc)
+
+    if not paras:
+        return {
+            "enabled": True,
+            "windowing": {
+                "window_words": window_words,
+                "stride_words": stride_words,
+                "min_window_words": min_window_words,
+                "max_windows": max_windows,
+                "windows_used": 0
+            },
+            "metrics": {},
+            "notes": ["No usable paragraphs for baseline computation."]
+        }
+
+    def window_metrics(text: str) -> Dict[str, float]:
+        toks = [w.lower() for w in words(text)]
+        total_w = len(toks)
+
+        sents = split_sentences(text)
+        sent_lens = [len(words(s)) for s in sents] if sents else []
+        sent_mean = (sum(sent_lens) / len(sent_lens)) if sent_lens else 0.0
+        sent_stdev = statistics.pstdev(sent_lens) if len(sent_lens) > 1 else 0.0
+        sent_burst = (sent_stdev / sent_mean) if sent_mean > 0 else 0.0
+
+        ps = split_paragraphs(text)
+        para_sent_counts = [len(split_sentences(p)) for p in ps] if ps else []
+        para_mean = (sum(para_sent_counts) / len(para_sent_counts)) if para_sent_counts else 0.0
+        para_stdev = statistics.pstdev(para_sent_counts) if len(para_sent_counts) > 1 else 0.0
+        para_burst = (para_stdev / para_mean) if para_mean > 0 else 0.0
+        one_sent_rate = (sum(1 for n in para_sent_counts if n == 1) / max(1, len(para_sent_counts))) if para_sent_counts else 0.0
+
+        # Repetition (simple n-gram uniqueness ratio).
+        big_total = max(0, len(toks) - 1)
+        tri_total = max(0, len(toks) - 2)
+        big_unique = len(set(zip(toks, toks[1:]))) if big_total else 0
+        tri_unique = len(set(zip(toks, toks[1:], toks[2:]))) if tri_total else 0
+        big_repeat = (1.0 - (big_unique / big_total)) if big_total > 0 else 0.0
+        tri_repeat = (1.0 - (tri_unique / tri_total)) if tri_total > 0 else 0.0
+
+        # Punctuation entropy/variety and density rates.
+        punct_keys = [",", ";", ":", "!", "?", "(", ")", "\"", "'", "—"]
+        punct_counts = {k: text.count(k) for k in punct_keys}
+        punct_entropy = _entropy_counts({k: int(v) for k, v in punct_counts.items() if isinstance(v, int)})
+        punct_variety = float(sum(1 for v in punct_counts.values() if isinstance(v, int) and v > 0))
+        commas = int(punct_counts.get(",", 0))
+        semicolons = int(punct_counts.get(";", 0))
+        colons = int(punct_counts.get(":", 0))
+        exclamations = int(punct_counts.get("!", 0))
+        questions = int(punct_counts.get("?", 0))
+        em_dashes = int(punct_counts.get("—", 0))
+        per_1000 = 1000.0 / max(1.0, float(total_w))
+        commas_per_1000w = commas * per_1000
+        semicolons_per_1000w = semicolons * per_1000
+        colons_per_1000w = colons * per_1000
+        exclamations_per_1000w = exclamations * per_1000
+        questions_per_1000w = questions * per_1000
+        em_dashes_per_1000w = em_dashes * per_1000
+        comma_density_per_100w = commas / max(1.0, float(total_w)) * 100.0
+
+        # Char trigram entropy (orthographic texture).
+        letters_only = re.sub(r"[^a-zA-Z]+", "", text.lower())
+        trigram_counts: Dict[str, int] = {}
+        if len(letters_only) >= 3:
+            trigram_counts = dict(collections.Counter(letters_only[i:i+3] for i in range(len(letters_only) - 3 + 1)))
+        char_tri_entropy = _entropy_counts({k: int(v) for k, v in trigram_counts.items()})
+
+        # Lexical diversity + average word length.
+        ttr = (len(set(toks)) / total_w) if total_w > 0 else 0.0
+        avg_word_len = (sum(len(w) for w in toks) / total_w) if total_w > 0 else 0.0
+
+        return {
+            "token_count": float(total_w),
+            "type_token_ratio": float(ttr),
+            "avg_word_length": float(avg_word_len),
+            "sentence_length_mean": float(sent_mean),
+            "sentence_length_stdev": float(sent_stdev),
+            "sentence_burstiness": float(sent_burst),
+            "paragraph_length_mean": float(para_mean),
+            "paragraph_length_stdev": float(para_stdev),
+            "paragraph_burstiness": float(para_burst),
+            "one_sentence_paragraph_rate": float(one_sent_rate),
+            "bigram_repeat_rate": float(big_repeat),
+            "trigram_repeat_rate": float(tri_repeat),
+            "punctuation_variety": float(punct_variety),
+            "punctuation_entropy": float(punct_entropy),
+            "punctuation_commas_per_1000w": float(commas_per_1000w),
+            "punctuation_semicolons_per_1000w": float(semicolons_per_1000w),
+            "punctuation_colons_per_1000w": float(colons_per_1000w),
+            "punctuation_exclamations_per_1000w": float(exclamations_per_1000w),
+            "punctuation_questions_per_1000w": float(questions_per_1000w),
+            "punctuation_em_dashes_per_1000w": float(em_dashes_per_1000w),
+            "comma_density_per_100w": float(comma_density_per_100w),
+            "char_trigram_entropy": float(char_tri_entropy),
+        }
+
+    # Sliding window over paragraphs with stride in words.
+    metrics_series: Dict[str, List[float]] = {}
+    start = 0
+    windows_used = 0
+    while start < len(paras) and windows_used < max_windows:
+        end = start
+        wsum = 0
+        while end < len(paras) and wsum < window_words:
+            wsum += para_words[end]
+            end += 1
+        if wsum < min_window_words:
+            break
+        wtext = "\n\n".join(paras[start:end]).strip()
+        if not wtext:
+            break
+        wm = window_metrics(wtext)
+        for k, v in wm.items():
+            metrics_series.setdefault(k, []).append(float(v))
+        windows_used += 1
+
+        # Advance start by stride_words (approx) using paragraph word counts.
+        adv = 0
+        while start < len(paras) and adv < stride_words:
+            adv += para_words[start]
+            start += 1
+
+    metrics_summary: Dict[str, Any] = {}
+    for key, vals in metrics_series.items():
+        vals = [float(v) for v in vals if isinstance(v, (int, float)) and math.isfinite(float(v))]
+        if not vals:
+            continue
+        vals_sorted = sorted(vals)
+        metrics_summary[key] = {
+            "min": float(vals_sorted[0]),
+            "max": float(vals_sorted[-1]),
+            "mean": float(sum(vals_sorted) / len(vals_sorted)),
+            "stdev": float(statistics.pstdev(vals_sorted) if len(vals_sorted) > 1 else 0.0),
+            "p10": _quantile(vals_sorted, 0.10),
+            "p25": _quantile(vals_sorted, 0.25),
+            "p50": _quantile(vals_sorted, 0.50),
+            "p75": _quantile(vals_sorted, 0.75),
+            "p90": _quantile(vals_sorted, 0.90),
+            "n": len(vals_sorted)
+        }
+
+    return {
+        "enabled": True,
+        "windowing": {
+            "window_words": window_words,
+            "stride_words": stride_words,
+            "min_window_words": min_window_words,
+            "max_windows": max_windows,
+            "windows_used": windows_used
+        },
+        "metrics": metrics_summary,
+        "notes": [
+            "Baseline metrics are computed over rolling paragraph windows to capture natural within-author variability.",
+            "These are intended for controller logic and auditability, not for direct LLM prompting."
+        ]
+    }
+
+
 def compute_token_capitalization_ratios(
     texts: List[str],
     token_set: set[str]
@@ -2753,6 +3168,14 @@ def main() -> int:
 
         # Always embed measurements (verbatim local measurements)
         fingerprint["measurements"] = measurements
+        # Embed corpus-derived windowed baselines for later controller logic. This is
+        # *not* intended to be sent to the LLM during rewriting.
+        baseline_conf = {}
+        if isinstance(tunables_snapshot, dict):
+            baseline_conf = tunables_snapshot.get("humanization_baseline", {}) or {}
+        baseline = compute_humanization_baseline(texts, baseline_conf if isinstance(baseline_conf, dict) else None)
+        if isinstance(fingerprint.get("measurements"), dict):
+            fingerprint["measurements"]["humanization_baseline"] = baseline
         normalize_lexicon_avoids(fingerprint, measurements, lexicon_hints, avoid_list)
         controls = fingerprint.get("controls")
         controls_norm = {}

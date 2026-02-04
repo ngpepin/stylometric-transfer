@@ -107,7 +107,11 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Includes bounded stochastic variance controls (seeded micro‑operations)
   - Includes style retry controls (delta‑feedback retries)
   - Includes humanization metric weights for the aggregate 0–100 score
+  - Includes corpus-derived humanization baseline settings (rolling windows embedded in fingerprints for auditability; stripped from what the LLM sees during rewriting)
+  - Includes humanization controller overlays (per-chunk target variation derived from baseline)
   - Includes chunking caps (max input tokens per chunk)
+  - Includes chunk-recovery split controls when the LLM repeatedly returns invalid output
+  - Includes variance-aware chunk sizing (smaller chunks for higher-variance styles)
   - Includes lexical signal limits (rare word list size)
   - Includes lexical avoidance limits (rare word list size)
   - Includes controls normalization (rewrite-policy de-dup + priority-order filtering)
@@ -379,10 +383,12 @@ Recommended additions:
 - JSON validity tests
 
 Current smoke test:
-- `tests/run_smoke.sh` — end-to-end pipeline using small fixtures (requires valid `config.llm.json`)
+- `tests/run_smoke.sh` — end-to-end pipeline using small fixtures plus an LLM connectivity check (requires valid `config.llm.json`)
 
 Regression suite:
 - `tests/test_v1_1_0_regression.py` (run via `./tests/run_v1_1_0_regression.sh`; executed automatically by `run_smoke.sh`)
+- `tests/test_v1_5_X_regression.py` (run via `./tests/run_v1_5_X_regression.sh`; executed automatically by `run_smoke.sh`)
+- `tests/test_v1_7_X_regression.py` (run via `./tests/run_v1_7_X_regression.sh`; executed automatically by `run_smoke.sh`)
 
 ---
 

@@ -380,6 +380,200 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
 
     if not deduped:
         return policy
+
+    # Optional higher-level compaction: merge repeated preserve/avoid directives into a
+    # smaller set of clauses. This keeps the policy interpretable while reducing noise.
+    compress_directives = bool(conf.get("compress_directives", True))
+    if compress_directives and len(clauses) > 1:
+        def split_directive(clause: str) -> tuple[str | None, str]:
+            c = clause.strip()
+            m = re.match(
+                r"(?i)^(do not|don't|preserve|avoid|maintain|ensure|keep|favor|use|prefer|minimize|maximize)\b",
+                c
+            )
+            if not m:
+                return None, c
+            verb = m.group(1).lower()
+            rest = c[m.end():].strip(" :-\t")
+            return verb, rest
+
+        preserve_rests: List[str] = []
+        avoid_rests: List[str] = []
+        other_clauses: List[str] = []
+
+        # Use the pre-deduped clauses to avoid losing unique aspects (e.g., "structure")
+        # when two preserve clauses have high lexical overlap.
+        for clause in clauses:
+            verb, rest = split_directive(clause)
+            if verb in ("preserve", "maintain", "ensure", "keep") and rest:
+                preserve_rests.append(rest)
+            elif verb in ("avoid", "do not", "don't") and rest:
+                avoid_rests.append(rest)
+
+        for clause in deduped:
+            verb, rest = split_directive(clause)
+            if verb in ("preserve", "maintain", "ensure", "keep", "avoid", "do not", "don't") and rest:
+                continue
+            other_clauses.append(clause)
+
+        def score_phrase(s: str) -> int:
+            return len([t for t in norm_tokens(s) if t])
+
+        # Prefer phrases that describe the intended aspect without dragging in other aspects.
+        aspect_penalties: Dict[str, List[str]] = {
+            "details": ["structure", "rhythm"],
+            "structure": ["detail", "details", "rhythm"],
+            "rhythm": ["detail", "details", "structure"],
+        }
+
+        def aspect_score(aspect: str, phrase: str) -> float:
+            base = float(score_phrase(phrase))
+            pl = phrase.lower()
+            penalty = 0.0
+            for kw in aspect_penalties.get(aspect, []):
+                if kw in pl:
+                    penalty += 2.0
+            return base - penalty
+
+        def pick_best(existing: str | None, candidate: str, aspect: str | None = None) -> str:
+            if not existing:
+                return candidate
+            # Prefer a slightly more informative phrase, but don't balloon.
+            if len(candidate) > 140:
+                return existing
+            if aspect:
+                if aspect_score(aspect, candidate) > aspect_score(aspect, existing):
+                    return candidate
+            elif score_phrase(candidate) > score_phrase(existing):
+                return candidate
+            return existing
+
+        preserve_aspects: Dict[str, str] = {}
+        for rest in preserve_rests:
+            rl = rest.lower()
+            if "tone" in rl:
+                preserve_aspects["tone"] = pick_best(preserve_aspects.get("tone"), rest, "tone")
+            if "detail" in rl:
+                preserve_aspects["details"] = pick_best(preserve_aspects.get("details"), rest, "details")
+            if "accuracy" in rl:
+                preserve_aspects["accuracy"] = pick_best(preserve_aspects.get("accuracy"), rest, "accuracy")
+            if "clarity" in rl:
+                preserve_aspects["clarity"] = pick_best(preserve_aspects.get("clarity"), rest, "clarity")
+            if "realism" in rl:
+                preserve_aspects["realism"] = pick_best(preserve_aspects.get("realism"), rest, "realism")
+            if "structure" in rl:
+                preserve_aspects["structure"] = pick_best(preserve_aspects.get("structure"), rest, "structure")
+            if "rhythm" in rl:
+                preserve_aspects["rhythm"] = pick_best(preserve_aspects.get("rhythm"), rest, "rhythm")
+
+        def extract_segment(phrase: str, keyword: str) -> str:
+            # For some aspects, keep only the segment that contains the keyword to avoid
+            # leaking other aspects into the same phrase (e.g., "technical detail and narrative rhythm").
+            pl = phrase.lower()
+            keyword_hits = [keyword]
+            if keyword == "details":
+                keyword_hits = ["detail", "details"]
+            if not any(k in pl for k in keyword_hits):
+                return phrase
+            if keyword in ("structure", "rhythm") or (keyword == "details" and ("structure" in pl or "rhythm" in pl)):
+                parts = re.split(r"(?i)\band\b", phrase)
+                for p in parts:
+                    if any(k in p.lower() for k in keyword_hits):
+                        return re.sub(r"\s+", " ", p.strip(" ,;"))
+            return re.sub(r"\s+", " ", phrase.strip(" ,;"))
+
+        preserve_phrases: List[str] = []
+        for key in ("tone", "details", "accuracy", "clarity", "realism"):
+            if key in preserve_aspects:
+                preserve_phrases.append(extract_segment(preserve_aspects[key], key))
+
+        narrative_bits: List[str] = []
+        if "structure" in preserve_aspects:
+            narrative_bits.append(extract_segment(preserve_aspects["structure"], "structure"))
+        if "rhythm" in preserve_aspects:
+            narrative_bits.append(extract_segment(preserve_aspects["rhythm"], "rhythm"))
+        # Collapse "narrative structure" + "narrative rhythm" -> "narrative structure and rhythm"
+        if len(narrative_bits) == 2:
+            a, b = narrative_bits
+            if a.lower().startswith("narrative ") and b.lower().startswith("narrative "):
+                a_tail = a[len("narrative "):].strip()
+                b_tail = b[len("narrative "):].strip()
+                narrative_bits = [f"narrative {a_tail} and {b_tail}"]
+        preserve_phrases.extend(narrative_bits)
+
+        preserve_clause = ""
+        if preserve_phrases:
+            if len(preserve_phrases) == 1:
+                preserve_clause = f"Preserve {preserve_phrases[0]}"
+            elif len(preserve_phrases) == 2:
+                preserve_clause = f"Preserve {preserve_phrases[0]} and {preserve_phrases[1]}"
+            else:
+                preserve_clause = "Preserve " + "; ".join(preserve_phrases[:-1]) + f"; {preserve_phrases[-1]}"
+
+        avoid_items: List[str] = []
+        dialogue_qual = False
+        for rest in avoid_rests:
+            rl = rest.lower()
+            if "dialogue" in rl:
+                dialogue_qual = True
+            base = rest
+            q_match = re.search(r"(?i)\b(?:except|unless)\b.*$", base)
+            if q_match:
+                base = base[:q_match.start()].strip(" ,;")
+                if "dialogue" in q_match.group(0).lower():
+                    dialogue_qual = True
+            # Only split into list items when it looks like an actual list, and avoid
+            # breaking verb phrases like "introducing informal ...".
+            looks_like_list = ("," in base) or bool(re.search(r"(?i)\b(?:and|or)\b", base))
+            starts_with_verb = bool(re.match(r"(?i)^(introduc|adding|add|insert|introduce|introducing)\b", base.strip()))
+            if looks_like_list and not starts_with_verb:
+                tmp = re.sub(r"(?i)\b(?:and|or)\b", ",", base)
+                parts = [re.sub(r"\s+", " ", p.strip(" ,;")) for p in tmp.split(",")]
+                avoid_items.extend([p for p in parts if p])
+            else:
+                base_clean = re.sub(r"\s+", " ", base.strip(" ,;"))
+                if base_clean:
+                    avoid_items.append(base_clean)
+
+        # Dedupe avoid items (case-insensitive).
+        seen_items = set()
+        avoid_deduped: List[str] = []
+        for item in avoid_items:
+            key = item.lower()
+            if key in seen_items:
+                continue
+            seen_items.add(key)
+            avoid_deduped.append(item)
+
+        # Drop verb-phrased avoids like "introducing informal or emotional language" when their
+        # semantic content is already covered by other avoid items.
+        ignore_tokens = {"introduce", "introducing", "adding", "add", "insert", "language"}
+        token_sets = [set(norm_tokens(i)) - ignore_tokens for i in avoid_deduped]
+        filtered_avoid: List[str] = []
+        for i, item in enumerate(avoid_deduped):
+            tl = item.lower().strip()
+            starts_like_verb = tl.startswith(("introduc", "add", "insert"))
+            if starts_like_verb and token_sets[i]:
+                other = set().union(*(token_sets[j] for j in range(len(token_sets)) if j != i))
+                if token_sets[i].issubset(other):
+                    continue
+            filtered_avoid.append(item)
+        avoid_deduped = filtered_avoid
+
+        avoid_clause = ""
+        if avoid_deduped:
+            avoid_clause = "Avoid " + ", ".join(avoid_deduped[:-1]) + (f", and {avoid_deduped[-1]}" if len(avoid_deduped) > 1 else avoid_deduped[0])
+            if dialogue_qual:
+                avoid_clause += " (unless in dialogue)"
+
+        merged: List[str] = []
+        if preserve_clause:
+            merged.append(preserve_clause)
+        if avoid_clause:
+            merged.append(avoid_clause)
+        merged.extend(other_clauses)
+        deduped = merged or deduped
+
     cleaned = "; ".join(deduped)
     if cleaned and cleaned[-1] not in ".;:":
         cleaned += "."
@@ -405,6 +599,7 @@ def normalize_priority_order(value: Any, conf: Dict[str, Any] | None = None) -> 
         exclude = {str(item).lower() for item in exclude_tokens if isinstance(item, (str, int, float))}
     else:
         exclude = set()
+    exclude.update({"lexical", "syntactic", "rhetorical"})
     items: List[str] = []
     for item in raw_items:
         if not isinstance(item, str):
@@ -426,6 +621,286 @@ def normalize_priority_order(value: Any, conf: Dict[str, Any] | None = None) -> 
         seen.add(key)
         deduped.append(item)
     return deduped
+
+
+def _baseline_quantile(stats: Dict[str, Any], q: float) -> float | None:
+    if not isinstance(stats, dict):
+        return None
+    points = []
+    for key, pct in (("p10", 0.10), ("p25", 0.25), ("p50", 0.50), ("p75", 0.75), ("p90", 0.90)):
+        val = stats.get(key)
+        if isinstance(val, (int, float)):
+            points.append((pct, float(val)))
+    if not points:
+        mean = stats.get("mean")
+        return float(mean) if isinstance(mean, (int, float)) else None
+    points.sort(key=lambda x: x[0])
+    if q <= points[0][0]:
+        return points[0][1]
+    if q >= points[-1][0]:
+        return points[-1][1]
+    for (x0, y0), (x1, y1) in zip(points, points[1:]):
+        if x0 <= q <= x1:
+            if x1 == x0:
+                return y0
+            t = (q - x0) / (x1 - x0)
+            return y0 * (1.0 - t) + y1 * t
+    return points[-1][1]
+
+
+def _clamp_range(low: float, high: float, lo: float | None = None, hi: float | None = None) -> tuple[float, float]:
+    if lo is not None:
+        low = max(lo, low)
+        high = max(lo, high)
+    if hi is not None:
+        low = min(hi, low)
+        high = min(hi, high)
+    if high < low:
+        low, high = high, low
+    return low, high
+
+
+def build_controller_overlay(
+    fingerprint: Dict[str, Any],
+    tunables: Dict[str, Any] | None,
+    chunk_index: int | None,
+    chunk_text: str
+) -> tuple[Dict[str, Any] | None, Dict[str, Any] | None]:
+    if not isinstance(fingerprint, dict):
+        return None, None
+    baseline = fingerprint.get("measurements", {}).get("humanization_baseline")
+    if not isinstance(baseline, dict) or not baseline.get("enabled", False):
+        return None, None
+    conf = {}
+    if isinstance(tunables, dict):
+        conf = tunables.get("humanization_controller", {}) if isinstance(tunables.get("humanization_controller", {}), dict) else {}
+    if not conf or not conf.get("enabled", False):
+        return None, None
+
+    metrics = baseline.get("metrics", {})
+    if not isinstance(metrics, dict) or not metrics:
+        return None, None
+
+    allowed = conf.get("allowed_metrics")
+    if not isinstance(allowed, list) or not allowed:
+        allowed = [
+            "sentence_length_mean",
+            "sentence_length_stdev",
+            "one_sentence_paragraph_rate",
+            "comma_density_per_100w",
+            "punctuation_semicolons_per_1000w",
+            "punctuation_colons_per_1000w",
+            "punctuation_em_dashes_per_1000w"
+        ]
+
+    quantiles = conf.get("quantiles")
+    if not isinstance(quantiles, list) or not quantiles:
+        quantiles = [0.25, 0.5, 0.75]
+    quantiles = [float(q) for q in quantiles if isinstance(q, (int, float)) and 0 <= float(q) <= 1]
+    if not quantiles:
+        quantiles = [0.5]
+
+    range_pct = float(conf.get("range_pct", 0.15))
+    min_width = float(conf.get("min_width", 0.05))
+    max_width = float(conf.get("max_width", 6.0))
+
+    seed = int(conf.get("seed", 0))
+    if chunk_index is not None:
+        seed += int(chunk_index)
+    else:
+        seed += abs(hash(chunk_text)) % 100000
+    rng = random.Random(seed)
+
+    overlay_metrics: Dict[str, Any] = {}
+
+    for name in allowed:
+        stats = metrics.get(name)
+        if not isinstance(stats, dict):
+            continue
+        q = rng.choice(quantiles)
+        value = _baseline_quantile(stats, q)
+        if value is None:
+            continue
+        width = max(min_width, abs(value) * range_pct)
+        if max_width > 0:
+            width = min(width, max_width)
+        low = float(value - width)
+        high = float(value + width)
+        # Clamp ratios to [0,1]
+        if name in ("one_sentence_paragraph_rate",):
+            low, high = _clamp_range(low, high, 0.0, 1.0)
+        overlay_metrics[name] = {
+            "value": float(value),
+            "target": [low, high],
+            "quantile": q
+        }
+
+    if not overlay_metrics:
+        return None, None
+
+    # Apply to a fingerprint copy so the LLM sees chunk-specific targets.
+    fp_copy = copy.deepcopy(fingerprint)
+    targets = fp_copy.setdefault("targets", {})
+    if not isinstance(targets, dict):
+        targets = {}
+        fp_copy["targets"] = targets
+
+    def set_target(path: List[str], target: List[float]) -> None:
+        node = targets
+        for key in path[:-1]:
+            if not isinstance(node.get(key), dict):
+                node[key] = {}
+            node = node[key]
+        leaf = node.setdefault(path[-1], {})
+        if isinstance(leaf, dict):
+            leaf["target"] = target
+
+    for name, spec in overlay_metrics.items():
+        target = spec.get("target")
+        if not isinstance(target, list) or len(target) != 2:
+            continue
+        if name == "sentence_length_mean":
+            set_target(["sentence", "length_words_mean"], target)
+        elif name == "sentence_length_stdev":
+            set_target(["sentence", "length_words_stdev"], target)
+        elif name == "one_sentence_paragraph_rate":
+            set_target(["paragraph", "one_sentence_paragraph_rate"], target)
+        elif name == "comma_density_per_100w":
+            set_target(["punctuation", "comma_density_per_100w"], target)
+        elif name == "punctuation_semicolons_per_1000w":
+            set_target(["punctuation", "semicolons_per_1000w"], target)
+        elif name == "punctuation_colons_per_1000w":
+            set_target(["punctuation", "colons_per_1000w"], target)
+        elif name == "punctuation_em_dashes_per_1000w":
+            set_target(["punctuation", "em_dashes_per_1000w"], target)
+
+    overlay = {
+        "source": "humanization_baseline",
+        "metrics": overlay_metrics
+    }
+    return fp_copy, overlay
+
+
+def compute_overlay_observations(text: str) -> Dict[str, float]:
+    sents = split_sentences(text)
+    sent_lens = [len(words(s)) for s in sents] if sents else []
+    sent_mean = (sum(sent_lens) / len(sent_lens)) if sent_lens else 0.0
+    sent_stdev = statistics.pstdev(sent_lens) if len(sent_lens) > 1 else 0.0
+    paras = split_paragraphs(text)
+    para_lens = [len(split_sentences(p)) for p in paras] if paras else []
+    one_sentence_rate = sum(1 for n in para_lens if n == 1) / max(1, len(para_lens)) if para_lens else 0.0
+    word_list = words(text)
+    total_words = max(1, len(word_list))
+    punct_counts = {
+        "commas": text.count(","),
+        "semicolons": text.count(";"),
+        "colons": text.count(":"),
+        "exclamations": text.count("!"),
+        "questions": text.count("?"),
+        "em_dashes": text.count("—")
+    }
+    comma_density_per_100w = punct_counts["commas"] / total_words * 100.0
+    per_1000w = {k: v / total_words * 1000.0 for k, v in punct_counts.items()}
+    return {
+        "sentence_length_mean": float(sent_mean),
+        "sentence_length_stdev": float(sent_stdev),
+        "one_sentence_paragraph_rate": float(one_sentence_rate),
+        "comma_density_per_100w": float(comma_density_per_100w),
+        "punctuation_commas_per_1000w": float(per_1000w["commas"]),
+        "punctuation_semicolons_per_1000w": float(per_1000w["semicolons"]),
+        "punctuation_colons_per_1000w": float(per_1000w["colons"]),
+        "punctuation_exclamations_per_1000w": float(per_1000w["exclamations"]),
+        "punctuation_questions_per_1000w": float(per_1000w["questions"]),
+        "punctuation_em_dashes_per_1000w": float(per_1000w["em_dashes"])
+    }
+
+
+def build_overlay_feedback(
+    overlay: Dict[str, Any],
+    output_text: str,
+    conf: Dict[str, Any] | None
+) -> Dict[str, Any] | None:
+    if not overlay or not isinstance(overlay, dict):
+        return None
+    metrics = overlay.get("metrics")
+    if not isinstance(metrics, dict) or not metrics:
+        return None
+    conf = conf or {}
+    tolerance = float(conf.get("feedback_tolerance", 0.35))
+    observations = compute_overlay_observations(output_text)
+    deltas: List[Dict[str, Any]] = []
+    for name, spec in metrics.items():
+        if not isinstance(spec, dict):
+            continue
+        target = spec.get("target")
+        if not isinstance(target, list) or len(target) != 2:
+            continue
+        actual = observations.get(name)
+        if not isinstance(actual, (int, float)):
+            continue
+        low, high = float(target[0]), float(target[1])
+        if low <= actual <= high:
+            continue
+        span = max(1e-6, high - low)
+        if actual < low and (low - actual) / span < tolerance:
+            continue
+        if actual > high and (actual - high) / span < tolerance:
+            continue
+        direction = "increase" if actual < low else "decrease"
+        deltas.append({
+            "metric": name,
+            "target": [low, high],
+            "actual": float(actual),
+            "direction": direction
+        })
+    if not deltas:
+        return None
+    return {
+        "notes": "Chunk-level targets vary by design to match within-author variability.",
+        "deltas": deltas
+    }
+
+
+def compute_variance_aware_factor(
+    fingerprint: Dict[str, Any],
+    tunables: Dict[str, Any] | None
+) -> float:
+    if not isinstance(tunables, dict):
+        return 1.0
+    chunk_conf = tunables.get("chunking", {}) if isinstance(tunables.get("chunking", {}), dict) else {}
+    var_conf = chunk_conf.get("variance_aware", {}) if isinstance(chunk_conf.get("variance_aware", {}), dict) else {}
+    if not var_conf or not var_conf.get("enabled", False):
+        return 1.0
+    baseline = fingerprint.get("measurements", {}).get("humanization_baseline")
+    if not isinstance(baseline, dict) or not baseline.get("enabled", False):
+        return 1.0
+    metrics = baseline.get("metrics", {})
+    if not isinstance(metrics, dict):
+        return 1.0
+    stdev_ref = float(var_conf.get("sentence_stdev_ref", 18.0))
+    burst_ref = float(var_conf.get("paragraph_burst_ref", 0.7))
+    min_factor = float(var_conf.get("min_factor", 0.6))
+    max_factor = float(var_conf.get("max_factor", 1.0))
+    min_factor = max(0.1, min_factor)
+    max_factor = max(min_factor, max_factor)
+
+    sent_stdev = metrics.get("sentence_length_stdev", {})
+    para_burst = metrics.get("paragraph_burstiness", {})
+    sent_val = sent_stdev.get("mean") if isinstance(sent_stdev, dict) else None
+    para_val = para_burst.get("mean") if isinstance(para_burst, dict) else None
+    scores: List[float] = []
+    if isinstance(sent_val, (int, float)) and stdev_ref > 0:
+        scores.append(min(2.0, float(sent_val) / stdev_ref))
+    if isinstance(para_val, (int, float)) and burst_ref > 0:
+        scores.append(min(2.0, float(para_val) / burst_ref))
+    if not scores:
+        return 1.0
+    score = sum(scores) / len(scores)
+    if score <= 1.0:
+        return max_factor
+    # Map score (1..2) to factor (max_factor..min_factor).
+    t = min(1.0, score - 1.0)
+    return max(min_factor, max_factor - (max_factor - min_factor) * t)
 
 
 def should_forbid_em_dashes(tunables: Dict[str, Any] | None) -> bool:
@@ -1759,11 +2234,19 @@ def split_oversize_block(
     return chunks
 
 
-def chunk_markdown(markdown: str, build_messages_fn, max_prompt_tokens: int) -> List[str]:
+def chunk_markdown(
+    markdown: str,
+    build_messages_fn,
+    max_prompt_tokens: int,
+    max_input_tokens_override: int | None = None
+) -> List[str]:
     # Chunk by paragraph with a fixed character budget derived from prompt overhead.
-    base_messages = build_messages_fn("", True)
+    # build_messages_fn signature is expected to be (md_chunk, style_feedback, for_estimate).
+    base_messages = build_messages_fn("", None, True)
     base_tokens = estimate_tokens_for_messages(base_messages)
     max_input_tokens = max(400, max_prompt_tokens - base_tokens)
+    if isinstance(max_input_tokens_override, int) and max_input_tokens_override > 0:
+        max_input_tokens = max(200, min(max_input_tokens, max_input_tokens_override))
     max_chars = max_input_tokens * 4
 
     blocks = split_markdown_blocks(markdown)
@@ -2725,7 +3208,8 @@ def build_apply_prompt(
     cfg: LLMConfig,
     prompts: Dict[str, Any],
     style_feedback: Dict[str, Any] | None = None,
-    humanizer_rules: List[Dict[str, Any]] | None = None
+    humanizer_rules: List[Dict[str, Any]] | None = None,
+    controller_overlay: Dict[str, Any] | None = None
 ) -> List[Dict[str, str]]:
     # Fill the apply prompt template with runtime data.
     system = get_prompt_value(prompts, "apply", "system")
@@ -2746,6 +3230,10 @@ def build_apply_prompt(
             fp_payload["metadata"] = meta if meta else None
             if fp_payload.get("metadata") is None:
                 fp_payload.pop("metadata", None)
+        # Strip controller/baseline blocks that are useful for local logic but not for the LLM.
+        meas = fp_payload.get("measurements")
+        if isinstance(meas, dict):
+            meas.pop("humanization_baseline", None)
     user["style_fingerprint_json"] = fp_payload
     user["input_measurements"] = input_meas
     user["input_markdown"] = input_md
@@ -2753,6 +3241,8 @@ def build_apply_prompt(
         user["style_feedback"] = style_feedback
     if humanizer_rules:
         user["humanizer_guidelines"] = humanizer_rules
+    if controller_overlay:
+        user["controller_overlay"] = controller_overlay
 
     return [
         {"role": "system", "content": system},
@@ -3166,7 +3656,9 @@ def main() -> int:
     def build_messages_for_chunk(
         md_chunk: str,
         style_feedback: Dict[str, Any] | None = None,
-        for_estimate: bool = False
+        for_estimate: bool = False,
+        fingerprint_override: Dict[str, Any] | None = None,
+        controller_overlay: Dict[str, Any] | None = None
     ) -> List[Dict[str, str]]:
         # Build prompts per chunk using local measurements.
         if for_estimate:
@@ -3174,17 +3666,24 @@ def main() -> int:
             input_meas = {"totals": {"total_words_est": word_count}}
         else:
             input_meas = compute_measurements(filter_author_voice_text(md_chunk))
+        fp_payload = fingerprint_override if isinstance(fingerprint_override, dict) else fingerprint
         return build_apply_prompt(
-            fingerprint,
+            fp_payload,
             md_chunk,
             input_meas,
             cfg,
             prompts,
             style_feedback,
-            humanizer_rules
+            humanizer_rules,
+            controller_overlay
         )
 
-    def rewrite_chunk(md_chunk: str, chunk_index: int | None = None, chunk_total: int | None = None) -> tuple[str, Dict[str, Any], Dict[str, Any]]:
+    def rewrite_chunk(
+        md_chunk: str,
+        chunk_index: int | None = None,
+        chunk_total: int | None = None,
+        depth: int = 0
+    ) -> tuple[str, Dict[str, Any], Dict[str, Any]]:
         # Rewrite a chunk with optional style retry.
         author_voice = filter_author_voice_text(md_chunk)
         if not author_voice.strip():
@@ -3204,10 +3703,27 @@ def main() -> int:
             }
             return md_chunk, out_obj, {"score": 1.0, "deltas": []}
         attempts = 0
+        fp_overlay = None
+        controller_overlay = None
+        if isinstance(tunables, dict):
+            fp_overlay, controller_overlay = build_controller_overlay(
+                fingerprint,
+                tunables,
+                chunk_index,
+                md_chunk
+            )
+        if controller_overlay and args.verbose:
+            vprint(f"Controller overlay for chunk {chunk_index}/{chunk_total}: {controller_overlay}")
         style_feedback: Dict[str, Any] | None = None
         last_out: Dict[str, Any] = {}
         while True:
-            messages = build_messages_for_chunk(md_chunk, style_feedback)
+            messages = build_messages_for_chunk(
+                md_chunk,
+                style_feedback,
+                False,
+                fp_overlay,
+                controller_overlay
+            )
             input_tokens = estimate_tokens_for_messages(messages)
             last_raw = ""
             last_usage: Dict[str, Any] | None = None
@@ -3242,11 +3758,113 @@ def main() -> int:
                     f"retrying in {sleep_s:.1f}s. Error: {last_err}"
                 )
                 time.sleep(sleep_s)
-            if not isinstance(out_obj, dict) or not isinstance(out_obj.get("final_markdown"), str) or not out_obj.get("final_markdown", "").strip():
+            if (
+                not isinstance(out_obj, dict)
+                or not isinstance(out_obj.get("final_markdown"), str)
+                or not out_obj.get("final_markdown", "").strip()
+            ):
                 print_error("LLM did not return final_markdown.")
-                if last_raw:
-                    print(last_raw)
-                raise RuntimeError("LLM did not return final_markdown")
+                if last_raw and args.verbose:
+                    vprint("Last LLM raw output (truncated):")
+                    print(last_raw[:2000])
+
+                # Recovery: split and retry with smaller pieces rather than aborting the entire run.
+                # This guards against occasional model failures where it "claims" the input is empty.
+                chunk_conf = tunables.get("chunking", {}) if isinstance(tunables, dict) else {}
+                recovery_max_depth = 2
+                recovery_min_chars = 800
+                if isinstance(chunk_conf, dict):
+                    try:
+                        recovery_max_depth = int(chunk_conf.get("recovery_split_max_depth", recovery_max_depth))
+                    except (TypeError, ValueError):
+                        recovery_max_depth = recovery_max_depth
+                    try:
+                        recovery_min_chars = int(chunk_conf.get("recovery_split_min_chars", recovery_min_chars))
+                    except (TypeError, ValueError):
+                        recovery_min_chars = recovery_min_chars
+                recovery_max_depth = max(0, recovery_max_depth)
+                recovery_min_chars = max(0, recovery_min_chars)
+
+                def split_for_recovery(text: str) -> List[str]:
+                    blocks = split_markdown_blocks(text)
+                    if len(blocks) >= 2:
+                        mid = max(1, len(blocks) // 2)
+                        left = "\n\n".join(blocks[:mid]).strip()
+                        right = "\n\n".join(blocks[mid:]).strip()
+                        if left and right:
+                            return [left, right]
+                    # Fallback: split on nearest newline.
+                    mid = max(1, len(text) // 2)
+                    split_idx = text.rfind("\n", 0, mid)
+                    if split_idx == -1:
+                        split_idx = text.find("\n", mid)
+                    if split_idx == -1:
+                        split_idx = mid
+                    left = text[:split_idx].strip()
+                    right = text[split_idx:].strip()
+                    if left and right:
+                        return [left, right]
+                    return [text]
+
+                if depth < recovery_max_depth and len(md_chunk) >= recovery_min_chars:
+                    parts = split_for_recovery(md_chunk)
+                    if len(parts) > 1:
+                        label = None
+                        if chunk_index is not None and chunk_total is not None:
+                            label = f"{chunk_index}/{chunk_total}"
+                        msg = f"Chunk {label} rewrite failed; splitting into {len(parts)} part(s) for recovery." if label else f"Chunk rewrite failed; splitting into {len(parts)} part(s) for recovery."
+                        print_warn(msg)
+                        recovered_chunks: List[str] = []
+                        recovered_devs: List[Any] = []
+                        for j, part in enumerate(parts, start=1):
+                            if args.verbose:
+                                vprint(f"Rewriting recovery subchunk {j}/{len(parts)}...")
+                            sub_md, sub_obj, _sub_comp = rewrite_chunk(part, None, None, depth + 1)
+                            recovered_chunks.append(sub_md)
+                            sub_devs = sub_obj.get("deviations", []) if isinstance(sub_obj, dict) else []
+                            if isinstance(sub_devs, list):
+                                recovered_devs.extend(sub_devs)
+                        merged = "\n\n".join(s.strip() for s in recovered_chunks if isinstance(s, str) and s.strip()).strip()
+                        if merged:
+                            recovered_obj = {
+                                "final_markdown": merged,
+                                "deviations": [
+                                    {
+                                        "rule_or_field": "chunk_recovery_split",
+                                        "reason": "Chunk was split and rewritten due to repeated invalid LLM output.",
+                                        "parts": len(parts),
+                                        "depth": depth + 1
+                                    }
+                                ] + recovered_devs,
+                                "self_check": {
+                                    "notes": [
+                                        "Chunk rewritten via recovery split after repeated invalid LLM output."
+                                    ]
+                                }
+                            }
+                            recovered_comp = compute_style_compliance(fingerprint, filter_author_voice_text(merged))
+                            return merged, recovered_obj, recovered_comp
+
+                # Last resort: preserve the original chunk verbatim and continue.
+                print_warn("Preserving original chunk verbatim due to repeated invalid LLM output.")
+                preserved_obj = {
+                    "final_markdown": md_chunk,
+                    "deviations": [
+                        {
+                            "rule_or_field": "chunk_rewrite_failed_preserved",
+                            "reason": "LLM repeatedly failed to return final_markdown; original chunk preserved verbatim.",
+                            "depth": depth,
+                            "llm_raw_preview": (last_raw[:500] if isinstance(last_raw, str) else "")
+                        }
+                    ],
+                    "self_check": {
+                        "notes": [
+                            "Chunk preserved verbatim due to repeated invalid LLM output."
+                        ]
+                    }
+                }
+                preserved_comp = compute_style_compliance(fingerprint, filter_author_voice_text(md_chunk))
+                return md_chunk, preserved_obj, preserved_comp
             raw = last_raw
             usage = last_usage
             final_md = out_obj.get("final_markdown")
@@ -3296,6 +3914,18 @@ def main() -> int:
                     "score": compliance["score"],
                     "deltas": compliance.get("deltas", [])
                 }
+                if controller_overlay and isinstance(tunables, dict):
+                    controller_conf = tunables.get("humanization_controller", {}) if isinstance(tunables.get("humanization_controller", {}), dict) else {}
+                    if controller_conf.get("feedback_enabled", False):
+                        max_feedback_retries = int(controller_conf.get("max_feedback_retries", args.max_style_retries))
+                        if attempts < max_feedback_retries:
+                            overlay_feedback = build_overlay_feedback(
+                                controller_overlay,
+                                filter_author_voice_text(final_md),
+                                controller_conf
+                            )
+                            if overlay_feedback:
+                                style_feedback["humanization_controller"] = overlay_feedback
                 attempts += 1
                 continue
 
@@ -3325,6 +3955,11 @@ def main() -> int:
             cap = chunk_conf.get("max_input_tokens")
             if isinstance(cap, int) and cap > 0:
                 max_input_tokens = min(max_input_tokens, max(200, cap))
+        factor = compute_variance_aware_factor(fingerprint, tunables)
+        if factor < 1.0:
+            max_input_tokens = max(200, int(max_input_tokens * factor))
+            if args.verbose:
+                vprint(f"Variance-aware chunking factor applied: {factor:.2f}")
     input_tokens = estimate_tokens_for_text(input_md)
     initial_tokens = input_tokens + base_tokens
     if args.verbose:
@@ -3428,7 +4063,12 @@ def main() -> int:
         })
     else:
         vprint(f"Prompt too large ({initial_tokens} tokens); chunking input...")
-        chunks = chunk_markdown(input_md, build_messages_for_chunk, cfg.max_prompt_tokens)
+        chunks = chunk_markdown(
+            input_md,
+            build_messages_for_chunk,
+            cfg.max_prompt_tokens,
+            max_input_tokens_override=max_input_tokens
+        )
         non_empty = [c for c in chunks if isinstance(c, str) and c.strip()]
         if len(non_empty) != len(chunks):
             vprint(f"Filtered out {len(chunks) - len(non_empty)} empty chunk(s).")

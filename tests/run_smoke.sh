@@ -25,6 +25,10 @@ mkdir -p "$ARTIFACTS_DIR"
 # Run regression tests (no API calls).
 "$ROOT_DIR/tests/run_v1_1_0_regression.sh"
 "$ROOT_DIR/tests/run_v1_5_X_regression.sh"
+"$ROOT_DIR/tests/run_v1_7_X_regression.sh"
+
+# LLM connectivity smoke test (requires API config).
+LLM_SMOKE_CONFIG="$CONFIG_PATH" python "$ROOT_DIR/tests/test_llm_smoke.py"
 
 CORPUS_MD="$FIXTURES_DIR/corpus.md"
 INPUT_MD="$FIXTURES_DIR/input.md"

@@ -1,6 +1,7 @@
 {
   "api_key": "YOUR_KEY_HERE",
   "base_url": "https://api.openai.com/v1",
+  "test_base_url": "https://api.openai.com/v1",
   "model": "gpt-4.1-mini",
   "max_tokens": 20000,
   "temperature": 0.2,

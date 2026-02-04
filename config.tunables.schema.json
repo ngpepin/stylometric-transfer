@@ -47,6 +47,33 @@
       },
       "additionalProperties": false
     },
+    "humanization_baseline": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "window_words": { "type": "integer", "minimum": 50 },
+        "stride_words": { "type": "integer", "minimum": 25 },
+        "min_window_words": { "type": "integer", "minimum": 50 },
+        "max_windows": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "humanization_controller": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "seed": { "type": "integer" },
+        "quantiles": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 } },
+        "range_pct": { "type": "number", "minimum": 0 },
+        "min_width": { "type": "number", "minimum": 0 },
+        "max_width": { "type": "number", "minimum": 0 },
+        "allowed_metrics": { "type": "array", "items": { "type": "string" } },
+        "feedback_enabled": { "type": "boolean" },
+        "feedback_tolerance": { "type": "number", "minimum": 0 },
+        "max_feedback_retries": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "lexical_signals": {
       "type": "object",
       "properties": {
@@ -70,6 +97,7 @@
             "jaccard_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
             "dedupe_on_subset": { "type": "boolean" },
             "prefer_more_specific": { "type": "boolean" },
+            "compress_directives": { "type": "boolean" },
             "directive_verbs": { "type": "array", "items": { "type": "string" } },
             "stopwords": { "type": "array", "items": { "type": "string" } }
           },
@@ -100,7 +128,20 @@
     "chunking": {
       "type": "object",
       "properties": {
-        "max_input_tokens": { "type": "integer", "minimum": 200 }
+        "max_input_tokens": { "type": "integer", "minimum": 200 },
+        "recovery_split_max_depth": { "type": "integer", "minimum": 0 },
+        "recovery_split_min_chars": { "type": "integer", "minimum": 0 },
+        "variance_aware": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "sentence_stdev_ref": { "type": "number", "minimum": 0 },
+            "paragraph_burst_ref": { "type": "number", "minimum": 0 },
+            "min_factor": { "type": "number", "minimum": 0 },
+            "max_factor": { "type": "number", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     },

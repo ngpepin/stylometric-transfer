@@ -39,6 +39,33 @@
       "avg_word_length": 1.0
     }
   },
+  "humanization_baseline": {
+    "enabled": true,
+    "window_words": 800,
+    "stride_words": 400,
+    "min_window_words": 250,
+    "max_windows": 200
+  },
+  "humanization_controller": {
+    "enabled": true,
+    "seed": 12345,
+    "quantiles": [0.25, 0.5, 0.75],
+    "range_pct": 0.15,
+    "min_width": 0.05,
+    "max_width": 6.0,
+    "allowed_metrics": [
+      "sentence_length_mean",
+      "sentence_length_stdev",
+      "one_sentence_paragraph_rate",
+      "comma_density_per_100w",
+      "punctuation_semicolons_per_1000w",
+      "punctuation_colons_per_1000w",
+      "punctuation_em_dashes_per_1000w"
+    ],
+    "feedback_enabled": true,
+    "feedback_tolerance": 0.35,
+    "max_feedback_retries": 2
+  },
   "lexical_signals": {
     "rare_words_limit": 100
   },
@@ -50,6 +77,7 @@
       "jaccard_threshold": 0.6,
       "dedupe_on_subset": true,
       "prefer_more_specific": true,
+      "compress_directives": true,
       "directive_verbs": [
         "preserve",
         "avoid",
@@ -108,7 +136,16 @@
     "quoted_ratio_force": 0.08
   },
   "chunking": {
-    "max_input_tokens": 6000
+    "max_input_tokens": 6000,
+    "recovery_split_max_depth": 2,
+    "recovery_split_min_chars": 800,
+    "variance_aware": {
+      "enabled": true,
+      "sentence_stdev_ref": 18.0,
+      "paragraph_burst_ref": 0.7,
+      "min_factor": 0.6,
+      "max_factor": 1.0
+    }
   },
   "style_retry": {
     "enabled": true,

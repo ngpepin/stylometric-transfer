@@ -27,6 +27,7 @@ class ApplyPipeline {
   +load_markdown()
   +detect_fiction()
   +normalize_rewrite_policy()
+  +strip_humanization_baseline()
   +mask_quoted_passages()
   +mask_non_voice_blocks()
   +mask_inline_citations()
@@ -43,6 +44,7 @@ class ApplyPipeline {
   +chat_completions()
   +compute_style_compliance()
   +rewrite_with_retry()
+  +rewrite_with_recovery_split()
   +restore_missing_sections()
   +restore_placeholders()
   +write_outputs()
@@ -74,8 +76,14 @@ class Tunables {
   +humanizer_mandatory: object
   +humanizer_variance: object
   +humanization_metrics: object
+  +humanization_baseline: object
+  +humanization_controller: object
+  +controls_normalization: object
+  +fiction_detection: object
+  +chunking: object
   +style_retry: object
   +section_restore: object
+  +sanity_checks: object
 }
 
 ApplyPipeline --> LLMConfig
@@ -99,8 +107,10 @@ start
 :Read fingerprint JSON;
 :Merge avoid list into lexicon.avoid_words;
 :Normalize rewrite_policy clauses + filter priority_order tokens;
+:Strip measurements.humanization_baseline from the fingerprint payload (controller/audit only);
 :Read input Markdown;
 :Detect fiction vs non-fiction (can be forced by flags);
+ :Compute variance-aware chunk size (optional; based on baseline);
 
 :Strip base64 images;
 :Mask HTML, math, entities, inline code;
@@ -123,6 +133,8 @@ endif
 
 :Build apply prompt;
 :Call LLM to rewrite (retry with backoff on timeout/5xx);
+:If output is repeatedly invalid, split chunk and retry recovery (else preserve chunk verbatim);
+ :Apply per-chunk controller overlay to targets (optional);
 :Apply bounded humanizer variance (optional);
 :Restore placeholders;
 :Compute style compliance;
@@ -160,8 +172,10 @@ AF -> FS : read config.tunables.json (optional)
 AF -> FS : read config.avoid.txt (optional)
 AF -> FS : read fingerprint.json
 AF -> AF : merge avoid list into lexicon
+AF -> AF : strip measurements.humanization_baseline from fingerprint payload
 AF -> FS : read input.md
 AF -> AF : detect fiction vs non-fiction
+AF -> AF : compute variance-aware chunk sizing (optional)
 AF -> AF : mask non-voice blocks & placeholders
 AF -> AF : compute input measurements
 AF -> AF : compute input humanization metrics (optional)
@@ -172,6 +186,8 @@ AF -> AF : fallback regex parse if needed
 AF -> AF : filter humanizer rules
 AF -> LLM : rewrite request (fingerprint + measurements + rules; retry on transient errors)
 LLM --> AF : JSON with final_markdown
+AF -> AF : recovery split if output invalid after retries (optional)
+AF -> AF : apply controller overlay feedback on retry (optional)
 AF -> AF : apply humanizer variance (optional)
 AF -> AF : restore placeholders
 AF -> AF : compute style compliance

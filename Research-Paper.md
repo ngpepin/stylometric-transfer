@@ -183,6 +183,8 @@ The JSON format introduces practical control fields, such as `priority_order` an
 
 **Plain-language explanation:** The fingerprint functions as a weighted checklist. Certain items are strict (for example, “never use em-dashes”); others are soft (such as “prefer shorter sentences”). The system tracks how closely the output adheres to each requirement.
 
+**Constraint normalization and controller overlays:** To keep constraints compact and interpretable, the system deterministically de‑duplicates `rewrite_policy` clauses and filters `priority_order` to short, token‑like entries. In addition, a corpus‑derived variability baseline can drive per‑chunk target overlays during rewriting: a small, deterministic controller samples quantiles of within‑author variability (e.g., sentence length or punctuation density) and nudges chunk‑level targets so the output reflects natural intra‑author dispersion without changing the core fingerprint. These overlays are applied locally and logged for auditability.
+
 ---
 
 ## 6. Constraint Satisfaction Decoding and Compliance Scoring
@@ -1823,32 +1825,77 @@ Rather than learning what style is, it defines where style may reside in feature
     "humanizer_conflicts": {
       "type": "object",
       "properties": {
-        "em_dash_keep_rate": { "type": "number", "minimum": 0 },
-        "hedge_keep_rate": { "type": "number", "minimum": 0 },
-        "first_person_keep_rate": { "type": "number", "minimum": 0 },
-        "contractions_avoid_threshold": { "type": "number", "minimum": 0 },
-        "contractions_use_threshold": { "type": "number", "minimum": 0 },
-        "heading_title_case_keep_rate": { "type": "number", "minimum": 0 },
-        "boldface_keep_per_1000w": { "type": "number", "minimum": 0 },
-        "inline_header_list_keep_rate": { "type": "number", "minimum": 0 }
+        "em_dash_keep_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "hedge_keep_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "first_person_keep_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "contractions_avoid_threshold": {
+          "type": "number",
+          "minimum": 0
+        },
+        "contractions_use_threshold": {
+          "type": "number",
+          "minimum": 0
+        },
+        "heading_title_case_keep_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "boldface_keep_per_1000w": {
+          "type": "number",
+          "minimum": 0
+        },
+        "inline_header_list_keep_rate": {
+          "type": "number",
+          "minimum": 0
+        }
       },
       "additionalProperties": false
     },
     "humanizer_mandatory": {
       "type": "object",
       "properties": {
-        "avoid_em_dashes": { "type": "boolean" },
-        "emoji_policy": { "type": "string", "enum": ["remove", "replace", "none"] }
+        "avoid_em_dashes": {
+          "type": "boolean"
+        },
+        "emoji_policy": {
+          "type": "string",
+          "enum": [
+            "remove",
+            "replace",
+            "none"
+          ]
+        }
       },
       "additionalProperties": false
     },
     "humanizer_variance": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "seed": { "type": "integer" },
-        "max_ops_per_1000w": { "type": "number", "minimum": 0 },
-        "allowed_ops": { "type": "array", "items": { "type": "string" } }
+        "enabled": {
+          "type": "boolean"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "max_ops_per_1000w": {
+          "type": "number",
+          "minimum": 0
+        },
+        "allowed_ops": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       },
       "additionalProperties": false
     },
@@ -1857,7 +1904,84 @@ Rather than learning what style is, it defines where style may reside in feature
       "properties": {
         "weights": {
           "type": "object",
-          "additionalProperties": { "type": "number", "minimum": 0 }
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "humanization_baseline": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "window_words": {
+          "type": "integer",
+          "minimum": 50
+        },
+        "stride_words": {
+          "type": "integer",
+          "minimum": 25
+        },
+        "min_window_words": {
+          "type": "integer",
+          "minimum": 50
+        },
+        "max_windows": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "humanization_controller": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "quantiles": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "range_pct": {
+          "type": "number",
+          "minimum": 0
+        },
+        "min_width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "allowed_metrics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "feedback_enabled": {
+          "type": "boolean"
+        },
+        "feedback_tolerance": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_feedback_retries": {
+          "type": "integer",
+          "minimum": 0
         }
       },
       "additionalProperties": false
@@ -1865,50 +1989,207 @@ Rather than learning what style is, it defines where style may reside in feature
     "lexical_signals": {
       "type": "object",
       "properties": {
-        "rare_words_limit": { "type": "integer", "minimum": 1 }
+        "rare_words_limit": {
+          "type": "integer",
+          "minimum": 1
+        }
       },
       "additionalProperties": false
     },
     "lexical_avoidance": {
       "type": "object",
       "properties": {
-        "rare_words_limit": { "type": "integer", "minimum": 1 }
+        "rare_words_limit": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "controls_normalization": {
+      "type": "object",
+      "properties": {
+        "rewrite_policy": {
+          "type": "object",
+          "properties": {
+            "jaccard_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "dedupe_on_subset": {
+              "type": "boolean"
+            },
+            "prefer_more_specific": {
+              "type": "boolean"
+            },
+            "compress_directives": {
+              "type": "boolean"
+            },
+            "directive_verbs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "stopwords": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "priority_order": {
+          "type": "object",
+          "properties": {
+            "token_pattern": {
+              "type": "string"
+            },
+            "dedupe_case_insensitive": {
+              "type": "boolean"
+            },
+            "exclude_tokens": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "fiction_detection": {
+      "type": "object",
+      "properties": {
+        "quote_span_min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "quoted_ratio_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "quote_para_ratio_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "quoted_ratio_force": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
       },
       "additionalProperties": false
     },
     "chunking": {
       "type": "object",
       "properties": {
-        "max_input_tokens": { "type": "integer", "minimum": 200 }
+        "max_input_tokens": {
+          "type": "integer",
+          "minimum": 200
+        },
+        "recovery_split_max_depth": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "recovery_split_min_chars": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "variance_aware": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "sentence_stdev_ref": {
+              "type": "number",
+              "minimum": 0
+            },
+            "paragraph_burst_ref": {
+              "type": "number",
+              "minimum": 0
+            },
+            "min_factor": {
+              "type": "number",
+              "minimum": 0
+            },
+            "max_factor": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     },
     "style_retry": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "threshold": { "type": "number", "minimum": 0, "maximum": 1 },
-        "max_retries": { "type": "integer", "minimum": 0 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0
+        }
       },
       "additionalProperties": false
     },
     "section_restore": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "max_restore_sections": { "type": "integer", "minimum": 0 },
-        "heading_similarity_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
-        "signature_similarity_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
-        "signature_min_overlap": { "type": "integer", "minimum": 0 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "max_restore_sections": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "heading_similarity_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "signature_similarity_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "signature_min_overlap": {
+          "type": "integer",
+          "minimum": 0
+        }
       },
       "additionalProperties": false
     },
     "sanity_checks": {
       "type": "object",
       "properties": {
-        "line_count_warn_pct": { "type": "number", "minimum": 0 },
-        "word_count_warn_pct": { "type": "number", "minimum": 0 },
-        "paragraph_count_warn_pct": { "type": "number", "minimum": 0 }
+        "line_count_warn_pct": {
+          "type": "number",
+          "minimum": 0
+        },
+        "word_count_warn_pct": {
+          "type": "number",
+          "minimum": 0
+        },
+        "paragraph_count_warn_pct": {
+          "type": "number",
+          "minimum": 0
+        }
       },
       "additionalProperties": false
     }
