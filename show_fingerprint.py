@@ -155,6 +155,63 @@ def render_work_list(documents: List[Dict[str, Any]], limit: int = 8, max_len: i
     return f"<ul class='doc-list'>{items}{suffix}</ul>"
 
 
+def normalize_rewrite_policy(text: str) -> str:
+    if not isinstance(text, str):
+        return text
+    policy = re.sub(r"\s+", " ", text.strip())
+    if not policy:
+        return policy
+    clauses: List[str] = []
+    for chunk in re.split(r"[.;:]+", policy):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        parts = re.split(
+            r"(?i)(?=\b(?:preserve|avoid|maintain|ensure|keep|favor|use|prefer|minimize|maximize|do not|don't)\b)",
+            chunk
+        )
+        for part in parts:
+            part = part.strip()
+            if part:
+                clauses.append(part)
+
+    stopwords = {
+        "the", "and", "of", "to", "a", "an", "in", "on", "for", "with", "or", "but",
+        "as", "by", "from", "into", "at", "that", "this", "these", "those", "be", "is",
+        "are", "was", "were", "been", "being"
+    }
+
+    def norm_tokens(s: str) -> List[str]:
+        s = s.lower()
+        s = re.sub(r"[^\w\s'-]", " ", s)
+        tokens = [t for t in s.split() if t and t not in stopwords]
+        return tokens
+
+    deduped: List[str] = []
+    seen: List[set[str]] = []
+    for clause in clauses:
+        tokens = set(norm_tokens(clause))
+        if not tokens:
+            continue
+        is_dup = False
+        for prior in seen:
+            overlap = len(tokens & prior) / max(1, len(tokens | prior))
+            if overlap >= 0.85:
+                is_dup = True
+                break
+        if is_dup:
+            continue
+        seen.append(tokens)
+        deduped.append(clause)
+
+    if not deduped:
+        return policy
+    cleaned = "; ".join(deduped)
+    if cleaned and cleaned[-1] not in ".;:":
+        cleaned += "."
+    return cleaned
+
+
 def svg_bar_chart(labels: List[str], values: List[float], width: int = 840, height: int = 300, color: str = "#2E6DD8") -> str:
     if not values:
         return ""
@@ -352,8 +409,11 @@ def render_dashboard(fp: Dict[str, Any], source_path: Path) -> str:
     template_openers = take_items(templates.get("sentence_openers", []) or [], 8)
     template_trans = take_items(templates.get("transition_openers", []) or [], 8)
 
+    rewrite_policy = controls.get("rewrite_policy", "")
+    if isinstance(rewrite_policy, str):
+        rewrite_policy = normalize_rewrite_policy(rewrite_policy)
     controls_kv = list_kv([
-        ("Rewrite policy", controls.get("rewrite_policy", "")),
+        ("Rewrite policy", rewrite_policy),
         ("Priority order", ", ".join(controls.get("priority_order", []) or [])),
     ])
     strictness = controls.get("strictness", {}) or {}
