@@ -13,7 +13,7 @@ Further details are available in `Article-Teaching-Machines-to-Write-Like-You.md
 <p align="center">
   <img src="media/fingerprint-example.png" width="900">
   <br/>
-  <em>An example fingerprint (show_fingerprint.py output)</em>
+  <em>An example fingerprint (output from show_fingerprint.py)</em>
 </p>
 
 
