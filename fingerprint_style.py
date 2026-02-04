@@ -311,6 +311,100 @@ def build_entity_matcher(entities: List[str]) -> tuple[set[str], set[tuple[str, 
     return singles, phrases, max_len
 
 
+def normalize_lexicon_avoids(
+    fingerprint: Dict[str, Any],
+    measurements: Dict[str, Any],
+    lexicon_hints: Optional[Dict[str, Any]],
+    avoid_list: List[str]
+) -> None:
+    lexicon = fingerprint.get("lexicon")
+    if not isinstance(lexicon, dict):
+        lexicon = {}
+        fingerprint["lexicon"] = lexicon
+
+    hard_seen: set[str] = set()
+    hard_list: List[str] = []
+
+    def add_hard(item: Any) -> None:
+        if not isinstance(item, str):
+            return
+        token = item.strip()
+        if not token or token in hard_seen:
+            return
+        hard_seen.add(token)
+        hard_list.append(token)
+
+    if isinstance(lexicon_hints, dict):
+        for key in ("avoid_words_hard", "avoid_words"):
+            val = lexicon_hints.get(key)
+            if isinstance(val, list):
+                for item in val:
+                    add_hard(item)
+            elif isinstance(val, str):
+                add_hard(val)
+
+    for item in avoid_list:
+        add_hard(item)
+
+    soft_seen: set[str] = set()
+    soft_list: List[str] = []
+
+    avoid_category_set: set[str] = set()
+    lex_categories = lexicon.get("avoid_categories_soft")
+    if isinstance(lex_categories, list):
+        for item in lex_categories:
+            if isinstance(item, str) and item.strip():
+                avoid_category_set.add(item.strip())
+    lex_avoid_measurements = measurements.get("lexical_avoidance", {}) if isinstance(measurements, dict) else {}
+    if isinstance(lex_avoid_measurements, dict):
+        category_rates = lex_avoid_measurements.get("category_rates_per_1000w")
+        if isinstance(category_rates, dict):
+            for key in category_rates.keys():
+                if isinstance(key, str) and key.strip():
+                    avoid_category_set.add(key.strip())
+
+    def add_soft(item: Any) -> None:
+        if not isinstance(item, str):
+            return
+        token = item.strip()
+        if not token or token in hard_seen or token in soft_seen:
+            return
+        if token in avoid_category_set:
+            return
+        soft_seen.add(token)
+        soft_list.append(token)
+
+    measurement_words = lex_avoid_measurements.get("rare_words", []) if isinstance(lex_avoid_measurements, dict) else []
+    for item in measurement_words:
+        if isinstance(item, dict):
+            add_soft(item.get("word"))
+        elif isinstance(item, str):
+            add_soft(item)
+
+    existing_soft = lexicon.get("avoid_words_soft")
+    if isinstance(existing_soft, list):
+        for item in existing_soft:
+            add_soft(item)
+    elif isinstance(existing_soft, str):
+        add_soft(existing_soft)
+
+    existing_hard = lexicon.get("avoid_words")
+    if isinstance(existing_hard, list):
+        for item in existing_hard:
+            if item in hard_seen:
+                continue
+            add_soft(item)
+    elif isinstance(existing_hard, str):
+        if existing_hard not in hard_seen:
+            add_soft(existing_hard)
+
+    lexicon["avoid_words"] = hard_list
+    if soft_list:
+        lexicon["avoid_words_soft"] = soft_list
+    else:
+        lexicon.pop("avoid_words_soft", None)
+
+
 def merge_avoid_list_into_hints(
     lexicon_hints: Optional[Dict[str, Any]],
     avoid_list: List[str]
@@ -2499,6 +2593,7 @@ def main() -> int:
 
         # Always embed measurements (verbatim local measurements)
         fingerprint["measurements"] = measurements
+        normalize_lexicon_avoids(fingerprint, measurements, lexicon_hints, avoid_list)
 
         vprint("Writing fingerprint JSON...")
         args.out.parent.mkdir(parents=True, exist_ok=True)

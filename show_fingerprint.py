@@ -420,6 +420,9 @@ def render_dashboard(fp: Dict[str, Any], source_path: Path) -> str:
         title = f"count: {fmt_num(item.get('count',''))}, rate/1k: {fmt_num(item.get('rate_per_1000w',''))}{freq_label}"
         avoidance_chip_items.append((word, title))
     avoidance_list = chips_with_titles(avoidance_chip_items)
+    avoidance_card = ""
+    if not lex_avoid_soft and avoidance_list:
+        avoidance_card = card("Avoidance Words", avoidance_list, accent="#F59E0B")
 
     target_sections = []
     for key, block in targets.items():
@@ -520,12 +523,12 @@ footer {{ color: var(--muted); padding: 24px 36px; font-size: 12px; border-top: 
       {card("Corpus Totals", totals_block, accent="#38BDF8")}
       {card("Function Words", fn_list or "<p class='muted'>No data</p>", accent="#94A3B8")}
       {card("Lexicon - Prefer", chips(lex_prefer) or "<p class='muted'>None</p>", accent="#38BDF8")}
-      {card("Lexicon - Avoid (Hard)", chips(lex_avoid_hard) or "<p class='muted'>None</p>", accent="#EF4444")}
-      {card("Lexicon - Avoid (Soft)", chips(lex_avoid_soft) or "<p class='muted'>None</p>", accent="#F87171")}
       {card("Rare Words", rare_list or "<p class='muted'>None</p>", accent="#10B981")}
-      {card("Avoidance Words", avoidance_list or "<p class='muted'>None</p>", accent="#F59E0B")}
+      {card("Lexicon - Avoid (Soft)", chips(lex_avoid_soft) or "<p class='muted'>None</p>", accent="#F87171")}
+      {avoidance_card}
       {card("Templates - Openers", chips(template_openers) or "<p class='muted'>None</p>", accent="#818CF8")}
       {card("Templates - Transitions", chips(template_trans) or "<p class='muted'>None</p>", accent="#6366F1")}
+      {card("Lexicon - Avoid (Hard)", chips(lex_avoid_hard) or "<p class='muted'>None</p>", accent="#EF4444")}
       {card("Controls", controls_kv or "<p class='muted'>None</p>", accent="#94A3B8")}
       {card("Strictness", strictness_kv or "<p class='muted'>None</p>", accent="#94A3B8")}
       {card("Validator Weights", validator_kv or "<p class='muted'>None</p>", accent="#FACC15")}
