@@ -2623,6 +2623,87 @@ def build_apply_prompt(
     ]
 
 
+def apply_pronoun_override(fingerprint: Dict[str, Any], mode: str | None) -> None:
+    if not mode:
+        return
+    if not isinstance(fingerprint, dict):
+        return
+    targets = fingerprint.setdefault("targets", {})
+    if not isinstance(targets, dict):
+        targets = {}
+        fingerprint["targets"] = targets
+    persona = targets.setdefault("persona", {})
+    if not isinstance(persona, dict):
+        persona = {}
+        targets["persona"] = persona
+
+    pronoun_prefs: Dict[str, Any] = {}
+    if mode == "first":
+        pronoun_prefs = {
+            "default_set": "I/me/my",
+            "allowed_sets": ["I/me/my", "we/us/our"],
+            "avoid_sets": ["you/your", "they/them", "he/him", "she/her"],
+            "strictness": "hard",
+            "notes": "Override: force first-person voice."
+        }
+    elif mode == "second":
+        pronoun_prefs = {
+            "default_set": "you/your",
+            "allowed_sets": ["you/your"],
+            "avoid_sets": ["I/me/my", "we/us/our", "they/them", "he/him", "she/her"],
+            "strictness": "hard",
+            "notes": "Override: force second-person voice."
+        }
+    elif mode == "third":
+        pronoun_prefs = {
+            "default_set": "they/them",
+            "allowed_sets": ["they/them", "he/him", "she/her"],
+            "avoid_sets": ["I/me/my", "we/us/our", "you/your"],
+            "strictness": "hard",
+            "notes": "Override: force third-person voice."
+        }
+
+    if pronoun_prefs:
+        persona["pronoun_preferences"] = pronoun_prefs
+
+
+def evaluate_pronoun_override(text: str, mode: str) -> Dict[str, Any]:
+    tokens = [t.lower() for t in words(text)]
+    first_person = {"i","me","my","mine","we","us","our","ours"}
+    second_person = {"you","your","yours"}
+    third_person = {"he","him","his","she","her","hers","they","them","their","theirs"}
+
+    def count_hits(word_set: set[str]) -> int:
+        return sum(1 for t in tokens if t in word_set)
+
+    allowed: set[str]
+    avoid_sets: Dict[str, set[str]]
+    mode_label = mode
+    if mode == "first":
+        allowed = first_person
+        avoid_sets = {"second_person": second_person, "third_person": third_person}
+    elif mode == "second":
+        allowed = second_person
+        avoid_sets = {"first_person": first_person, "third_person": third_person}
+    else:
+        mode_label = "third"
+        allowed = third_person
+        avoid_sets = {"first_person": first_person, "second_person": second_person}
+
+    allowed_count = count_hits(allowed)
+    violations: Dict[str, int] = {}
+    for label, words_set in avoid_sets.items():
+        count = count_hits(words_set)
+        if count:
+            violations[label] = count
+
+    return {
+        "mode": mode_label,
+        "allowed_count": allowed_count,
+        "violations": violations
+    }
+
+
 def main() -> int:
     if "--license" in sys.argv:
         return print_license_and_exit()
@@ -2682,6 +2763,28 @@ def main() -> int:
         type=int,
         default=1,
         help="Maximum number of style retry passes (default: 1)"
+    )
+    pronoun_group = ap.add_mutually_exclusive_group()
+    pronoun_group.add_argument(
+        "--1st-person",
+        dest="force_person",
+        action="store_const",
+        const="first",
+        help="Override the fingerprint to force first-person voice."
+    )
+    pronoun_group.add_argument(
+        "--2nd-person",
+        dest="force_person",
+        action="store_const",
+        const="second",
+        help="Override the fingerprint to force second-person voice."
+    )
+    pronoun_group.add_argument(
+        "--3rd-person",
+        dest="force_person",
+        action="store_const",
+        const="third",
+        help="Override the fingerprint to force third-person voice."
     )
     mode_group = ap.add_mutually_exclusive_group()
     mode_group.add_argument(
@@ -2772,6 +2875,7 @@ def main() -> int:
     avoid_list = load_avoid_list()
     if avoid_list:
         fingerprint = merge_avoid_list_into_fingerprint(fingerprint, avoid_list)
+    apply_pronoun_override(fingerprint, args.force_person)
     forbid_em_dashes = should_forbid_em_dashes(tunables)
     emoji_policy = None
     if isinstance(tunables, dict):
@@ -3513,6 +3617,17 @@ def main() -> int:
             f"Warning: paragraph count changed by {para_change_pct:+.1f}% (threshold {para_warn:.1f}%). "
             "Review output for potential missing or expanded content."
         )
+
+    if args.force_person:
+        voice_text = filter_author_voice_text(final_md)
+        override_eval = evaluate_pronoun_override(voice_text, args.force_person)
+        all_deviations.append({
+            "rule_or_field": "pronoun_override",
+            "mode": override_eval.get("mode"),
+            "allowed_count": override_eval.get("allowed_count"),
+            "violations": override_eval.get("violations", {}),
+            "note": "Pronoun override applied; violations indicate forbidden pronoun usage in author-voice text."
+        })
 
     all_deviations.append({
         "rule_or_field": "line_count_change",

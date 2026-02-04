@@ -80,6 +80,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Return rewritten text and deviations
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
+  - Overrides: `--1st-person` / `--2nd-person` / `--3rd-person` force narrative voice regardless of fingerprint
 
 - `scripts/fingerprint_style.sh` and `scripts/apply_fingerprint.sh`
   - Bash wrappers around the Python entry points
