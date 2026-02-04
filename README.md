@@ -196,6 +196,7 @@ Notes:
 - Prompt templates are stored in `prompts.json` next to the Python scripts and are loaded at runtime (includes the `validate_phrases` template used for common-phrase validation)
 - Optional `lexicon_hints.json` (in repo root or next to the scripts) can provide preferred or avoided phrases for fingerprinting
 - Optional `config.avoid.txt` (in repo root or next to the scripts) lists words or phrases to always avoid; it is merged into the fingerprint lexicon and enforced during style application
+- Optional `config.common_words.txt` (in repo root or next to the scripts) defines the common‑word list used to derive `measurements.lexical_avoidance.rare_words` (words common in English but rare in the corpus)
 - Optional `config.entity_blacklist.txt` (in repo root or next to the scripts) lists entities (people, places, organizations) to suppress from common-phrase extraction to avoid proper‑name dominance
 - Genre handling: by default the tools auto-detect fiction vs non-fiction; override with `--fiction` or `--non-fiction`. In non-fiction, multi-word quotations are excluded from fingerprinting and preserved verbatim during rewriting.
 - When fingerprinting, the current `config.tunables.json` can be embedded as `metadata.extraction.tunables_snapshot` for auditability
@@ -450,7 +451,7 @@ Contents include:
 - `metadata`: corpus and extraction information
   - `metadata.corpus.document_count`: number of corpus documents
 - `metadata.corpus.documents`: per-document metadata (path, title when available, size, language/locale, genres, time range)
-- `measurements`: raw statistical signals (including `orthography_signals.spelling_variant`, paragraph rhythm and `lexical_signals.rare_words`)
+- `measurements`: raw statistical signals (including `orthography_signals.spelling_variant`, paragraph rhythm, `lexical_signals.rare_words`, and `lexical_avoidance.rare_words` derived from a built-in common-words list)
 - `targets`: stylistic constraints and distributions (including optional persona pronoun preferences)
 - `lexicon`: preferred and avoided words and phrases (includes soft avoid lists)
 - `templates`: syntactic and rhetorical patterns

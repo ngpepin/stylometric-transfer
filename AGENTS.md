@@ -114,6 +114,9 @@ Avoid ambiguous terms like “clone” in public documentation.
 - `config.avoid.txt`
   - Optional global avoid list (one word/phrase per line)
   - Applied during fingerprinting (via lexicon hints) and merged into `lexicon.avoid_words` during application
+- `config.common_words.txt`
+  - Optional common-word list (one word per line)
+  - Used to derive `measurements.lexical_avoidance.rare_words` (common words that are rare in the corpus)
 - `config.entity_blacklist.txt`
   - Optional entity blacklist (people, places, organizations; one per line)
   - Used to suppress proper‑name phrases during common-phrase validation
@@ -269,6 +272,7 @@ Current measurements include:
 - Frequent bigrams / trigrams
 - Function‑word profile
 - Rare‑word signals (words the author rarely uses)
+- Lexical avoidance list derived from a built‑in common‑words set (common words the author rarely uses)
 - Stance signals (hedging/boosting/pronouns)
 - Sentence‑opener and transition templates
 - Rhetorical move signals (claim/evidence/counterpoint/concession/synthesis)

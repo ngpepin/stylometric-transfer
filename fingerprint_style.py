@@ -101,8 +101,40 @@ PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
 LICENSE_FILENAME = "LICENSE.md"
 LEXICON_HINTS_FILENAME = "lexicon_hints.json"
 AVOID_LIST_FILENAME = "config.avoid.txt"
+COMMON_WORDS_FILENAME = "config.common_words.txt"
 ENTITY_BLACKLIST_FILENAME = "config.entity_blacklist.txt"
 QUOTE_MODE: str | None = None
+DEFAULT_COMMON_WORDS = {
+    "ability","account","action","activity","address","agreement","answer","area","argument","article",
+    "attention","audience","author","back","balance","base","basis","beginning","benefit","body",
+    "book","business","case","cause","center","change","chapter","child","choice","city",
+    "class","company","comparison","condition","consideration","contact","content","control","cost",
+    "country","course","court","culture","data","day","decision","development","difference","direction",
+    "discussion","door","drive","education","effect","effort","end","energy","environment","event",
+    "evidence","example","experience","fact","family","field","figure","focus","food","force",
+    "form","friend","function","future","game","goal","government","group","growth","hand",
+    "health","history","home","hour","house","idea","importance","interest","issue","job",
+    "judgment","kind","knowledge","law","level","life","line","list","literature","management",
+    "market","meaning","method","mind","model","moment","money","month","music","name",
+    "nature","need","number","object","office","opinion","order","organization","page","paper",
+    "part","party","pattern","people","person","place","plan","point","policy","position",
+    "power","price","problem","process","product","program","project","quality","question","rate",
+    "reason","report","research","result","role","room","rule","school","science","section",
+    "sense","service","side","situation","skill","society","solution","source","space","state",
+    "story","strategy","study","subject","support","system","table","team","technology","term",
+    "theory","thing","thought","time","title","tool","topic","trade","training","understanding",
+    "value","view","voice","way","week","word","work","world","year",
+    "accept","achieve","add","allow","appear","apply","argue","ask","avoid","become",
+    "believe","bring","build","call","carry","change","choose","claim","compare","consider",
+    "continue","create","deal","decide","define","develop","discover","discuss","drive","expect",
+    "explain","feel","find","follow","form","gain","give","handle","help","hold","include",
+    "increase","indicate","keep","know","learn","leave","lead","listen","look","make",
+    "maintain","mean","meet","move","need","notice","offer","open","provide","raise",
+    "reach","read","receive","reduce","reflect","remain","remember","report","require","return",
+    "risk","run","say","see","seem","send","serve","set","show","speak",
+    "start","state","stop","suggest","take","talk","teach","tell","think","turn",
+    "understand","use","view","want","watch","work","write"
+}
 
 def load_prompts() -> Dict[str, Any]:
     # Load externalized prompt templates located alongside this script.
@@ -187,6 +219,32 @@ def load_avoid_list() -> List[str]:
         return parse_list_lines(path.read_text(encoding="utf-8"))
     except Exception:
         return []
+
+
+def load_common_words() -> List[str]:
+    # Load optional common-words list from CWD or script directory.
+    cwd_path = Path.cwd() / COMMON_WORDS_FILENAME
+    script_path = Path(__file__).resolve().parent / COMMON_WORDS_FILENAME
+    for path in (cwd_path, script_path):
+        if path.exists():
+            try:
+                lines = parse_list_lines(path.read_text(encoding="utf-8"))
+            except Exception:
+                lines = []
+            words: List[str] = []
+            for line in lines:
+                for token in re.split(r"\s+", line.strip()):
+                    if token:
+                        words.append(token.lower())
+            if words:
+                seen: set[str] = set()
+                deduped: List[str] = []
+                for token in words:
+                    if token not in seen:
+                        seen.add(token)
+                        deduped.append(token)
+                return deduped
+    return sorted(DEFAULT_COMMON_WORDS)
 
 
 def normalize_entity_name(value: str) -> str:
@@ -952,7 +1010,8 @@ def detect_english_spelling_variant(text: str) -> Dict[str, Any]:
 def compute_measurements(
     texts: List[str],
     rare_words_limit: int | None = None,
-    rare_words_limit_avoidance: int | None = None
+    rare_words_limit_avoidance: int | None = None,
+    common_words: Optional[Iterable[str]] = None
 ) -> Dict[str, Any]:
     # Compute corpus-wide measurements for stylistic grounding.
     combined = "\n\n".join(texts)
@@ -1030,12 +1089,28 @@ def compute_measurements(
         if any(ch.isdigit() for ch in token):
             return False
         return token.isalpha()
+    def is_candidate_common(token: str) -> bool:
+        if token in stop:
+            return False
+        if len(token) < 3:
+            return False
+        if any(ch.isdigit() for ch in token):
+            return False
+        return token.isalpha()
 
     max_count = max(2, int(total_words * 0.0001))
     max_count = min(5, max_count)
+    common_word_set = {
+        w.lower() for w in (common_words or DEFAULT_COMMON_WORDS)
+        if isinstance(w, str) and w.strip()
+    }
     rare_candidates = [
         (token, count) for token, count in token_counts.items()
         if count <= max_count and is_candidate_rare(token)
+    ]
+    common_rare_candidates = [
+        (token, token_counts.get(token, 0)) for token in common_word_set
+        if is_candidate_common(token) and token_counts.get(token, 0) <= max_count
     ]
     def stable_token_hash(token: str) -> int:
         return int(hashlib.md5(token.encode("utf-8")).hexdigest()[:8], 16)
@@ -1084,7 +1159,7 @@ def compute_measurements(
             "count": count,
             "rate_per_1000w": approx_rate_per_1000_words(count, total_words)
         }
-        for token, count in filtered[:limit_avoid]
+        for token, count in sorted(common_rare_candidates, key=lambda x: (x[1], stable_token_hash(x[0])))[:limit_avoid]
     ]
     def ngrams(n: int) -> Iterable[str]:
         for i in range(0, len(toks) - n + 1):
@@ -2061,6 +2136,7 @@ def main() -> int:
     tunables_snapshot = load_tunables_snapshot()
     lexicon_hints = load_optional_lexicon_hints()
     avoid_list = load_avoid_list()
+    common_words = load_common_words()
     entity_blacklist = load_entity_blacklist()
     if avoid_list:
         lexicon_hints = merge_avoid_list_into_hints(lexicon_hints, avoid_list)
@@ -2139,7 +2215,8 @@ def main() -> int:
         measurements = compute_measurements(
             texts,
             rare_words_limit=rare_words_limit,
-            rare_words_limit_avoidance=rare_words_limit_avoid
+            rare_words_limit_avoidance=rare_words_limit_avoid,
+            common_words=common_words
         )
         # Deterministically filter sentence/transition openers to reduce proper-name noise.
         template_signals = measurements.get("templates_signals", {})
@@ -2218,8 +2295,6 @@ def main() -> int:
                     ordered = [word_to_item[w] for w in ranked if w in word_to_item]
                     remaining = [item for item in rare_candidates if item.get("word") not in set(ranked)]
                     measurements["lexical_signals"]["rare_words"] = ordered + remaining
-                    if "lexical_avoidance" in measurements and isinstance(measurements["lexical_avoidance"], dict):
-                        measurements["lexical_avoidance"]["rare_words"] = ordered + remaining
                 ranked_phrases = validation.get("ranked_phrases") if isinstance(validation, dict) else None
                 keep_phrase_set: set[str] | None = None
                 if isinstance(ranked_phrases, list) and ranked_phrases:
