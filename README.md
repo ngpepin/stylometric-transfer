@@ -20,6 +20,7 @@ Further details are available in `Article-Teaching-Machines-to-Write-Like-You.md
 This repository includes:
 - `fingerprint_style.py`: extracts a **style fingerprint (stylometric profile)** from a writing archive
 - `apply_fingerprint.py`: rewrites Markdown to match the fingerprint
+- `show_fingerprint.py`: generates a standalone HTML dashboard for a fingerprint JSON
 - `prompts.json`: externalized prompt templates used by both scripts (edit here to adjust behaviour)
 - `scripts/`: bash wrappers for invoking the Python entry points
 
