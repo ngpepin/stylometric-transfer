@@ -45,6 +45,62 @@
   "lexical_avoidance": {
     "rare_words_limit": 100
   },
+  "controls_normalization": {
+    "rewrite_policy": {
+      "jaccard_threshold": 0.7,
+      "dedupe_on_subset": true,
+      "prefer_more_specific": true,
+      "directive_verbs": [
+        "preserve",
+        "avoid",
+        "maintain",
+        "ensure",
+        "keep",
+        "favor",
+        "use",
+        "prefer",
+        "minimize",
+        "maximize",
+        "do not",
+        "don't"
+      ],
+      "stopwords": [
+        "the",
+        "and",
+        "of",
+        "to",
+        "a",
+        "an",
+        "in",
+        "on",
+        "for",
+        "with",
+        "or",
+        "but",
+        "as",
+        "by",
+        "from",
+        "into",
+        "at",
+        "that",
+        "this",
+        "these",
+        "those",
+        "be",
+        "is",
+        "are",
+        "was",
+        "were",
+        "been",
+        "being"
+      ]
+    },
+    "priority_order": {
+      "token_pattern": "^[A-Za-z][A-Za-z0-9_\\-]*$",
+      "dedupe_case_insensitive": true,
+      "exclude_tokens": ["lexical", "syntactic", "rhetorical"]
+    }
+  },
   "fiction_detection": {
     "quote_span_min": 6,
     "quoted_ratio_min": 0.03,

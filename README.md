@@ -97,7 +97,7 @@ This is a practical implementation of:
 | **Controls** | Priority/strictness and rewrite policies that govern tradeoffs. |
 | **Validators** | Checks and weights used to score compliance or detect deviations. |
 | **Deviations** | Structured report of where the model could not comply or had to adjust. |
-| **Rewrite‑policy normalization** | Deterministic de‑duplication of repeated policy clauses before use. |
+| **Control normalization** | Deterministic de‑duplication of `rewrite_policy` clauses and token filtering for `priority_order`. |
 | **Humanizer rules** | General guidelines (from `general-guidelines.md`) filtered for conflicts with the fingerprint. |
 | **Tunables** | Runtime configuration (`config.tunables.json`) that shapes filtering, retries, chunking, and metrics. |
 | **Entity blacklist** | Names/places/orgs list used to suppress proper‑name phrases during phrase validation. |
@@ -141,7 +141,7 @@ In research terms, the system performs:
   - Structural fidelity
   - Deviation reporting
   - Optional style-compliance retry with delta feedback
-  - Deterministic normalization of verbose/duplicative rewrite policies before use
+  - Deterministic normalization of verbose rewrite policies and noisy priority orders before use
 - Filters out blockquotes, reference sections, footnotes, citation markers, and boilerplate notices (copyright/terms/privacy) from style measurements and excerpts, preserving them verbatim during rewrite
 - Strips embedded BASE64 images before sending prompts to the LLM and re-embeds them in output
 - Compatible with OpenAI (works with OpenAI, Azure OpenAI, vLLM, etc.)
@@ -284,6 +284,62 @@ Example (defaults shown):
   "lexical_avoidance": {
     "rare_words_limit": 100
   },
+  "controls_normalization": {
+    "rewrite_policy": {
+      "jaccard_threshold": 0.7,
+      "dedupe_on_subset": true,
+      "prefer_more_specific": true,
+      "directive_verbs": [
+        "preserve",
+        "avoid",
+        "maintain",
+        "ensure",
+        "keep",
+        "favor",
+        "use",
+        "prefer",
+        "minimize",
+        "maximize",
+        "do not",
+        "don't"
+      ],
+      "stopwords": [
+        "the",
+        "and",
+        "of",
+        "to",
+        "a",
+        "an",
+        "in",
+        "on",
+        "for",
+        "with",
+        "or",
+        "but",
+        "as",
+        "by",
+        "from",
+        "into",
+        "at",
+        "that",
+        "this",
+        "these",
+        "those",
+        "be",
+        "is",
+        "are",
+        "was",
+        "were",
+        "been",
+        "being"
+      ]
+    },
+    "priority_order": {
+      "token_pattern": "^[A-Za-z][A-Za-z0-9_\\-]*$",
+      "dedupe_case_insensitive": true,
+      "exclude_tokens": ["lexical", "syntactic", "rhetorical"]
+    }
+  },
   "fiction_detection": {
     "quote_span_min": 6,
     "quoted_ratio_min": 0.03,
@@ -333,6 +389,14 @@ Example (defaults shown):
 - `humanization_metrics.weights` (object): optional weighting for the 0–100 aggregate humanization score. Any metric with a weight of 0 is excluded.
 - `lexical_signals.rare_words_limit` (integer): maximum number of rare words to include in `measurements.lexical_signals.rare_words`.
 - `lexical_avoidance.rare_words_limit` (integer): maximum number of absent common words (from `config.common_words.txt`) to include in `measurements.lexical_avoidance.rare_words`.
+- `controls_normalization.rewrite_policy.jaccard_threshold` (0–1): similarity threshold for considering two rewrite-policy clauses duplicates (lower = more aggressive de‑dup).
+- `controls_normalization.rewrite_policy.dedupe_on_subset` (boolean): treat clauses as duplicates when one clause is a strict subset of another.
+- `controls_normalization.rewrite_policy.prefer_more_specific` (boolean): when near-duplicates are found, keep the clause with more unique tokens.
+- `controls_normalization.rewrite_policy.directive_verbs` (array): verbs that mark the start of new rewrite-policy clauses.
+- `controls_normalization.rewrite_policy.stopwords` (array): stopwords ignored when comparing clauses for de‑duplication.
+- `controls_normalization.priority_order.token_pattern` (regex string): which items are allowed to survive normalization (default keeps short token‑like priorities only).
+- `controls_normalization.priority_order.dedupe_case_insensitive` (boolean): de‑dup priorities ignoring case.
+- `controls_normalization.priority_order.exclude_tokens` (array): drop these token‑like entries even if they match the regex.
 - `fiction_detection.quote_span_min` (integer): minimum multi‑word quote spans required before classifying as fiction (lower = more likely fiction).
 - `fiction_detection.quoted_ratio_min` (float 0–1): minimum fraction of words inside multi‑word quotes to classify as fiction (lower = more likely fiction).
 - `fiction_detection.quote_para_ratio_min` (float 0–1): minimum fraction of paragraphs starting with a quote to classify as fiction (lower = more likely fiction).

@@ -61,6 +61,32 @@
       },
       "additionalProperties": false
     },
+    "controls_normalization": {
+      "type": "object",
+      "properties": {
+        "rewrite_policy": {
+          "type": "object",
+          "properties": {
+            "jaccard_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+            "dedupe_on_subset": { "type": "boolean" },
+            "prefer_more_specific": { "type": "boolean" },
+            "directive_verbs": { "type": "array", "items": { "type": "string" } },
+            "stopwords": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "priority_order": {
+          "type": "object",
+          "properties": {
+            "token_pattern": { "type": "string" },
+            "dedupe_case_insensitive": { "type": "boolean" },
+            "exclude_tokens": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "fiction_detection": {
       "type": "object",
       "properties": {

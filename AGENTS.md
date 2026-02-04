@@ -60,7 +60,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Optionally rank rare-word candidates with the LLM (shared with common-phrase validation) to de-prioritize proper names
     - Validate common phrases via a separate LLM pass to remove OCR/citation noise (with deterministic prefilters for proper names, entity blacklist matches, and date patterns; disable with `--no-phrase-validation`)
     - Repair invalid JSON if necessary
-    - Normalize verbose/duplicative `controls.rewrite_policy` clauses before writing the fingerprint
+    - Normalize verbose/duplicative `controls.rewrite_policy` clauses and filter `priority_order` to short tokens before writing the fingerprint
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-a` (archive), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
   - Defaults: if `--profile-id` or `--author-name` are omitted, both default to the output filename without the `.json` extension
@@ -78,7 +78,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Score style compliance locally and retry once by default with delta feedback (disable with `--no-style-retry`)
     - Apply `general-guidelines.md` humanizer rules when available, using an LLM parser by default then deterministically filtering out conflicts (disable with `--no-humanizer-llm-parse` or `--no-humanizer-guidelines`)
     - Cache parsed humanizer rules in `humanizer_rules.cache.json` (script directory) and re-parse only when guidelines change
-    - Normalize verbose/duplicative `controls.rewrite_policy` clauses when loading a fingerprint
+    - Normalize verbose/duplicative `controls.rewrite_policy` clauses and filter `priority_order` when loading a fingerprint
     - Return rewritten text and deviations
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
@@ -110,6 +110,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Includes chunking caps (max input tokens per chunk)
   - Includes lexical signal limits (rare word list size)
   - Includes lexical avoidance limits (rare word list size)
+  - Includes controls normalization (rewrite-policy de-dup + priority-order filtering)
   - Includes fiction-detection thresholds (quote span/ratio heuristics)
   - Includes section‑restore controls (fuzzy heading match + restoration caps)
   - Includes optional sanity checks such as line/word/paragraph count change warnings

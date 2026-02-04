@@ -125,7 +125,7 @@ endif
 :Embed tunables snapshot (optional);
 :Embed measurements verbatim;
 :Include targets for rhetoric/cadence/epistemic/syntax/repetition;
-:Normalize rewrite_policy clauses;
+:Normalize rewrite_policy clauses + filter priority_order tokens;
 :Write style_fingerprint.json;
 stop
 @enduml

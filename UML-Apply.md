@@ -98,7 +98,7 @@ start
 
 :Read fingerprint JSON;
 :Merge avoid list into lexicon.avoid_words;
-:Normalize rewrite_policy clauses;
+:Normalize rewrite_policy clauses + filter priority_order tokens;
 :Read input Markdown;
 :Detect fiction vs non-fiction (can be forced by flags);
 

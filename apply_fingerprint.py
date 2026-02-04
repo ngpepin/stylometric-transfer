@@ -291,19 +291,29 @@ def merge_avoid_list_into_fingerprint(
     return fingerprint
 
 
-def normalize_rewrite_policy(text: str) -> str:
+def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> str:
     if not isinstance(text, str):
         return text
     policy = re.sub(r"\s+", " ", text.strip())
     if not policy:
         return policy
+    conf = conf or {}
+    verbs = conf.get("directive_verbs")
+    if not isinstance(verbs, list) or not verbs:
+        verbs = [
+            "preserve", "avoid", "maintain", "ensure", "keep", "favor", "use",
+            "prefer", "minimize", "maximize", "do not", "don't"
+        ]
+    verb_pattern = "|".join(re.escape(v) for v in verbs if isinstance(v, str) and v.strip())
+    if not verb_pattern:
+        verb_pattern = "preserve|avoid|maintain|ensure|keep|favor|use|prefer|minimize|maximize|do not|don't"
     clauses: List[str] = []
     for chunk in re.split(r"[.;:]+", policy):
         chunk = chunk.strip()
         if not chunk:
             continue
         parts = re.split(
-            r"(?i)(?=\b(?:preserve|avoid|maintain|ensure|keep|favor|use|prefer|minimize|maximize|do not|don't)\b)",
+            rf"(?i)(?=\b(?:{verb_pattern})\b)",
             chunk
         )
         for part in parts:
@@ -311,11 +321,22 @@ def normalize_rewrite_policy(text: str) -> str:
             if part:
                 clauses.append(part)
 
-    stopwords = {
-        "the", "and", "of", "to", "a", "an", "in", "on", "for", "with", "or", "but",
-        "as", "by", "from", "into", "at", "that", "this", "these", "those", "be", "is",
-        "are", "was", "were", "been", "being"
-    }
+    stopwords_val = conf.get("stopwords")
+    if isinstance(stopwords_val, list) and stopwords_val:
+        stopwords = {str(w) for w in stopwords_val if isinstance(w, (str, int, float))}
+    else:
+        stopwords = {
+            "the", "and", "of", "to", "a", "an", "in", "on", "for", "with", "or", "but",
+            "as", "by", "from", "into", "at", "that", "this", "these", "those", "be", "is",
+            "are", "was", "were", "been", "being"
+        }
+    try:
+        threshold = float(conf.get("jaccard_threshold", 0.7))
+    except (TypeError, ValueError):
+        threshold = 0.7
+    threshold = max(0.0, min(1.0, threshold))
+    dedupe_on_subset = bool(conf.get("dedupe_on_subset", True))
+    prefer_more_specific = bool(conf.get("prefer_more_specific", True))
 
     def norm_tokens(s: str) -> List[str]:
         s = s.lower()
@@ -330,15 +351,32 @@ def normalize_rewrite_policy(text: str) -> str:
         if not tokens:
             continue
         is_dup = False
-        for prior in seen:
-            overlap = len(tokens & prior) / max(1, len(tokens | prior))
-            if overlap >= 0.85:
+        replace_idx: int | None = None
+        for idx, prior in enumerate(seen):
+            inter = tokens & prior
+            if dedupe_on_subset and inter and len(inter) == len(tokens):
                 is_dup = True
+                break
+            if dedupe_on_subset and inter and len(inter) == len(prior) and prefer_more_specific:
+                replace_idx = idx
+                is_dup = False
+                break
+            overlap = len(inter) / max(1, len(tokens | prior))
+            if overlap >= threshold:
+                if prefer_more_specific and len(tokens) > len(prior):
+                    replace_idx = idx
+                    is_dup = False
+                else:
+                    is_dup = True
                 break
         if is_dup:
             continue
-        seen.append(tokens)
-        deduped.append(clause)
+        if replace_idx is not None:
+            seen[replace_idx] = tokens
+            deduped[replace_idx] = clause
+        else:
+            seen.append(tokens)
+            deduped.append(clause)
 
     if not deduped:
         return policy
@@ -346,6 +384,48 @@ def normalize_rewrite_policy(text: str) -> str:
     if cleaned and cleaned[-1] not in ".;:":
         cleaned += "."
     return cleaned
+
+
+def normalize_priority_order(value: Any, conf: Dict[str, Any] | None = None) -> List[str]:
+    conf = conf or {}
+    if isinstance(value, list):
+        raw_items = value
+    elif isinstance(value, str):
+        raw_items = [v.strip() for v in value.split(",")]
+    else:
+        raw_items = []
+    token_pattern = conf.get("token_pattern", r"^[A-Za-z][A-Za-z0-9_\\-]*$")
+    try:
+        token_re = re.compile(str(token_pattern))
+    except re.error:
+        token_re = re.compile(r"^[A-Za-z][A-Za-z0-9_\\-]*$")
+    dedupe_ci = bool(conf.get("dedupe_case_insensitive", True))
+    exclude_tokens = conf.get("exclude_tokens")
+    if isinstance(exclude_tokens, list):
+        exclude = {str(item).lower() for item in exclude_tokens if isinstance(item, (str, int, float))}
+    else:
+        exclude = set()
+    items: List[str] = []
+    for item in raw_items:
+        if not isinstance(item, str):
+            continue
+        token = item.strip()
+        if not token:
+            continue
+        if not token_re.fullmatch(token):
+            continue
+        if token.lower() in exclude:
+            continue
+        items.append(token)
+    deduped: List[str] = []
+    seen = set()
+    for item in items:
+        key = item.lower() if dedupe_ci else item
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
 
 
 def should_forbid_em_dashes(tunables: Dict[str, Any] | None) -> bool:
@@ -2934,7 +3014,13 @@ def main() -> int:
         fingerprint = merge_avoid_list_into_fingerprint(fingerprint, avoid_list)
     controls = fingerprint.get("controls")
     if isinstance(controls, dict) and isinstance(controls.get("rewrite_policy"), str):
-        controls["rewrite_policy"] = normalize_rewrite_policy(controls["rewrite_policy"])
+        controls_norm = tunables.get("controls_normalization", {}) if isinstance(tunables, dict) else {}
+        rewrite_conf = controls_norm.get("rewrite_policy", {}) if isinstance(controls_norm, dict) else {}
+        controls["rewrite_policy"] = normalize_rewrite_policy(controls["rewrite_policy"], rewrite_conf)
+    if isinstance(controls, dict) and controls.get("priority_order") is not None:
+        controls_norm = tunables.get("controls_normalization", {}) if isinstance(tunables, dict) else {}
+        priority_conf = controls_norm.get("priority_order", {}) if isinstance(controls_norm, dict) else {}
+        controls["priority_order"] = normalize_priority_order(controls.get("priority_order"), priority_conf)
     apply_pronoun_override(fingerprint, args.force_person)
     forbid_em_dashes = should_forbid_em_dashes(tunables)
     emoji_policy = None
