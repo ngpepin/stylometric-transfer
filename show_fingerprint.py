@@ -521,7 +521,7 @@ footer {{ color: var(--muted); padding: 24px 36px; font-size: 12px; border-top: 
     <div class='grid'>
       {card("Overview", header_kv, accent="#60A5FA")}
       {card("Corpus Totals", totals_block, accent="#38BDF8")}
-      {card("Strictness", strictness_kv or "<p class='muted'>None</p>", accent="#94A3B8")}
+      {card("Persona", persona_kv or "<p class='muted'>None</p>", accent="#4ADE80")}
       {card("Lexicon - Prefer", chips(lex_prefer) or "<p class='muted'>None</p>", accent="#38BDF8")}
       {card("Lexicon - Rare Words", rare_list or "<p class='muted'>None</p>", accent="#10B981")}
       {card("Lexicon - Avoid (Soft)", chips(lex_avoid_soft) or "<p class='muted'>None</p>", accent="#F87171")}
@@ -532,7 +532,7 @@ footer {{ color: var(--muted); padding: 24px 36px; font-size: 12px; border-top: 
       {card("Controls", controls_kv or "<p class='muted'>None</p>", accent="#94A3B8")}
       {card("Validator Weights", validator_kv or "<p class='muted'>None</p>", accent="#FACC15")}
       {card("Extraction", extraction_kv or "<p class='muted'>None</p>", accent="#22C55E")}
-      {card("Persona", persona_kv or "<p class='muted'>None</p>", accent="#4ADE80")}
+      {card("Strictness", strictness_kv or "<p class='muted'>None</p>", accent="#94A3B8")}
     </div>
   </div>
 
