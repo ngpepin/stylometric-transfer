@@ -139,28 +139,21 @@ def render_work_list(documents: List[Dict[str, Any]], limit: int = 8, max_len: i
     for doc in documents:
         if not isinstance(doc, dict):
             continue
-        name = doc.get("name") or ""
-        title = doc.get("title") or ""
-        path = doc.get("path") or ""
-        options: List[str] = []
-        if isinstance(name, str):
-            options.append(clean_work_label(name))
-        if isinstance(title, str):
-            options.append(clean_work_label(title))
-        if isinstance(path, str) and path:
-            options.append(clean_work_label(Path(path).stem))
+        # Prefer the corpus-provided `name` (stable identifier) for display; fall back only if missing.
+        name = doc.get("name")
+        title = doc.get("title")
+        path = doc.get("path")
+
         label = ""
-        for opt in options:
-            if is_quality_label(opt):
-                label = opt
-                break
-        if not label:
-            for opt in options:
-                if opt:
-                    label = opt
-                    break
-        label = label.strip()
-        if label:
+        if isinstance(name, str) and name.strip():
+            label = clean_work_label(name).strip()
+        elif isinstance(title, str) and title.strip():
+            label = clean_work_label(title).strip()
+        elif isinstance(path, str) and path.strip():
+            label = clean_work_label(Path(path).stem).strip()
+
+        # If the label is low-quality (e.g., mostly punctuation), omit it entirely rather than showing junk.
+        if label and is_quality_label(label):
             labels.append(label)
     if not labels:
         return "<p class='muted'>No works listed</p>"
