@@ -40,10 +40,10 @@
     }
   },
   "lexical_signals": {
-    "rare_words_limit": 80
+    "rare_words_limit": 100
   },
   "lexical_avoidance": {
-    "rare_words_limit": 80
+    "rare_words_limit": 100
   },
   "fiction_detection": {
     "quote_span_min": 6,

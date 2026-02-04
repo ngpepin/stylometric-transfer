@@ -2,4873 +2,4981 @@
 # words are treated as potential "avoid" signals. Stop words are filtered
 # internally, so this list can include them, but we keep it clean.
 # Lines can be whitespace-separated tokens; comments (#) are ignored.
-# Source: wordfreq top 5k (en), filtered to ASCII alpha tokens and stop words removed.
-have
-not
-from
-all
-so
-his
-one
-can
-will
-just
-like
-about
-up
-out
-what
-has
-when
-more
-do
-no
-who
-had
-there
-which
-time
-get
-would
-new
-people
-how
-some
-also
-now
-other
-its
-than
-good
-only
-after
-first
-into
-know
-see
-two
-make
-over
-think
-any
-could
-back
-us
-want
-because
-go
-well
-said
-way
-most
-much
-very
-where
-even
-should
-may
-here
-need
-really
-did
-right
-work
-year
-years
-being
-day
-too
-going
-before
-off
-why
-made
-still
-take
-got
-many
-never
-life
-say
-world
-down
-great
-through
-last
-s
-while
-best
-such
-love
-man
-home
-long
-look
-something
-use
-same
-used
-both
-every
-am
-come
-part
-state
-three
-around
-between
-always
-better
-find
-help
-high
-little
-old
-since
-another
-does
-own
-things
-under
-during
-game
-thing
-give
-house
-place
-school
-again
-next
-each
-mr
-without
-against
-end
-found
-must
-show
-big
-feel
-sure
-team
-ever
-family
-keep
-might
-please
-put
-money
-free
-second
-someone
-away
-left
-number
-city
-days
-lot
-name
-night
-play
-until
-company
-doing
-few
-let
-real
-called
-different
-having
-set
-thought
-done
-however
-getting
-god
-government
-group
-looking
-public
-top
-women
-business
-care
-start
-system
-times
-week
-already
-anything
-case
-nothing
-person
-today
-change
-enough
-everything
-full
-live
-making
-point
-read
-told
-yet
-bad
-four
-hard
-mean
-once
-support
-tell
-including
-music
-power
-seen
-states
-stop
-water
-based
-believe
-call
-head
-men
-national
-small
-took
-white
-came
-far
-job
-side
-though
-try
-went
-yes
-actually
-american
-later
-less
-line
-order
-party
-run
-says
-service
-country
-open
-season
-shit
-thank
-children
-everyone
-general
-trying
-united
-using
-area
-black
-d
-following
-law
-makes
-together
-war
-whole
-car
-face
-five
-kind
-maybe
-per
-president
-story
-working
-course
-games
-health
-hope
-important
-least
-means
-news
-within
-able
-book
-early
-friends
-information
-local
-oh
-post
-t
-thanks
-video
-young
-ago
-others
-social
-talk
-court
-fact
-given
-guys
-half
-hand
-level
-mind
-often
-single
-become
-body
-coming
-control
-death
-food
-guy
-hours
-office
-pay
-problem
-south
-true
-almost
-fuck
-history
-known
-large
-lost
-m
-research
-room
-several
-started
-taking
-university
-win
-wrong
-along
-anyone
-else
-girl
-john
-matter
-pretty
-remember
-air
-bit
-friend
-hit
-needs
-nice
-playing
-probably
-saying
-understand
-yeah
-york
-class
-close
-comes
-idea
-international
-looks
-past
-possible
-wanted
-b
-cause
-due
-happy
-human
-members
-months
-move
-question
-r
-series
-wait
-woman
-ask
-community
-data
-late
-leave
-north
-saw
-special
-watch
-c
-either
-fucking
-future
-light
-low
-million
-morning
-police
-short
-stay
-taken
-age
-buy
-deal
-rather
-reason
-red
-report
-soon
-third
-turn
-whether
-among
-check
-development
-form
-further
-heart
-minutes
-myself
-services
-yourself
-act
-although
-asked
-child
-fire
-fun
-living
-major
-media
-phone
-players
-art
-behind
-building
-easy
-gonna
-market
-near
-non
-plan
-political
-quite
-six
-talking
-west
-works
-according
-available
-e
-education
-final
-former
-front
-kids
-list
-ready
-sometimes
-son
-street
-bring
-college
-current
-example
-experience
-heard
-london
-meet
-program
-type
-baby
-chance
-father
-march
-process
-song
-study
-word
-across
-action
-clear
-gave
-gets
-himself
-month
-outside
-self
-students
-words
-board
-cost
-cut
-dr
-field
-held
-instead
-main
-moment
-mother
-road
-seems
-thinking
-town
-wants
-de
-department
-energy
-fight
-fine
-force
-hear
-issue
-played
-points
-price
-re
-rest
-results
-running
-shows
-space
-summer
-term
-wife
-america
-beautiful
-date
-goes
-killed
-land
-miss
-project
-sex
-shot
-site
-strong
-account
-co
-especially
-eyes
-include
-june
-parents
-period
-position
-record
-similar
-total
-w
-above
-club
-common
-died
-film
-happened
-knew
-lead
-likely
-military
-perfect
-personal
-security
-share
-st
-tv
-won
-x
-april
-center
-county
-couple
-dead
-english
-happen
-hold
-industry
-inside
-issues
-online
-player
-private
-problems
-return
-rights
-sense
-star
-test
-view
-weeks
-break
-british
-companies
-event
-higher
-hour
-l
-member
-middle
-needed
-present
-result
-sorry
-takes
-training
-wish
-answer
-boy
-design
-finally
-girls
-gold
-gone
-guess
-interest
-july
-king
-learn
-policy
-society
-added
-al
-alone
-average
-bank
-brought
-certain
-church
-east
-hands
-hot
-longer
-medical
-movie
-original
-park
-performance
-press
-received
-role
-sent
-themselves
-tried
-worked
-worth
-areas
-became
-bill
-books
-cool
-director
-exactly
-giving
-ground
-meeting
-n
-provide
-questions
-relationship
-september
-sound
-source
-usually
-value
-evidence
-follow
-lives
-official
-ok
-production
-rate
-reading
-round
-save
-stand
-stuff
-tax
-whatever
-amount
-blue
-countries
-david
-drive
-eat
-fall
-fast
-federal
-feeling
-felt
-green
-league
-management
-match
-model
-p
-picture
-size
-step
-trust
-central
-changes
-england
-forward
-groups
-hey
-key
-mom
-o
-page
-paid
-range
-review
-science
-trade
-uk
-upon
-various
-attention
-brother
-cannot
-character
-chief
-cup
-football
-hate
-james
-led
-looked
-lower
-natural
-october
-property
-quality
-send
-style
-u
-vote
-amazing
-august
-blood
-china
-complete
-dog
-economic
-hell
-involved
-itself
-language
-lord
-november
-oil
-related
-serious
-stage
-terms
-title
-add
-article
-attack
-born
-damn
-decided
-decision
-enjoy
-entire
-french
-january
-kill
-met
-perhaps
-poor
-release
-situation
-technology
-turned
-website
-written
-choice
-code
-considered
-continue
-council
-cover
-currently
-door
-election
-european
-events
-f
-financial
-foreign
-hair
-increase
-legal
-lose
-michael
-pick
-race
-seem
-seven
-sign
-simple
-simply
-staff
-super
-union
-walk
-washington
-bed
-began
-built
-career
-changed
-crazy
-daily
-daughter
-december
-die
-difficult
-figure
-hospital
-knows
-loss
-modern
-ones
-paper
-parts
-popular
-published
-safe
-starting
-systems
-version
-voice
-whose
-writing
-army
-australia
-earth
-forget
-goal
-h
-huge
-internet
-listen
-okay
-practice
-rules
-sea
-sir
-success
-towards
-v
-waiting
-ways
-access
-base
-below
-created
-deep
-followed
-la
-lol
-mark
-missing
-offer
-pass
-professional
-released
-risk
-schools
-sleep
-table
-ten
-truth
-ball
-box
-build
-card
-cases
-dark
-district
-europe
-george
-india
-mine
-minister
-note
-percent
-piece
-products
-recent
-seeing
-straight
-visit
-wall
-wanna
-wrote
-allowed
-boys
-culture
-etc
-fans
-february
-gives
-growth
-included
-married
-officer
-pain
-paul
-places
-respect
-response
-river
-rock
-shall
-speak
-specific
-standard
-tonight
-write
-y
-album
-century
-charge
-cold
-create
-effect
-eight
-except
-eye
-funny
-ii
-limited
-moving
-network
-peace
-provided
-recently
-required
-sales
-spent
-store
-student
-tomorrow
-track
-via
-watching
-weight
-addition
-ahead
-allow
-anti
-association
-beat
-brown
-capital
-chinese
-committee
-conference
-difference
-double
-expect
-gas
-island
-moved
-normal
-plans
-population
-potential
-pressure
-radio
-russian
-station
-text
-treatment
-western
-ass
-beginning
-california
-campaign
-certainly
-completely
-content
-credit
-cross
-described
-despite
-female
-focus
-g
-hi
-husband
-ice
-individual
-interesting
-j
-join
-kept
-leading
-loved
-message
-miles
-nearly
-particular
-previous
-quickly
-region
-reported
-section
-sort
-speed
-travel
-consider
-contact
-drop
-fair
-feet
-jesus
-kid
-link
-positive
-sale
-throughout
-tour
-welcome
-absolutely
-additional
-beyond
-conditions
-earlier
-extra
-forces
-immediately
-jobs
-leaving
-minute
-nature
-numbers
-quick
-sell
-significant
-studies
-unless
-winning
-agree
-canada
-clean
-computer
-construction
-episode
-favorite
-income
-justice
-levels
-manager
-movement
-photo
-posted
-safety
-san
-scene
-sold
-sounds
-spend
-statement
-sun
-teams
-ability
-announced
-asking
-calling
-coach
-collection
-continued
-costs
-definitely
-designed
-expected
-friday
-gun
-happens
-heavy
-includes
-knowledge
-particularly
-search
-subject
-train
-wide
-wow
-author
-centre
-claim
-dad
-developed
-fear
-fit
-generally
-german
-global
-goals
-gotta
-hotel
-interested
-judge
-lady
-leader
-letter
-lines
-material
-named
-nobody
-opportunity
-plus
-pre
-product
-regular
-secretary
-sister
-stories
-unit
-workers
-annual
-anymore
-bar
-battle
-brain
-contract
-degree
-families
-features
-finished
-floor
-france
-growing
-hurt
-image
-insurance
-majority
-meant
-opening
-opinion
-physical
-pro
-reach
-rule
-seriously
-sports
-stupid
-successful
-active
-administration
-approach
-australian
-biggest
-cancer
-civil
-dance
-defense
-direction
-independent
-master
-none
-reasons
-russia
-ship
-stock
-trump
-weekend
-wonder
-worst
-africa
-awesome
-band
-beach
-cash
-clearly
-commercial
-compared
-effort
-ended
-fan
-fighting
-imagine
-impact
-lack
-latest
-learning
-multiple
-older
-operation
-organization
-passed
-pictures
-protect
-secret
-senior
-spring
-sunday
-telling
-wear
-activities
-address
-analysis
-anyway
-bought
-calls
-choose
-christmas
-color
-commission
-competition
-details
-direct
-dream
-easily
-finish
-grand
-increased
-indian
-k
-literally
-luck
-marriage
-names
-necessary
-patients
-resources
-rich
-skin
-speaking
-supposed
-sweet
-thus
-touch
-yesterday
-caught
-closed
-congress
-damage
-directly
-disease
-doctor
-doubt
-drink
-driving
-established
-facebook
-feels
-fish
-gay
-germany
-glad
-greater
-grow
-largest
-machine
-notice
-overall
-planning
-professor
-programs
-records
-reports
-shown
-sit
-trip
-associated
-basic
-captain
-carry
-cars
-crime
-effective
-effects
-explain
-fully
-highly
-holding
-japan
-laws
-male
-mrs
-parties
-plant
-reality
-smith
-spot
-texas
-winter
-worse
-advice
-agreement
-award
-block
-broken
-caused
-challenge
-characters
-christian
-comment
-equipment
-eventually
-helped
-holy
-killing
-lived
-lots
-nation
-otherwise
-peter
-prices
-primary
-purpose
-rates
-responsible
-shop
-showing
-sick
-teacher
-theory
-uses
-william
-agency
-avoid
-camera
-catch
-cell
-coast
-comments
-drug
-economy
-environment
-executive
-foot
-hall
-mass
-meaning
-mission
-nine
-officers
-operations
-politics
-pop
-produced
-ran
-saturday
-status
-therefore
-trial
-truly
-weather
-activity
-app
-application
-claims
-coffee
-complex
-condition
-division
-evening
-flight
-freedom
-google
-heat
-highest
-interview
-library
-located
-location
-murder
-obama
-offered
-putting
-queen
-seconds
-showed
-sitting
-standing
-stars
-walking
-accept
-actual
-appear
-attempt
-broke
-channel
-distance
-eating
-exchange
-fat
-fell
-finding
-glass
-learned
-losing
-mobile
-northern
-opened
-placed
-powerful
-prior
-protection
-reached
-receive
-religious
-ride
-robert
-royal
-screen
-serve
-signed
-slow
-species
-speech
-traffic
-tree
-types
-vs
-wearing
-whom
-wonderful
-agreed
-airport
-animals
-appears
-begin
-benefits
-bottom
-cities
-demand
-engine
-everybody
-famous
-ideas
-investment
-keeping
-lie
-notes
-partner
-plays
-raised
-runs
-sad
-solution
-songs
-sources
-southern
-square
-stopped
-structure
-thomas
-traditional
-twice
-wind
-worry
-americans
-appeared
-becomes
-brand
-bus
-cent
-chicago
-count
-covered
-critical
-digital
-forced
-fourth
-fresh
-lake
-mental
-mentioned
-missed
-mostly
-mouth
-owner
-photos
-previously
-realize
-remain
-scale
-score
-separate
-smart
-starts
-surface
-throw
-tom
-totally
-twitter
-views
-wedding
-acting
-actions
-african
-arms
-benefit
-budget
-click
-estate
-failed
-faith
-fashion
-feature
-fund
-generation
-hearing
-hill
-jack
-larger
-louis
-metal
-mid
-paris
-profile
-pull
-push
-returned
-rose
-seat
-seemed
-sexual
-target
-understanding
-village
-agent
-animal
-apply
-authority
-basis
-becoming
-chris
-draw
-dude
-employees
-enter
-ex
-follows
-foundation
-gain
-http
-individuals
-japanese
-leaders
-memory
-prime
-projects
-ring
-rise
-selling
-served
-silver
-soul
-spread
-supply
-waste
-weird
-adult
-apparently
-artist
-chairman
-edition
-engineering
-grade
-happening
-healthy
-institute
-method
-mike
-monday
-nations
-obviously
-option
-prison
-provides
-remains
-senate
-smaller
-somebody
-stone
-strength
-users
-wild
-window
-winner
-arrived
-bag
-bet
-camp
-cast
-christ
-continues
-correct
-dangerous
-ed
-extremely
-firm
-greatest
-handle
-improve
-indeed
-leaves
-movies
-negative
-prevent
-removed
-richard
-spirit
-television
-till
-trouble
-usa
-videos
-advantage
-apart
-aware
-cat
-customers
-decide
-dinner
-dollars
-eastern
-fifth
-function
-gift
-helping
-herself
-impossible
-influence
-items
-joe
-los
-marketing
-mary
-materials
-nor
-produce
-progress
-proud
-require
-shooting
-shut
-standards
-tells
-thinks
-van
-wood
-background
-birth
-bridge
-carried
-charles
-classes
-completed
-concept
-copy
-dear
-dogs
-drugs
-efforts
-garden
-host
-housing
-inc
-israel
-journal
-labor
-leadership
-length
-lucky
-neither
-onto
-patient
-possibly
-prove
-rare
-setting
-skills
-software
-thousands
-tough
-units
-ad
-alive
-apple
-balance
-birthday
-bitch
-boss
-cards
-changing
-connection
-dress
-easier
-fellow
-florida
-horse
-knowing
-liked
-magic
-managed
-map
-net
-owned
-request
-stick
-turns
-vehicle
-volume
-wake
-aid
-beauty
-believed
-billion
-busy
-buying
-cells
-concerned
-conversation
-corner
-criminal
-cultural
-develop
-driver
-ends
-existing
-farm
-file
-fix
-fly
-frank
-guide
-images
-investigation
-mexico
-operating
-paying
-presented
-raise
-responsibility
-roll
-slightly
-suggest
-surprise
-technical
-thoughts
-treat
-unique
-variety
-violence
-weapons
-yours
-youth
-appreciate
-bigger
-breaking
-discovered
-dont
-dry
-edge
-evil
-excited
-forever
-funds
-helps
-henry
-injury
-iron
-lovely
-mad
-magazine
-martin
-models
-offers
-ordered
-parliament
-prepared
-reference
-religion
-sites
-somewhere
-stated
-strategy
-teachers
-web
-wine
-accounts
-angeles
-arm
-audience
-bay
-blog
-closer
-core
-democratic
-description
-dropped
-excellent
-exist
-figures
-forms
-guard
-honest
-issued
-joined
-jones
-lee
-lies
-likes
-medicine
-mention
-mountain
-nuclear
-orders
-port
-presence
-reaction
-reduce
-shoot
-sides
-solid
-spanish
-sport
-steps
-stress
-taste
-tea
-victory
-afternoon
-assistant
-britain
-citizens
-classic
-clothes
-decisions
-electric
-emergency
-entered
-entirely
-facts
-failure
-festival
-flat
-fuel
-harry
-hello
-houses
-ill
-initial
-introduced
-johnson
-kick
-links
-mail
-massive
-matters
-pair
-picked
-pieces
-plane
-plenty
-prince
-proper
-providing
-quarter
-regional
-scott
-session
-shape
-sky
-teaching
-toward
-transfer
-upper
-useful
-valley
-watched
-willing
-windows
-zone
-accident
-advanced
-alternative
-anywhere
-articles
-awards
-bear
-boat
-bringing
-capacity
-cheap
-climate
-communities
-discussion
-drinking
-duty
-fantastic
-feelings
-flying
-governor
-hundred
-industrial
-joint
-mix
-museum
-options
-path
-plants
-policies
-promise
-proposed
-purchase
-rain
-remove
-signs
-spending
-steel
-steve
-supporting
-terrible
-tired
-treated
-turning
-vice
-warm
-afraid
-arts
-beer
-border
-canadian
-command
-crew
-crowd
-dating
-dick
-elements
-enemy
-ensure
-environmental
-filled
-fixed
-forest
-intelligence
-intended
-labour
-limit
-moon
-ocean
-powers
-profit
-proof
-republican
-soldiers
-suit
-wins
-appearance
-asian
-attorney
-banks
-behavior
-ben
-bodies
-brothers
-buildings
-chair
-creating
-debt
-domestic
-expensive
-grew
-historical
-homes
-honestly
-honor
-im
-jump
-launch
-listed
-minimum
-native
-noted
-originally
-planned
-pm
-ray
-sets
-suddenly
-supreme
-survey
-tech
-trees
-update
-user
-writer
-yellow
-younger
-ancient
-attacks
-charges
-combined
-communication
-connected
-contains
-download
-email
-ending
-exercise
-express
-flow
-formed
-girlfriend
-hero
-illegal
-increasing
-joke
-loan
-methods
-officials
-performed
-planet
-relationships
-restaurant
-scotland
-selected
-shared
-shopping
-soft
-stuck
-sugar
-suggested
-supported
-surprised
-taught
-transport
-accepted
-adding
-affairs
-allows
-appeal
-applied
-appropriate
-artists
-boston
-ca
-confirmed
-device
-drama
-entry
-era
-factor
-feed
-golden
-grant
-grown
-heads
-hoping
-keeps
-lawyer
-legs
-lying
-measures
-mistake
-ms
-muslim
-organizations
-platform
-pool
-pulled
-regarding
-relations
-requires
-route
-saved
-schedule
-scientific
-shoes
-smoke
-squad
-teach
-testing
-tests
-values
-walked
-williams
-ya
-abuse
-angry
-businesses
-candidate
-comfortable
-concern
-developing
-discuss
-elections
-emotional
-et
-everywhere
-facilities
-falling
-fox
-guns
-hole
-holiday
-interests
-internal
-ireland
-italian
-italy
-jersey
-laugh
-leg
-letters
-liberal
-listening
-ll
-loves
-lunch
-max
-milk
-pack
-payment
-perform
-recorded
-relatively
-sector
-sharing
-snow
-storm
-streets
-strike
-studio
-sub
-weak
-youtube
-actor
-advance
-apartment
-asia
-chain
-chapter
-committed
-confidence
-cook
-cute
-equal
-fake
-finance
-focused
-hits
-identity
-journey
-kitchen
-korea
-leads
-maintain
-measure
-mm
-numerous
-owners
-posts
-properties
-quiet
-revealed
-specifically
-split
-task
-taxes
-taylor
-twenty
-urban
-acts
-affected
-aircraft
-applications
-approved
-approximately
-argument
-arrested
-claimed
-conflict
-considering
-corporate
-debate
-determined
-distribution
-documents
-escape
-extended
-factors
-faster
-fault
-fill
-films
-flowers
-friendly
-ladies
-lay
-lights
-millions
-mixed
-phase
-properly
-pure
-reduced
-requirements
-residents
-revenue
-sam
-sat
-secure
-smile
-strange
-talent
-temperature
-thousand
-tony
-troops
-truck
-votes
-ah
-authorities
-basically
-besides
-bird
-blame
-bob
-bowl
-causes
-chicken
-collected
-context
-coverage
-determine
-display
-dying
-elected
-examples
-experienced
-falls
-false
-fired
-forgot
-funding
-identified
-iii
-incredible
-inspired
-launched
-ma
-meat
-ministry
-mode
-neck
-noticed
-novel
-obvious
-passing
-positions
-remaining
-scored
-shirt
-shots
-slowly
-stadium
-stores
-surgery
-trading
-tuesday
-vision
-whenever
-worried
-zero
-alex
-allowing
-begins
-champion
-charged
-cream
-crisis
-daniel
-delivered
-editor
-estimated
-eu
-giant
-iran
-jail
-jim
-kingdom
-literature
-mayor
-minor
-moments
-opposite
-orange
-ourselves
-pages
-remained
-selection
-serving
-signal
-stream
-struggle
-suicide
-talked
-theme
-thursday
-tiny
-typically
-un
-unfortunately
-usual
-vehicles
-virginia
-voted
-voting
-walls
-wave
-alcohol
-assembly
-breakfast
-bright
-brings
-capable
-carrying
-chosen
-combination
-conservative
-customer
-cutting
-desire
-destroyed
-draft
-drunk
-essential
-fail
-familiar
-finds
-granted
-guilty
-humans
-hundreds
-id
-improved
-jewish
-largely
-laughing
-markets
-medium
-ohio
-opportunities
-papers
-perfectly
-recommend
-referred
-relevant
-seek
-sending
-solo
-spoke
-stands
-talks
-ticket
-unable
-upset
-wing
-answers
-birds
-bomb
-creative
-cycle
-dealing
-directed
-don
-educational
-entertainment
-extreme
-facility
-fields
-goods
-hang
-holds
-info
-mainly
-maximum
-newspaper
-offering
-painting
-republic
-reserve
-returns
-row
-salt
-scared
-scottish
-shares
-statistics
-switch
-territory
-threat
-tickets
-wales
-adults
-affect
-appointed
-armed
-aside
-assistance
-bell
-blow
-bond
-boyfriend
-careful
-circumstances
-communications
-concerns
-controlled
-corporation
-cry
-danger
-deals
-delivery
-deserve
-devices
-dollar
-dreams
-empty
-enjoyed
-explained
-faces
-folks
-fucked
-gender
-instance
-kim
-kinda
-matches
-mile
-motion
-moves
-nick
-pacific
-prize
-realized
-reasonable
-receiving
-register
-resolution
-rural
-ryan
-saving
-sees
-singing
-spain
-tools
-typical
-universe
-warning
-wars
-wednesday
-admit
-attitude
-branch
-brazil
-conducted
-decades
-dedicated
-definition
-drawing
-favor
-flag
-frame
-guest
-ha
-heaven
-independence
-institutions
-jackson
-kiss
-load
-plot
-possibility
-random
-recovery
-rent
-replace
-represent
-reviews
-scenes
-seeking
-senator
-sentence
-teeth
-tips
-trained
-understood
-academic
-academy
-accurate
-achieve
-adam
-afford
-andrew
-assume
-bbc
-bottle
-bunch
-category
-chat
-cheese
-chemical
-clinton
-competitive
-detail
-diet
-em
-favourite
-fruit
-harder
-index
-item
-lane
-mess
-navy
-normally
-occurred
-opposition
-parent
-permanent
-personally
-pleasure
-prefer
-programme
-representative
-scheme
-shift
-stood
-storage
-tank
-tend
-tight
-transportation
-ultimately
-unlike
-weekly
-yard
-anybody
-assets
-basketball
-button
-candidates
-combat
-constitution
-consumer
-counter
-creation
-crown
-crying
-dc
-defined
-depending
-depression
-describe
-drivers
-el
-employment
-exclusive
-excuse
-expert
-frequently
-golf
-grace
-hopefully
-identify
-importance
-kevin
-laid
-latter
-manufacturing
-mining
-object
-partners
-pattern
-performing
-personnel
-perspective
-pregnant
-premier
-promote
-q
-revolution
-rooms
-severe
-sleeping
-suppose
-tool
-tournament
-turkey
-ve
-victim
-victims
-agents
-amazon
-arrest
-attend
-ban
-brilliant
-carbon
-catholic
-chose
-circle
-concert
-crash
-declared
-deliver
-depth
-deputy
-dirty
-doctors
-earned
-electronic
-error
-existence
-experiences
-expression
-factory
-headed
-interior
-joy
-jr
-legislation
-maintenance
-manner
-mate
-matt
-nearby
-noise
-origin
-pakistan
-panel
-personality
-plate
-practices
-prepare
-relief
-replaced
-resistance
-retail
-rice
-roads
-roof
-shame
-ships
-somewhat
-staying
-stronger
-surely
-tip
-updated
-writers
-absolute
-advertising
-agencies
-baseball
-bathroom
-bible
-cable
-calm
-championship
-checked
-client
-constant
-da
-dates
-degrees
-democrats
-doors
-driven
-dumb
-empire
-exciting
-expansion
-heavily
-hide
-incident
-irish
-linked
-manage
-messages
-michigan
-multi
-nfl
-politicians
-print
-quit
-refused
-reporting
-sight
-significantly
-sing
-soviet
-weapon
-wet
-widely
-worldwide
-ages
-anniversary
-attractive
-bike
-broad
-burn
-cake
-causing
-closely
-constantly
-contest
-deaths
-depends
-drawn
-fees
-francisco
-haha
-hardly
-hat
-height
-hidden
-hong
-invited
-letting
-loud
-manchester
-marine
-motor
-officially
-pc
-peak
-portion
-pounds
-princess
-protein
-puts
-raw
-reform
-regions
-represented
-respond
-retirement
-sample
-seats
-secondary
-solar
-somehow
-stayed
-suffering
-sydney
-tries
-ultimate
-unknown
-wilson
-wondering
-attached
-attacked
-automatically
-balls
-battery
-bills
-blind
-breath
-brief
-carolina
-chest
-conduct
-debut
-decade
-destroy
-differences
-edward
-engaged
-experts
-expressed
-external
-fantasy
-ft
-grab
-hollywood
-immediate
-introduction
-joseph
-license
-paint
-pilot
-pink
-presidential
-principal
-recognize
-recognized
-registered
-regularly
-representatives
-rising
-seasons
-shipping
-singer
-smoking
-steam
-suffered
-survive
-tall
-thats
-theatre
-therapy
-witness
-adopted
-aim
-campus
-cap
-chances
-childhood
-clinical
-clubs
-comedy
-commander
-comparison
-covers
-dan
-defeat
-defence
-democracy
-detailed
-entitled
-exact
-exposed
-fed
-fee
-injured
-jan
-jordan
-kinds
-lets
-loans
-lock
-musical
-nose
-objects
-opposed
-organized
-plastic
-protected
-purposes
-quote
-recording
-semi
-statements
-suspect
-swear
-techniques
-tie
-tim
-trend
-valuable
-wealth
-wise
-yards
-aged
-approval
-aspects
-attempts
-bread
-burning
-champions
-contain
-convention
-dancing
-document
-eggs
-employee
-en
-engineer
-equivalent
-facing
-fairly
-fingers
-ford
-founded
-functions
-gang
-graduate
-greek
-hanging
-inner
-islands
-le
-lift
-marked
-memories
-miller
-monthly
-mountains
-neighborhood
-operate
-outstanding
-permission
-porn
-racing
-recommended
-regulations
-reply
-republicans
-rid
-roman
-scientists
-shoulder
-shower
-solutions
-sons
-stations
-stephen
-tower
-tradition
-visited
-visual
-wheel
-zealand
-achieved
-admitted
-appointment
-authors
-barely
-bc
-bush
-cabinet
-celebrate
-challenges
-chocolate
-coal
-colour
-contemporary
-criticism
-davis
-dna
-effectively
-eric
-extensive
-faced
-filed
-formation
-fought
-gained
-gallery
-highway
-historic
-hunt
-improvement
-inch
-initially
-junior
-jury
-kong
-korean
-marks
-monster
-obtained
-olympic
-philosophy
-pride
-promised
-repeat
-returning
-riding
-rough
-santa
-settlement
-smell
-sought
-speaker
-studied
-suggests
-surrounding
-tone
-topic
-toronto
-universal
-vast
-visitors
-wanting
-auto
-consistent
-continuing
-earn
-exists
-finger
-grey
-guitar
-heading
-howard
-ignore
-involving
-latin
-lewis
-meal
-meanwhile
-meetings
-naturally
-necessarily
-offices
-pants
-partnership
-payments
-percentage
-pocket
-practical
-primarily
-proved
-rape
-regardless
-relative
-represents
-rescue
-resulting
-rush
-sarah
-sessions
-sharp
-simon
-soccer
-stable
-structures
-supplies
-symptoms
-temporary
-tested
-trick
-attended
-audio
-bone
-brian
-bullshit
-chamber
-chart
-circuit
-clothing
-complicated
-confused
-consequences
-defend
-divided
-elizabeth
-everyday
-extent
-fishing
-format
-gap
-gate
-gotten
-harm
-healthcare
-household
-immigration
-impressive
-jews
-joining
-killer
-lesson
-limits
-loving
-ltd
-managers
-membership
-miami
-mirror
-mount
-nights
-occur
-parking
-proposal
-province
-purchased
-recognition
-reputation
-rolling
-shortly
-situations
-strongly
-tears
-technique
-thin
-tied
-z
-accused
-adventure
-argue
-assessment
-atmosphere
-awful
-bedroom
-belief
-bound
-breaks
-carefully
-cats
-ceo
-choices
-closing
-cloud
-colorado
-colors
-contrast
-courses
-courts
-donald
-drew
-egg
-element
-elsewhere
-establish
-extension
-files
-founder
-gear
-georgia
-hills
-hip
-hitting
-increases
-infrastructure
-jason
-locations
-loose
-machines
-moral
-offensive
-pa
-package
-pointed
-poverty
-processes
-processing
-qualified
-railway
-reaching
-ridiculous
-sensitive
-server
-shock
-silence
-soldier
-superior
-supporters
-thick
-threw
-tons
-transition
-violent
-voters
-wash
-acid
-actress
-administrative
-alan
-alongside
-angel
-anxiety
-babies
-bars
-bonus
-castle
-charity
-clients
-compare
-contained
-cooking
-covering
-curious
-directors
-discovery
-discussed
-duke
-egypt
-encourage
-enforcement
-featuring
-finals
-flash
-formal
-formula
-fort
-governments
-gray
-gross
-horses
-hungry
-informed
-innocent
-jeff
-losses
-luke
-mac
-math
-minds
-mistakes
-mystery
-networks
-olympics
-palace
-passes
-penalty
-pet
-phones
-photography
-producing
-protest
-publication
-rating
-refer
-respectively
-rome
-scheduled
-select
-silent
-spoken
-successfully
-suffer
-temple
-tracks
-trail
-uncle
-unusual
-waters
-woods
-yo
-arrival
-asks
-assault
-awareness
-badly
-bath
-captured
-chase
-components
-concrete
-dave
-deeply
-expectations
-explanation
-exposure
-featured
-fiction
-guarantee
-happiness
-harris
-hearts
-horrible
-ideal
-illinois
-injuries
-islamic
-jimmy
-kelly
-legend
-lieutenant
-mini
-mood
-muscle
-muslims
-passion
-picking
-pleased
-procedure
-producer
-pushing
-rank
-replacement
-retired
-roles
-sand
-savings
-settled
-shadow
-singles
-tag
-tape
-thread
-victoria
-visiting
-wage
-wings
-andy
-avenue
-bags
-beating
-believes
-blocks
-boring
-charlie
-checking
-clock
-commissioner
-commitment
-confident
-containing
-copies
-crimes
-custom
-denied
-desk
-drinks
-ear
-electricity
-episodes
-farmers
-fbi
-grounds
-gym
-helpful
-horror
-iphone
-iraq
-label
-liverpool
-locked
-naked
-ny
-opens
-output
-persons
-pitch
-pizza
-plain
-pushed
-raising
-rear
-reveal
-romantic
-scores
-sisters
-speaks
-stages
-strategic
-swimming
-welfare
-winners
-wire
-worker
-afterwards
-alright
-android
-anger
-architecture
-assist
-attempted
-behalf
-belt
-capture
-centers
-ceremony
-comic
-cops
-cuts
-dallas
-designer
-diamond
-disappointed
-dressed
-economics
-efficient
-electrical
-employed
-enjoying
-entering
-essentially
-establishment
-expecting
-explains
-flower
-ghost
-guests
-handed
-hockey
-houston
-https
-hunting
-industries
-islam
-jane
-judges
-kit
-lab
-languages
-maps
-min
-morgan
-moscow
-na
-nervous
-newly
-odd
-op
-ordinary
-participate
-philadelphia
-prayer
-principles
-racist
-rarely
-references
-sexy
-skill
-soil
-solve
-stomach
-struck
-studying
-suck
-supports
-trash
-ugly
-vegas
-virus
-walker
-whoever
-amounts
-anthony
-arthur
-aspect
-banned
-boost
-bureau
-colonel
-comfort
-controls
-cousin
-crack
-deck
-demands
-dies
-dragon
-dramatic
-dust
-dutch
-engineers
-evolution
-foods
-hired
-illness
-inspiration
-institution
-kings
-knife
-lately
-lowest
-memorial
-mexican
-minority
-mum
-opinions
-patterns
-presents
-priority
-promotion
-rail
-readers
-remote
-repair
-root
-saint
-steal
-stolen
-telephone
-tho
-titles
-trans
-ups
-vol
-whereas
-abandoned
-acquired
-actors
-alexander
-alliance
-annoying
-ap
-bid
-bro
-buddy
-buried
-butter
-cares
-columbia
-conclusion
-confirm
-congratulations
-contracts
-convinced
-crap
-crystal
-dean
-decent
-decline
-delay
-describes
-desert
-downtown
-elite
-enemies
-forgotten
-forth
-gods
-hire
-hop
-hopes
-insane
-installed
-israeli
-landing
-layer
-managing
-marry
-nah
-nowhere
-nurse
-obtain
-organic
-ownership
-participants
-pennsylvania
-poetry
-pot
-pray
-printed
-recall
-rugby
-sake
-sheet
-signing
-smooth
-spiritual
-stops
-string
-sudden
-sweden
-syria
-throwing
-thrown
-vacation
-abroad
-arab
-assigned
-associate
-assumed
-atlantic
-bench
-bother
-broadcast
-bye
-cambridge
-citizen
-cleaning
-compete
-consists
-consumers
-contributed
-cricket
-critics
-damaged
-disaster
-discover
-disney
-entrance
-equally
-fallen
-figured
-fitness
-francis
-friendship
-gary
-handling
-idiot
-intense
-keys
-lawyers
-lifetime
-liquid
-makeup
-medal
-mortgage
-narrative
-narrow
-nba
-observed
-occasionally
-pan
-physics
-posting
-potentially
-reduction
-reflect
-refuse
-researchers
-resource
-roger
-ross
-sciences
-seattle
-serves
-shell
-silly
-subsequent
-towns
-translation
-visible
-yep
-adds
-allen
-amendment
-angle
-arizona
-arrive
-belong
-berlin
-bishop
-channels
-clark
-commonly
-connect
-defensive
-designs
-efficiency
-enterprise
-experiment
-feb
-females
-findings
-firms
-forum
-gifts
-grass
-hence
-increasingly
-incredibly
-iv
-jay
-journalist
-kicked
-lessons
-lists
-maintained
-mill
-mo
-occasion
-oxford
-pace
-passenger
-pen
-pope
-possession
-pp
-races
-rapid
-regulation
-resident
-rocks
-shaped
-sixth
-spin
-styles
-subjects
-sucks
-suitable
-thirty
-valid
-vital
-whilst
-agriculture
-alleged
-anna
-atlanta
-bands
-christians
-collect
-commerce
-cop
-creek
-currency
-emotions
-exhibition
-fraud
-funeral
-genuine
-gordon
-honey
-honour
-hook
-hunter
-immigrants
-improving
-instructions
-introduce
-kansas
-km
-lands
-legacy
-log
-matthew
-merely
-monitor
-nov
-patrick
-phil
-prisoners
-programming
-publishing
-ratio
-regret
-rejected
-remind
-resort
-resulted
-reverse
-routine
-scary
-seed
-settle
-sin
-spell
-summary
-survival
-sword
-tongue
-ward
-waves
-wayne
-achievement
-anderson
-argued
-asleep
-austin
-automatic
-begun
-behaviour
-cd
-cents
-coat
-comprehensive
-consent
-daddy
-destruction
-diego
-diseases
-divorce
-doc
-drove
-ears
-engage
-extraordinary
-fate
-frequency
-gaming
-gene
-glory
-headquarters
-heritage
-initiative
-interviews
-jean
-juice
-landscape
-logic
-meets
-melbourne
-microsoft
-objective
-organisation
-privacy
-procedures
-profits
-reducing
-regard
-representing
-residence
-roughly
-salary
-scoring
-script
-searching
-sections
-strip
-surrounded
-threatened
-transferred
-tube
-universities
-walter
-wisconsin
-writes
-ambassador
-ann
-apps
-awarded
-banking
-breast
-cant
-carter
-chelsea
-chemistry
-concluded
-consumption
-corruption
-cotton
-crossed
-detroit
-discount
-dozen
-engines
-epic
-exception
-exit
-expand
-fancy
-gorgeous
-grateful
-heroes
-holes
-impression
-inches
-indicate
-input
-johnny
-josh
-knock
-leather
-lips
-luxury
-lyrics
-manufacturers
-masters
-movements
-oct
-operated
-ought
-outcome
-painted
-poll
-preferred
-pulling
-ranked
-referring
-removal
-rep
-reporter
-rio
-risks
-rob
-screaming
-sept
-sequence
-singapore
-stretch
-tear
-tennis
-terrorist
-theater
-ties
-twelve
-versions
-virgin
-voices
-wishes
-wolf
-absence
-agricultural
-asshole
-ate
-athletes
-bears
-blues
-boxes
-bruce
-bull
-cameras
-commonwealth
-contribute
-contribution
-contributions
-couples
-delicious
-deny
-deserves
-ease
-extend
-fame
-flood
-generated
-genetic
-glasses
-impressed
-indicated
-instant
-investors
-involves
-kate
-kills
-liberty
-maria
-ministers
-monitoring
-occurs
-passengers
-photographs
-principle
-producers
-progressive
-punishment
-rally
-rapidly
-reader
-representation
-restaurants
-reveals
-roots
-samples
-shops
-sum
-swing
-tail
-texts
-twin
-upcoming
-veterans
-alert
-arena
-arguments
-aug
-billy
-boom
-boots
-brave
-claiming
-column
-commit
-compensation
-composition
-computers
-conservation
-constitutional
-crossing
-defending
-density
-di
-difficulty
-dropping
-drops
-elementary
-ethnic
-expenses
-fleet
-foster
-fuckin
-fundamental
-gen
-genius
-greatly
-guidance
-hospitals
-infection
-instagram
-intention
-iowa
-jokes
-knee
-mechanical
-nigeria
-parks
-participation
-periods
-precious
-pregnancy
-premium
-preparing
-pretend
-priest
-prominent
-proven
-radical
-remembered
-requested
-residential
-reward
-rings
-robin
-russell
-satellite
-shake
-shore
-spots
-stats
-struggling
-substantial
-teen
-temperatures
-transmission
-trap
-uniform
-wildlife
-wooden
-ads
-aggressive
-anne
-answered
-apparent
-bang
-blast
-bones
-brands
-centuries
-communist
-complaint
-component
-connections
-courage
-cure
-del
-desperate
-diversity
-duties
-encouraged
-eve
-faculty
-feedback
-fighter
-frozen
-guards
-hiding
-humanity
-ian
-il
-innovation
-instruments
-invest
-jacket
-justin
-legislative
-listing
-manual
-mothers
-murdered
-nursing
-occupied
-ongoing
-operator
-painful
-pound
-preparation
-punch
-purple
-railroad
-registration
-releases
-rick
-romance
-submitted
-sufficient
-survived
-suspended
-technologies
-tissue
-trailer
-trends
-trials
-ukraine
-underground
-versus
-virtual
-walks
-wounded
-ali
-amongst
-announcement
-arranged
-arsenal
-attending
-attracted
-biological
-bite
-blocked
-boards
-burned
-categories
-checks
-chip
-concerning
-dare
-database
-define
-discrimination
-disorder
-distributed
-districts
-documentary
-domain
-dynamic
-edited
-engagement
-explore
-favour
-fewer
-footage
-giants
-grave
-hamilton
-implementation
-indiana
-investigate
-jazz
-jon
-jonathan
-laboratory
-lawrence
-lincoln
-literary
-mask
-massachusetts
-midnight
-minnesota
-mouse
-oscar
-packed
-piano
-praise
-presentation
-psychology
-relation
-restrictions
-rocket
-ruin
-saudi
-sean
-sec
-secrets
-slave
-stability
-steady
-stones
-symbol
-terminal
-toilet
-treaty
-triple
-unlikely
-updates
-vietnam
-viewed
-affair
-agenda
-bat
-bow
-calendar
-cape
-collective
-conversations
-cooperation
-craft
-darkness
-deeper
-devil
-edit
-enable
-equity
-estimates
-failing
-finishing
-fortune
-gates
-goodbye
-graham
-hardware
-hillary
-hurts
-intellectual
-invite
-involvement
-kentucky
-madrid
-mi
-nuts
-oregon
-partly
-petition
-phrase
-physically
-protecting
-racial
-rated
-regime
-rivers
-rounds
-ruled
-sa
-sauce
-seal
-separated
-shield
-similarly
-slide
-stem
-summit
-talented
-throat
-tiger
-touched
-toy
-visits
-warriors
-wisdom
-accounting
-alien
-attacking
-awkward
-beast
-beef
-candy
-carrier
-celebration
-celebrity
-certificate
-cited
-clay
-coaching
-colleagues
-constructed
-dated
-dec
-default
-delhi
-derived
-dialogue
-disabled
-distinct
-drag
-educated
-eligible
-estimate
-execution
-existed
-fifty
-followers
-fool
-framework
-franchise
-funded
-furniture
-generations
-guaranteed
-integrated
-intelligent
-interaction
-jet
-journalists
-lifestyle
-lighting
-lisa
-loop
-mall
-mp
-overseas
-performances
-philippines
-polish
-recommendations
-recover
-regarded
-relax
-reliable
-rely
-remarkable
-responses
-ruling
-sacrifice
-se
-sole
-stopping
-strategies
-succeed
-tables
-tale
-targets
-timing
-ton
-volunteers
-witnesses
-wore
-worship
-worthy
-acted
-alarm
-bass
-bloody
-breathing
-butt
-characteristics
-cnn
-collaboration
-con
-consideration
-counts
-creates
-crucial
-daughters
-dependent
-discussions
-drives
-dual
-edinburgh
-equipped
-expanded
-experimental
-feeding
-filter
-galaxy
-globe
-grades
-greece
-gulf
-highlights
-hoped
-intent
-involve
-judgment
-kennedy
-knight
-larry
-las
-lmao
-logo
-malaysia
-mature
-moore
-nazi
-netherlands
-odds
-peaceful
-philip
-photographer
-pin
-prevention
-printing
-promoting
-publicly
-pump
-repeated
-replied
-requests
-revenge
-satisfied
-seeds
-signals
-slip
-spaces
-spare
-specialist
-stocks
-stranger
-submit
-surprising
-tap
-thompson
-threats
-tourism
-turkish
-volunteer
-acceptable
-allies
-attempting
-auction
-bonds
-challenging
-chaos
-churches
-cleveland
-cm
-composed
-concentration
-copper
-corp
-corps
-counting
-credits
-dawn
-dispute
-earnings
-editing
-executed
-firing
-fits
-frequent
-gardens
-gathered
-hilarious
-huh
-ignored
-improvements
-investments
-isis
-margin
-mars
-maryland
-mechanism
-moderate
-murray
-oklahoma
-opera
-overcome
-parallel
-passage
-pit
-psychological
-publications
-quest
-radiation
-shocked
-sized
-stroke
-stunning
-tanks
-tokyo
-topics
-trains
-traveling
-treating
-tune
-utility
-vessel
-weed
-wherever
-acquisition
-addressed
-alabama
-alice
-angels
-anime
-announce
-autumn
-backed
-barry
-bold
-borders
-breathe
-cameron
-choosing
-classical
-classified
-clip
-coaches
-coins
-concepts
-conspiracy
-controversy
-convince
-cooper
-disappeared
-eh
-encounter
-equality
-exam
-examination
-fails
-federation
-fi
-fiscal
-guardian
-hd
-homeless
-instrument
-intervention
-jerry
-lover
-mainstream
-menu
-missouri
-mounted
-mutual
-nope
-occasions
-offense
-oral
-panic
-pays
-peoples
-pursue
-realise
-refugees
-removing
-requirement
-responded
-rip
-ruined
-scope
-segment
-spectrum
-stays
-ted
-terror
-uh
-va
-venture
-virtually
-waited
-warren
-worn
-yea
-ac
-accompanied
-adams
-aids
-aimed
-alpha
-approaches
-arguing
-arrangement
-beliefs
-boats
-boundaries
-brick
-brooklyn
-colleges
-considerable
-conventional
-danny
-des
-designated
-dvd
-emperor
-employers
-enormous
-errors
-focusing
-forgive
-gains
-garage
-gathering
-guidelines
-handled
-hosted
-indians
-indonesia
-inquiry
-inspector
-jumped
-khan
-li
-lion
-loaded
-lonely
-maintaining
-measured
-mercy
-nevertheless
-newspapers
-outer
-oxygen
-pipe
-pissed
-poem
-powder
-powered
-promises
-quotes
-racism
-ratings
-reads
-recovered
-refers
-roy
-rude
-screw
-seventh
-shelter
-signature
-sooner
-spider
-stewart
-strikes
-suggesting
-suits
-toys
-tracking
-tribute
-trigger
-vary
-venue
-wages
-wells
-wheels
-ye
-abc
-abortion
-accuracy
-albert
-applying
-artificial
-belongs
-beneath
-bitcoin
-bullet
-burns
-carl
-celebrated
-consistently
-conversion
-copyright
-counties
-democrat
-deposit
-destination
-dirt
-diverse
-divine
-emails
-er
-exclusively
-export
-fastest
-formerly
-functional
-gather
-grandfather
-habit
-harvard
-indicates
-isolated
-jealous
-knocked
-landed
-laughed
-laura
-lazy
-mama
-marshall
-mitchell
-modified
-municipal
-naval
-neighbors
-nelson
-neutral
-noble
-oldest
-pat
-picks
-poland
-popularity
-professionals
-pussy
-reactions
-relate
-robot
-sacred
-securities
-shoe
-speakers
-springs
-spy
-steven
-suggestions
-supplied
-susan
-suspension
-terrorism
-terry
-toxic
-treasury
-tunnel
-unions
-upgrade
-warrant
-wider
-wound
-aaron
-actively
-afghanistan
-ai
-applies
-arrangements
-asset
-assuming
-backing
-baker
-barcelona
-blessed
-brazilian
-brush
-burden
-campbell
-carries
-casual
-certified
-charter
-chef
-civilian
-coalition
-cock
-complain
-complaints
-controversial
-denver
-describing
-differently
-directions
-discipline
-discussing
-disgusting
-dj
-dominant
-earning
-emma
-essay
-expense
-explaining
-furthermore
-graphic
-greg
-healing
-hiring
-hosts
-implemented
-instantly
-invasion
-jacob
-jumping
-laptop
-legendary
-leo
-maker
-margaret
-mario
-opponents
-outdoor
-palm
-parker
-photograph
-pole
-pub
-quarters
-queensland
-rangers
-ranks
-reception
-recipe
-regulatory
-reviewed
-rolls
-rubber
-secured
-serial
-settings
-shed
-snake
-sponsored
-stealing
-strict
-subsequently
-substance
-suggestion
-switzerland
-syndrome
-tasks
-trips
-ultra
-unexpected
-usage
-utah
-worlds
-accidentally
-affordable
-amateur
-appeals
-argentina
-baltimore
-batman
-bearing
-beats
-bin
-biology
-bobby
-briefly
-canal
-cancelled
-charlotte
-cheaper
-christopher
-climb
-com
-competing
-completion
-cruise
-custody
-delete
-demonstrated
-departure
-developers
-developments
-dig
-eagles
-employer
-evans
-explosion
-fever
-fluid
-folk
-generate
-gop
-handsome
-ho
-holidays
-hotels
-imagination
-integration
-integrity
-interpretation
-leaf
-legitimate
-lightning
-loads
-longest
-magical
-mills
-motivation
-nasty
-oliver
-outfit
-pension
-permit
-perry
-plates
-pleasant
-portrait
-productive
-reminds
-reserves
-ron
-safely
-shirts
-shorter
-slight
-socialist
-streaming
-sue
-targeted
-tension
-thailand
-theories
-touching
-transactions
-twist
-ugh
-unemployment
-unity
-useless
-viewers
-winds
-woke
-wtf
+# Format: <word> <zipf_frequency>
+# Source: wordfreq top 8k (en), filtered to ASCII alpha tokens and stop words removed, then truncated to 5k.
+have	6.710
+not	6.690
+from	6.630
+all	6.520
+so	6.520
+his	6.510
+one	6.470
+can	6.460
+will	6.450
+just	6.430
+like	6.410
+about	6.400
+up	6.390
+out	6.380
+what	6.380
+has	6.370
+when	6.370
+more	6.360
+do	6.350
+no	6.350
+who	6.340
+had	6.330
+there	6.310
+which	6.300
+time	6.290
+get	6.280
+would	6.270
+new	6.250
+people	6.250
+how	6.240
+some	6.200
+also	6.190
+now	6.180
+other	6.160
+its	6.140
+than	6.130
+good	6.120
+only	6.120
+after	6.110
+first	6.110
+into	6.110
+know	6.100
+see	6.100
+two	6.100
+make	6.080
+over	6.080
+think	6.080
+any	6.070
+could	6.060
+back	6.040
+us	6.040
+want	6.040
+because	6.030
+go	6.030
+well	6.030
+said	6.010
+way	6.010
+most	6.000
+much	6.000
+very	6.000
+where	6.000
+even	5.990
+should	5.990
+may	5.980
+here	5.970
+need	5.970
+really	5.970
+did	5.960
+right	5.960
+work	5.960
+year	5.960
+years	5.960
+being	5.950
+day	5.950
+too	5.950
+going	5.940
+before	5.930
+off	5.930
+why	5.930
+made	5.920
+still	5.920
+take	5.920
+got	5.910
+many	5.910
+never	5.910
+life	5.890
+say	5.890
+world	5.890
+down	5.880
+great	5.880
+through	5.870
+last	5.860
+while	5.860
+best	5.840
+such	5.840
+love	5.820
+man	5.820
+home	5.810
+long	5.810
+look	5.810
+something	5.810
+use	5.810
+same	5.800
+used	5.800
+both	5.790
+every	5.790
+am	5.780
+come	5.780
+part	5.780
+state	5.780
+three	5.780
+around	5.770
+between	5.770
+always	5.760
+better	5.760
+find	5.760
+help	5.750
+high	5.750
+little	5.750
+old	5.750
+since	5.750
+another	5.740
+does	5.740
+own	5.740
+things	5.740
+under	5.730
+during	5.720
+game	5.720
+thing	5.720
+give	5.710
+house	5.710
+place	5.710
+school	5.710
+again	5.700
+next	5.700
+each	5.690
+mr	5.690
+without	5.690
+against	5.680
+end	5.680
+found	5.680
+must	5.680
+show	5.680
+big	5.670
+feel	5.670
+sure	5.670
+team	5.670
+ever	5.660
+family	5.660
+keep	5.660
+might	5.660
+please	5.660
+put	5.660
+money	5.640
+free	5.630
+second	5.630
+someone	5.630
+away	5.620
+left	5.620
+number	5.620
+city	5.610
+days	5.610
+lot	5.610
+name	5.610
+night	5.610
+play	5.610
+until	5.610
+company	5.600
+doing	5.600
+few	5.600
+let	5.600
+real	5.600
+called	5.590
+different	5.590
+having	5.590
+set	5.590
+thought	5.590
+done	5.580
+however	5.580
+getting	5.570
+god	5.570
+government	5.570
+group	5.570
+looking	5.570
+public	5.570
+top	5.570
+women	5.570
+business	5.560
+care	5.560
+start	5.560
+system	5.560
+times	5.560
+week	5.560
+already	5.550
+anything	5.550
+case	5.550
+nothing	5.550
+person	5.550
+today	5.550
+change	5.540
+enough	5.540
+everything	5.540
+full	5.540
+live	5.540
+making	5.540
+point	5.540
+read	5.540
+told	5.540
+yet	5.540
+bad	5.530
+four	5.530
+hard	5.530
+mean	5.530
+once	5.530
+support	5.530
+tell	5.530
+including	5.520
+music	5.520
+power	5.520
+seen	5.520
+states	5.520
+stop	5.520
+water	5.520
+based	5.510
+believe	5.510
+call	5.510
+head	5.510
+men	5.510
+national	5.510
+small	5.510
+took	5.510
+white	5.510
+came	5.500
+far	5.500
+job	5.500
+side	5.500
+though	5.500
+try	5.500
+went	5.500
+yes	5.500
+actually	5.490
+american	5.490
+later	5.490
+less	5.490
+line	5.490
+order	5.490
+party	5.490
+run	5.490
+says	5.490
+service	5.490
+country	5.480
+open	5.480
+season	5.480
+shit	5.480
+thank	5.480
+children	5.470
+everyone	5.470
+general	5.470
+trying	5.470
+united	5.470
+using	5.470
+area	5.460
+black	5.460
+following	5.460
+law	5.460
+makes	5.460
+together	5.460
+war	5.460
+whole	5.460
+car	5.450
+face	5.450
+five	5.450
+kind	5.450
+maybe	5.450
+per	5.450
+president	5.450
+story	5.450
+working	5.450
+course	5.440
+games	5.440
+health	5.440
+hope	5.440
+important	5.440
+least	5.440
+means	5.440
+news	5.440
+within	5.440
+able	5.430
+book	5.430
+early	5.430
+friends	5.430
+information	5.430
+local	5.430
+oh	5.430
+post	5.430
+thanks	5.430
+video	5.430
+young	5.430
+ago	5.420
+others	5.420
+social	5.420
+talk	5.420
+court	5.410
+fact	5.410
+given	5.410
+guys	5.410
+half	5.410
+hand	5.410
+level	5.410
+mind	5.410
+often	5.410
+single	5.410
+become	5.400
+body	5.400
+coming	5.400
+control	5.400
+death	5.400
+food	5.400
+guy	5.400
+hours	5.400
+office	5.400
+pay	5.400
+problem	5.400
+south	5.400
+true	5.400
+almost	5.390
+fuck	5.390
+history	5.390
+known	5.390
+large	5.390
+lost	5.390
+research	5.390
+room	5.390
+several	5.390
+started	5.390
+taking	5.390
+university	5.390
+win	5.390
+wrong	5.390
+along	5.380
+anyone	5.380
+else	5.380
+girl	5.380
+john	5.380
+matter	5.380
+pretty	5.380
+remember	5.380
+air	5.370
+bit	5.370
+friend	5.370
+hit	5.370
+needs	5.370
+nice	5.370
+playing	5.370
+probably	5.370
+saying	5.370
+understand	5.370
+yeah	5.370
+york	5.370
+class	5.360
+close	5.360
+comes	5.360
+idea	5.360
+international	5.360
+looks	5.360
+past	5.360
+possible	5.360
+wanted	5.360
+cause	5.350
+due	5.350
+happy	5.350
+human	5.350
+members	5.350
+months	5.350
+move	5.350
+question	5.350
+series	5.350
+wait	5.350
+woman	5.350
+ask	5.340
+community	5.340
+data	5.340
+late	5.340
+leave	5.340
+north	5.340
+saw	5.340
+special	5.340
+watch	5.340
+either	5.330
+fucking	5.330
+future	5.330
+light	5.330
+low	5.330
+million	5.330
+morning	5.330
+police	5.330
+short	5.330
+stay	5.330
+taken	5.330
+age	5.320
+buy	5.320
+deal	5.320
+rather	5.320
+reason	5.320
+red	5.320
+report	5.320
+soon	5.320
+third	5.320
+turn	5.320
+whether	5.320
+among	5.310
+check	5.310
+development	5.310
+form	5.310
+further	5.310
+heart	5.310
+minutes	5.310
+myself	5.310
+services	5.310
+yourself	5.310
+act	5.300
+although	5.300
+asked	5.300
+child	5.300
+fire	5.300
+fun	5.300
+living	5.300
+major	5.300
+media	5.300
+phone	5.300
+players	5.300
+art	5.290
+behind	5.290
+building	5.290
+easy	5.290
+gonna	5.290
+market	5.290
+near	5.290
+non	5.290
+plan	5.290
+political	5.290
+quite	5.290
+six	5.290
+talking	5.290
+west	5.290
+works	5.290
+according	5.280
+available	5.280
+education	5.280
+final	5.280
+former	5.280
+front	5.280
+kids	5.280
+list	5.280
+ready	5.280
+sometimes	5.280
+son	5.280
+street	5.280
+bring	5.270
+college	5.270
+current	5.270
+example	5.270
+experience	5.270
+heard	5.270
+london	5.270
+meet	5.270
+program	5.270
+type	5.270
+baby	5.260
+chance	5.260
+father	5.260
+march	5.260
+process	5.260
+song	5.260
+study	5.260
+word	5.260
+across	5.250
+action	5.250
+clear	5.250
+gave	5.250
+gets	5.250
+himself	5.250
+month	5.250
+outside	5.250
+self	5.250
+students	5.250
+words	5.250
+board	5.240
+cost	5.240
+cut	5.240
+dr	5.240
+field	5.240
+held	5.240
+instead	5.240
+main	5.240
+moment	5.240
+mother	5.240
+road	5.240
+seems	5.240
+thinking	5.240
+town	5.240
+wants	5.240
+de	5.230
+department	5.230
+energy	5.230
+fight	5.230
+fine	5.230
+force	5.230
+hear	5.230
+issue	5.230
+played	5.230
+points	5.230
+price	5.230
+re	5.230
+rest	5.230
+results	5.230
+running	5.230
+shows	5.230
+space	5.230
+summer	5.230
+term	5.230
+wife	5.230
+america	5.220
+beautiful	5.220
+date	5.220
+goes	5.220
+killed	5.220
+land	5.220
+miss	5.220
+project	5.220
+sex	5.220
+shot	5.220
+site	5.220
+strong	5.220
+account	5.210
+co	5.210
+especially	5.210
+eyes	5.210
+include	5.210
+june	5.210
+parents	5.210
+period	5.210
+position	5.210
+record	5.210
+similar	5.210
+total	5.210
+above	5.200
+club	5.200
+common	5.200
+died	5.200
+film	5.200
+happened	5.200
+knew	5.200
+lead	5.200
+likely	5.200
+military	5.200
+perfect	5.200
+personal	5.200
+security	5.200
+share	5.200
+st	5.200
+tv	5.200
+won	5.200
+april	5.190
+center	5.190
+county	5.190
+couple	5.190
+dead	5.190
+english	5.190
+happen	5.190
+hold	5.190
+industry	5.190
+inside	5.190
+issues	5.190
+online	5.190
+player	5.190
+private	5.190
+problems	5.190
+return	5.190
+rights	5.190
+sense	5.190
+star	5.190
+test	5.190
+view	5.190
+weeks	5.190
+break	5.180
+british	5.180
+companies	5.180
+event	5.180
+higher	5.180
+hour	5.180
+member	5.180
+middle	5.180
+needed	5.180
+present	5.180
+result	5.180
+sorry	5.180
+takes	5.180
+training	5.180
+wish	5.180
+answer	5.170
+boy	5.170
+design	5.170
+finally	5.170
+girls	5.170
+gold	5.170
+gone	5.170
+guess	5.170
+interest	5.170
+july	5.170
+king	5.170
+learn	5.170
+policy	5.170
+society	5.170
+added	5.160
+al	5.160
+alone	5.160
+average	5.160
+bank	5.160
+brought	5.160
+certain	5.160
+church	5.160
+east	5.160
+hands	5.160
+hot	5.160
+longer	5.160
+medical	5.160
+movie	5.160
+original	5.160
+park	5.160
+performance	5.160
+press	5.160
+received	5.160
+role	5.160
+sent	5.160
+themselves	5.160
+tried	5.160
+worked	5.160
+worth	5.160
+areas	5.150
+became	5.150
+bill	5.150
+books	5.150
+cool	5.150
+director	5.150
+exactly	5.150
+giving	5.150
+ground	5.150
+meeting	5.150
+provide	5.150
+questions	5.150
+relationship	5.150
+september	5.150
+sound	5.150
+source	5.150
+usually	5.150
+value	5.150
+evidence	5.140
+follow	5.140
+lives	5.140
+official	5.140
+ok	5.140
+production	5.140
+rate	5.140
+reading	5.140
+round	5.140
+save	5.140
+stand	5.140
+stuff	5.140
+tax	5.140
+whatever	5.140
+amount	5.130
+blue	5.130
+countries	5.130
+david	5.130
+drive	5.130
+eat	5.130
+fall	5.130
+fast	5.130
+federal	5.130
+feeling	5.130
+felt	5.130
+green	5.130
+league	5.130
+management	5.130
+match	5.130
+model	5.130
+picture	5.130
+size	5.130
+step	5.130
+trust	5.130
+central	5.120
+changes	5.120
+england	5.120
+forward	5.120
+groups	5.120
+hey	5.120
+key	5.120
+mom	5.120
+page	5.120
+paid	5.120
+range	5.120
+review	5.120
+science	5.120
+trade	5.120
+uk	5.120
+upon	5.120
+various	5.120
+attention	5.110
+brother	5.110
+cannot	5.110
+character	5.110
+chief	5.110
+cup	5.110
+football	5.110
+hate	5.110
+james	5.110
+led	5.110
+looked	5.110
+lower	5.110
+natural	5.110
+october	5.110
+property	5.110
+quality	5.110
+send	5.110
+style	5.110
+vote	5.110
+amazing	5.100
+august	5.100
+blood	5.100
+china	5.100
+complete	5.100
+dog	5.100
+economic	5.100
+hell	5.100
+involved	5.100
+itself	5.100
+language	5.100
+lord	5.100
+november	5.100
+oil	5.100
+related	5.100
+serious	5.100
+stage	5.100
+terms	5.100
+title	5.100
+add	5.090
+article	5.090
+attack	5.090
+born	5.090
+damn	5.090
+decided	5.090
+decision	5.090
+enjoy	5.090
+entire	5.090
+french	5.090
+january	5.090
+kill	5.090
+met	5.090
+perhaps	5.090
+poor	5.090
+release	5.090
+situation	5.090
+technology	5.090
+turned	5.090
+website	5.090
+written	5.090
+choice	5.080
+code	5.080
+considered	5.080
+continue	5.080
+council	5.080
+cover	5.080
+currently	5.080
+door	5.080
+election	5.080
+european	5.080
+events	5.080
+financial	5.080
+foreign	5.080
+hair	5.080
+increase	5.080
+legal	5.080
+lose	5.080
+michael	5.080
+pick	5.080
+race	5.080
+seem	5.080
+seven	5.080
+sign	5.080
+simple	5.080
+simply	5.080
+staff	5.080
+super	5.080
+union	5.080
+walk	5.080
+washington	5.080
+bed	5.070
+began	5.070
+built	5.070
+career	5.070
+changed	5.070
+crazy	5.070
+daily	5.070
+daughter	5.070
+december	5.070
+die	5.070
+difficult	5.070
+figure	5.070
+hospital	5.070
+knows	5.070
+loss	5.070
+modern	5.070
+ones	5.070
+paper	5.070
+parts	5.070
+popular	5.070
+published	5.070
+safe	5.070
+starting	5.070
+systems	5.070
+version	5.070
+voice	5.070
+whose	5.070
+writing	5.070
+army	5.060
+australia	5.060
+earth	5.060
+forget	5.060
+goal	5.060
+huge	5.060
+internet	5.060
+listen	5.060
+okay	5.060
+practice	5.060
+rules	5.060
+sea	5.060
+sir	5.060
+success	5.060
+towards	5.060
+waiting	5.060
+ways	5.060
+access	5.050
+base	5.050
+below	5.050
+created	5.050
+deep	5.050
+followed	5.050
+la	5.050
+lol	5.050
+mark	5.050
+missing	5.050
+offer	5.050
+pass	5.050
+professional	5.050
+released	5.050
+risk	5.050
+schools	5.050
+sleep	5.050
+table	5.050
+ten	5.050
+truth	5.050
+ball	5.040
+box	5.040
+build	5.040
+card	5.040
+cases	5.040
+dark	5.040
+district	5.040
+europe	5.040
+george	5.040
+india	5.040
+mine	5.040
+minister	5.040
+note	5.040
+percent	5.040
+piece	5.040
+products	5.040
+recent	5.040
+seeing	5.040
+straight	5.040
+visit	5.040
+wall	5.040
+wanna	5.040
+wrote	5.040
+allowed	5.030
+boys	5.030
+culture	5.030
+etc	5.030
+fans	5.030
+february	5.030
+gives	5.030
+growth	5.030
+included	5.030
+married	5.030
+officer	5.030
+pain	5.030
+paul	5.030
+places	5.030
+respect	5.030
+response	5.030
+river	5.030
+rock	5.030
+shall	5.030
+speak	5.030
+specific	5.030
+standard	5.030
+tonight	5.030
+write	5.030
+album	5.020
+century	5.020
+charge	5.020
+cold	5.020
+create	5.020
+effect	5.020
+eight	5.020
+except	5.020
+eye	5.020
+funny	5.020
+ii	5.020
+limited	5.020
+moving	5.020
+network	5.020
+peace	5.020
+provided	5.020
+recently	5.020
+required	5.020
+sales	5.020
+spent	5.020
+store	5.020
+student	5.020
+tomorrow	5.020
+track	5.020
+via	5.020
+watching	5.020
+weight	5.020
+addition	5.010
+ahead	5.010
+allow	5.010
+anti	5.010
+association	5.010
+beat	5.010
+brown	5.010
+capital	5.010
+chinese	5.010
+committee	5.010
+conference	5.010
+difference	5.010
+double	5.010
+expect	5.010
+gas	5.010
+island	5.010
+moved	5.010
+normal	5.010
+plans	5.010
+population	5.010
+potential	5.010
+pressure	5.010
+radio	5.010
+russian	5.010
+station	5.010
+text	5.010
+treatment	5.010
+western	5.010
+ass	5.000
+beginning	5.000
+california	5.000
+campaign	5.000
+certainly	5.000
+completely	5.000
+content	5.000
+credit	5.000
+cross	5.000
+described	5.000
+despite	5.000
+female	5.000
+focus	5.000
+hi	5.000
+husband	5.000
+ice	5.000
+individual	5.000
+interesting	5.000
+join	5.000
+kept	5.000
+leading	5.000
+loved	5.000
+message	5.000
+miles	5.000
+nearly	5.000
+particular	5.000
+previous	5.000
+quickly	5.000
+region	5.000
+reported	5.000
+section	5.000
+sort	5.000
+speed	5.000
+travel	5.000
+consider	4.990
+contact	4.990
+drop	4.990
+fair	4.990
+feet	4.990
+jesus	4.990
+kid	4.990
+link	4.990
+positive	4.990
+sale	4.990
+throughout	4.990
+tour	4.990
+welcome	4.990
+absolutely	4.980
+additional	4.980
+beyond	4.980
+conditions	4.980
+earlier	4.980
+extra	4.980
+forces	4.980
+immediately	4.980
+jobs	4.980
+leaving	4.980
+minute	4.980
+nature	4.980
+numbers	4.980
+quick	4.980
+sell	4.980
+significant	4.980
+studies	4.980
+unless	4.980
+winning	4.980
+agree	4.970
+canada	4.970
+clean	4.970
+computer	4.970
+construction	4.970
+episode	4.970
+favorite	4.970
+income	4.970
+justice	4.970
+levels	4.970
+manager	4.970
+movement	4.970
+photo	4.970
+posted	4.970
+safety	4.970
+san	4.970
+scene	4.970
+sold	4.970
+sounds	4.970
+spend	4.970
+statement	4.970
+sun	4.970
+teams	4.970
+ability	4.960
+announced	4.960
+asking	4.960
+calling	4.960
+coach	4.960
+collection	4.960
+continued	4.960
+costs	4.960
+definitely	4.960
+designed	4.960
+expected	4.960
+friday	4.960
+gun	4.960
+happens	4.960
+heavy	4.960
+includes	4.960
+knowledge	4.960
+particularly	4.960
+search	4.960
+subject	4.960
+train	4.960
+wide	4.960
+wow	4.960
+author	4.950
+centre	4.950
+claim	4.950
+dad	4.950
+developed	4.950
+fear	4.950
+fit	4.950
+generally	4.950
+german	4.950
+global	4.950
+goals	4.950
+gotta	4.950
+hotel	4.950
+interested	4.950
+judge	4.950
+lady	4.950
+leader	4.950
+letter	4.950
+lines	4.950
+material	4.950
+named	4.950
+nobody	4.950
+opportunity	4.950
+plus	4.950
+pre	4.950
+product	4.950
+regular	4.950
+secretary	4.950
+sister	4.950
+stories	4.950
+unit	4.950
+workers	4.950
+annual	4.940
+anymore	4.940
+bar	4.940
+battle	4.940
+brain	4.940
+contract	4.940
+degree	4.940
+families	4.940
+features	4.940
+finished	4.940
+floor	4.940
+france	4.940
+growing	4.940
+hurt	4.940
+image	4.940
+insurance	4.940
+majority	4.940
+meant	4.940
+opening	4.940
+opinion	4.940
+physical	4.940
+pro	4.940
+reach	4.940
+rule	4.940
+seriously	4.940
+sports	4.940
+stupid	4.940
+successful	4.940
+active	4.930
+administration	4.930
+approach	4.930
+australian	4.930
+biggest	4.930
+cancer	4.930
+civil	4.930
+dance	4.930
+defense	4.930
+direction	4.930
+independent	4.930
+master	4.930
+none	4.930
+reasons	4.930
+russia	4.930
+ship	4.930
+stock	4.930
+trump	4.930
+weekend	4.930
+wonder	4.930
+worst	4.930
+africa	4.920
+awesome	4.920
+band	4.920
+beach	4.920
+cash	4.920
+clearly	4.920
+commercial	4.920
+compared	4.920
+effort	4.920
+ended	4.920
+fan	4.920
+fighting	4.920
+imagine	4.920
+impact	4.920
+lack	4.920
+latest	4.920
+learning	4.920
+multiple	4.920
+older	4.920
+operation	4.920
+organization	4.920
+passed	4.920
+pictures	4.920
+protect	4.920
+secret	4.920
+senior	4.920
+spring	4.920
+sunday	4.920
+telling	4.920
+wear	4.920
+activities	4.910
+address	4.910
+analysis	4.910
+anyway	4.910
+bought	4.910
+calls	4.910
+choose	4.910
+christmas	4.910
+color	4.910
+commission	4.910
+competition	4.910
+details	4.910
+direct	4.910
+dream	4.910
+easily	4.910
+finish	4.910
+grand	4.910
+increased	4.910
+indian	4.910
+literally	4.910
+luck	4.910
+marriage	4.910
+names	4.910
+necessary	4.910
+patients	4.910
+resources	4.910
+rich	4.910
+skin	4.910
+speaking	4.910
+supposed	4.910
+sweet	4.910
+thus	4.910
+touch	4.910
+yesterday	4.910
+caught	4.900
+closed	4.900
+congress	4.900
+damage	4.900
+directly	4.900
+disease	4.900
+doctor	4.900
+doubt	4.900
+drink	4.900
+driving	4.900
+established	4.900
+facebook	4.900
+feels	4.900
+fish	4.900
+gay	4.900
+germany	4.900
+glad	4.900
+greater	4.900
+grow	4.900
+largest	4.900
+machine	4.900
+notice	4.900
+overall	4.900
+planning	4.900
+professor	4.900
+programs	4.900
+records	4.900
+reports	4.900
+shown	4.900
+sit	4.900
+trip	4.900
+associated	4.890
+basic	4.890
+captain	4.890
+carry	4.890
+cars	4.890
+crime	4.890
+effective	4.890
+effects	4.890
+explain	4.890
+fully	4.890
+highly	4.890
+holding	4.890
+japan	4.890
+laws	4.890
+male	4.890
+mrs	4.890
+parties	4.890
+plant	4.890
+reality	4.890
+smith	4.890
+spot	4.890
+texas	4.890
+winter	4.890
+worse	4.890
+advice	4.880
+agreement	4.880
+award	4.880
+block	4.880
+broken	4.880
+caused	4.880
+challenge	4.880
+characters	4.880
+christian	4.880
+comment	4.880
+equipment	4.880
+eventually	4.880
+helped	4.880
+holy	4.880
+killing	4.880
+lived	4.880
+lots	4.880
+nation	4.880
+otherwise	4.880
+peter	4.880
+prices	4.880
+primary	4.880
+purpose	4.880
+rates	4.880
+responsible	4.880
+shop	4.880
+showing	4.880
+sick	4.880
+teacher	4.880
+theory	4.880
+uses	4.880
+william	4.880
+agency	4.870
+avoid	4.870
+camera	4.870
+catch	4.870
+cell	4.870
+coast	4.870
+comments	4.870
+drug	4.870
+economy	4.870
+environment	4.870
+executive	4.870
+foot	4.870
+hall	4.870
+mass	4.870
+meaning	4.870
+mission	4.870
+nine	4.870
+officers	4.870
+operations	4.870
+politics	4.870
+pop	4.870
+produced	4.870
+ran	4.870
+saturday	4.870
+status	4.870
+therefore	4.870
+trial	4.870
+truly	4.870
+weather	4.870
+activity	4.860
+app	4.860
+application	4.860
+claims	4.860
+coffee	4.860
+complex	4.860
+condition	4.860
+division	4.860
+evening	4.860
+flight	4.860
+freedom	4.860
+google	4.860
+heat	4.860
+highest	4.860
+interview	4.860
+library	4.860
+located	4.860
+location	4.860
+murder	4.860
+obama	4.860
+offered	4.860
+putting	4.860
+queen	4.860
+seconds	4.860
+showed	4.860
+sitting	4.860
+standing	4.860
+stars	4.860
+walking	4.860
+accept	4.850
+actual	4.850
+appear	4.850
+attempt	4.850
+broke	4.850
+channel	4.850
+distance	4.850
+eating	4.850
+exchange	4.850
+fat	4.850
+fell	4.850
+finding	4.850
+glass	4.850
+learned	4.850
+losing	4.850
+mobile	4.850
+northern	4.850
+opened	4.850
+placed	4.850
+powerful	4.850
+prior	4.850
+protection	4.850
+reached	4.850
+receive	4.850
+religious	4.850
+ride	4.850
+robert	4.850
+royal	4.850
+screen	4.850
+serve	4.850
+signed	4.850
+slow	4.850
+species	4.850
+speech	4.850
+traffic	4.850
+tree	4.850
+types	4.850
+vs	4.850
+wearing	4.850
+whom	4.850
+wonderful	4.850
+agreed	4.840
+airport	4.840
+animals	4.840
+appears	4.840
+begin	4.840
+benefits	4.840
+bottom	4.840
+cities	4.840
+demand	4.840
+engine	4.840
+everybody	4.840
+famous	4.840
+ideas	4.840
+investment	4.840
+keeping	4.840
+lie	4.840
+notes	4.840
+partner	4.840
+plays	4.840
+raised	4.840
+runs	4.840
+sad	4.840
+solution	4.840
+songs	4.840
+sources	4.840
+southern	4.840
+square	4.840
+stopped	4.840
+structure	4.840
+thomas	4.840
+traditional	4.840
+twice	4.840
+wind	4.840
+worry	4.840
+americans	4.830
+appeared	4.830
+becomes	4.830
+brand	4.830
+bus	4.830
+cent	4.830
+chicago	4.830
+count	4.830
+covered	4.830
+critical	4.830
+digital	4.830
+forced	4.830
+fourth	4.830
+fresh	4.830
+lake	4.830
+mental	4.830
+mentioned	4.830
+missed	4.830
+mostly	4.830
+mouth	4.830
+owner	4.830
+photos	4.830
+previously	4.830
+realize	4.830
+remain	4.830
+scale	4.830
+score	4.830
+separate	4.830
+smart	4.830
+starts	4.830
+surface	4.830
+throw	4.830
+tom	4.830
+totally	4.830
+twitter	4.830
+views	4.830
+wedding	4.830
+acting	4.820
+actions	4.820
+african	4.820
+arms	4.820
+benefit	4.820
+budget	4.820
+click	4.820
+estate	4.820
+failed	4.820
+faith	4.820
+fashion	4.820
+feature	4.820
+fund	4.820
+generation	4.820
+hearing	4.820
+hill	4.820
+jack	4.820
+larger	4.820
+louis	4.820
+metal	4.820
+mid	4.820
+paris	4.820
+profile	4.820
+pull	4.820
+push	4.820
+returned	4.820
+rose	4.820
+seat	4.820
+seemed	4.820
+sexual	4.820
+target	4.820
+understanding	4.820
+village	4.820
+agent	4.810
+animal	4.810
+apply	4.810
+authority	4.810
+basis	4.810
+becoming	4.810
+chris	4.810
+draw	4.810
+dude	4.810
+employees	4.810
+enter	4.810
+ex	4.810
+follows	4.810
+foundation	4.810
+gain	4.810
+http	4.810
+individuals	4.810
+japanese	4.810
+leaders	4.810
+memory	4.810
+prime	4.810
+projects	4.810
+ring	4.810
+rise	4.810
+selling	4.810
+served	4.810
+silver	4.810
+soul	4.810
+spread	4.810
+supply	4.810
+waste	4.810
+weird	4.810
+adult	4.800
+apparently	4.800
+artist	4.800
+chairman	4.800
+edition	4.800
+engineering	4.800
+grade	4.800
+happening	4.800
+healthy	4.800
+institute	4.800
+method	4.800
+mike	4.800
+monday	4.800
+nations	4.800
+obviously	4.800
+option	4.800
+prison	4.800
+provides	4.800
+remains	4.800
+senate	4.800
+smaller	4.800
+somebody	4.800
+stone	4.800
+strength	4.800
+users	4.800
+wild	4.800
+window	4.800
+winner	4.800
+arrived	4.790
+bag	4.790
+bet	4.790
+camp	4.790
+cast	4.790
+christ	4.790
+continues	4.790
+correct	4.790
+dangerous	4.790
+ed	4.790
+extremely	4.790
+firm	4.790
+greatest	4.790
+handle	4.790
+improve	4.790
+indeed	4.790
+leaves	4.790
+movies	4.790
+negative	4.790
+prevent	4.790
+removed	4.790
+richard	4.790
+spirit	4.790
+television	4.790
+till	4.790
+trouble	4.790
+usa	4.790
+videos	4.790
+advantage	4.780
+apart	4.780
+aware	4.780
+cat	4.780
+customers	4.780
+decide	4.780
+dinner	4.780
+dollars	4.780
+eastern	4.780
+fifth	4.780
+function	4.780
+gift	4.780
+helping	4.780
+herself	4.780
+impossible	4.780
+influence	4.780
+items	4.780
+joe	4.780
+los	4.780
+marketing	4.780
+mary	4.780
+materials	4.780
+nor	4.780
+produce	4.780
+progress	4.780
+proud	4.780
+require	4.780
+shooting	4.780
+shut	4.780
+standards	4.780
+tells	4.780
+thinks	4.780
+van	4.780
+wood	4.780
+background	4.770
+birth	4.770
+bridge	4.770
+carried	4.770
+charles	4.770
+classes	4.770
+completed	4.770
+concept	4.770
+copy	4.770
+dear	4.770
+dogs	4.770
+drugs	4.770
+efforts	4.770
+garden	4.770
+host	4.770
+housing	4.770
+inc	4.770
+israel	4.770
+journal	4.770
+labor	4.770
+leadership	4.770
+length	4.770
+lucky	4.770
+neither	4.770
+onto	4.770
+patient	4.770
+possibly	4.770
+prove	4.770
+rare	4.770
+setting	4.770
+skills	4.770
+software	4.770
+thousands	4.770
+tough	4.770
+units	4.770
+ad	4.760
+alive	4.760
+apple	4.760
+balance	4.760
+birthday	4.760
+bitch	4.760
+boss	4.760
+cards	4.760
+changing	4.760
+connection	4.760
+dress	4.760
+easier	4.760
+fellow	4.760
+florida	4.760
+horse	4.760
+knowing	4.760
+liked	4.760
+magic	4.760
+managed	4.760
+map	4.760
+net	4.760
+owned	4.760
+request	4.760
+stick	4.760
+turns	4.760
+vehicle	4.760
+volume	4.760
+wake	4.760
+aid	4.750
+beauty	4.750
+believed	4.750
+billion	4.750
+busy	4.750
+buying	4.750
+cells	4.750
+concerned	4.750
+conversation	4.750
+corner	4.750
+criminal	4.750
+cultural	4.750
+develop	4.750
+driver	4.750
+ends	4.750
+existing	4.750
+farm	4.750
+file	4.750
+fix	4.750
+fly	4.750
+frank	4.750
+guide	4.750
+images	4.750
+investigation	4.750
+mexico	4.750
+operating	4.750
+paying	4.750
+presented	4.750
+raise	4.750
+responsibility	4.750
+roll	4.750
+slightly	4.750
+suggest	4.750
+surprise	4.750
+technical	4.750
+thoughts	4.750
+treat	4.750
+unique	4.750
+variety	4.750
+violence	4.750
+weapons	4.750
+yours	4.750
+youth	4.750
+appreciate	4.740
+bigger	4.740
+breaking	4.740
+discovered	4.740
+dont	4.740
+dry	4.740
+edge	4.740
+evil	4.740
+excited	4.740
+forever	4.740
+funds	4.740
+helps	4.740
+henry	4.740
+injury	4.740
+iron	4.740
+lovely	4.740
+mad	4.740
+magazine	4.740
+martin	4.740
+models	4.740
+offers	4.740
+ordered	4.740
+parliament	4.740
+prepared	4.740
+reference	4.740
+religion	4.740
+sites	4.740
+somewhere	4.740
+stated	4.740
+strategy	4.740
+teachers	4.740
+web	4.740
+wine	4.740
+accounts	4.730
+angeles	4.730
+arm	4.730
+audience	4.730
+bay	4.730
+blog	4.730
+closer	4.730
+core	4.730
+democratic	4.730
+description	4.730
+dropped	4.730
+excellent	4.730
+exist	4.730
+figures	4.730
+forms	4.730
+guard	4.730
+honest	4.730
+issued	4.730
+joined	4.730
+jones	4.730
+lee	4.730
+lies	4.730
+likes	4.730
+medicine	4.730
+mention	4.730
+mountain	4.730
+nuclear	4.730
+orders	4.730
+port	4.730
+presence	4.730
+reaction	4.730
+reduce	4.730
+shoot	4.730
+sides	4.730
+solid	4.730
+spanish	4.730
+sport	4.730
+steps	4.730
+stress	4.730
+taste	4.730
+tea	4.730
+victory	4.730
+afternoon	4.720
+assistant	4.720
+britain	4.720
+citizens	4.720
+classic	4.720
+clothes	4.720
+decisions	4.720
+electric	4.720
+emergency	4.720
+entered	4.720
+entirely	4.720
+facts	4.720
+failure	4.720
+festival	4.720
+flat	4.720
+fuel	4.720
+harry	4.720
+hello	4.720
+houses	4.720
+ill	4.720
+initial	4.720
+introduced	4.720
+johnson	4.720
+kick	4.720
+links	4.720
+mail	4.720
+massive	4.720
+matters	4.720
+pair	4.720
+picked	4.720
+pieces	4.720
+plane	4.720
+plenty	4.720
+prince	4.720
+proper	4.720
+providing	4.720
+quarter	4.720
+regional	4.720
+scott	4.720
+session	4.720
+shape	4.720
+sky	4.720
+teaching	4.720
+toward	4.720
+transfer	4.720
+upper	4.720
+useful	4.720
+valley	4.720
+watched	4.720
+willing	4.720
+windows	4.720
+zone	4.720
+accident	4.710
+advanced	4.710
+alternative	4.710
+anywhere	4.710
+articles	4.710
+awards	4.710
+bear	4.710
+boat	4.710
+bringing	4.710
+capacity	4.710
+cheap	4.710
+climate	4.710
+communities	4.710
+discussion	4.710
+drinking	4.710
+duty	4.710
+fantastic	4.710
+feelings	4.710
+flying	4.710
+governor	4.710
+hundred	4.710
+industrial	4.710
+joint	4.710
+mix	4.710
+museum	4.710
+options	4.710
+path	4.710
+plants	4.710
+policies	4.710
+promise	4.710
+proposed	4.710
+purchase	4.710
+rain	4.710
+remove	4.710
+signs	4.710
+spending	4.710
+steel	4.710
+steve	4.710
+supporting	4.710
+terrible	4.710
+tired	4.710
+treated	4.710
+turning	4.710
+vice	4.710
+warm	4.710
+afraid	4.700
+arts	4.700
+beer	4.700
+border	4.700
+canadian	4.700
+command	4.700
+crew	4.700
+crowd	4.700
+dating	4.700
+dick	4.700
+elements	4.700
+enemy	4.700
+ensure	4.700
+environmental	4.700
+filled	4.700
+fixed	4.700
+forest	4.700
+intelligence	4.700
+intended	4.700
+labour	4.700
+limit	4.700
+moon	4.700
+ocean	4.700
+powers	4.700
+profit	4.700
+proof	4.700
+republican	4.700
+soldiers	4.700
+suit	4.700
+wins	4.700
+appearance	4.690
+asian	4.690
+attorney	4.690
+banks	4.690
+behavior	4.690
+ben	4.690
+bodies	4.690
+brothers	4.690
+buildings	4.690
+chair	4.690
+creating	4.690
+debt	4.690
+domestic	4.690
+expensive	4.690
+grew	4.690
+historical	4.690
+homes	4.690
+honestly	4.690
+honor	4.690
+im	4.690
+jump	4.690
+launch	4.690
+listed	4.690
+minimum	4.690
+native	4.690
+noted	4.690
+originally	4.690
+planned	4.690
+pm	4.690
+ray	4.690
+sets	4.690
+suddenly	4.690
+supreme	4.690
+survey	4.690
+tech	4.690
+trees	4.690
+update	4.690
+user	4.690
+writer	4.690
+yellow	4.690
+younger	4.690
+ancient	4.680
+attacks	4.680
+charges	4.680
+combined	4.680
+communication	4.680
+connected	4.680
+contains	4.680
+download	4.680
+email	4.680
+ending	4.680
+exercise	4.680
+express	4.680
+flow	4.680
+formed	4.680
+girlfriend	4.680
+hero	4.680
+illegal	4.680
+increasing	4.680
+joke	4.680
+loan	4.680
+methods	4.680
+officials	4.680
+performed	4.680
+planet	4.680
+relationships	4.680
+restaurant	4.680
+scotland	4.680
+selected	4.680
+shared	4.680
+shopping	4.680
+soft	4.680
+stuck	4.680
+sugar	4.680
+suggested	4.680
+supported	4.680
+surprised	4.680
+taught	4.680
+transport	4.680
+accepted	4.670
+adding	4.670
+affairs	4.670
+allows	4.670
+appeal	4.670
+applied	4.670
+appropriate	4.670
+artists	4.670
+boston	4.670
+ca	4.670
+confirmed	4.670
+device	4.670
+drama	4.670
+entry	4.670
+era	4.670
+factor	4.670
+feed	4.670
+golden	4.670
+grant	4.670
+grown	4.670
+heads	4.670
+hoping	4.670
+keeps	4.670
+lawyer	4.670
+legs	4.670
+lying	4.670
+measures	4.670
+mistake	4.670
+ms	4.670
+muslim	4.670
+organizations	4.670
+platform	4.670
+pool	4.670
+pulled	4.670
+regarding	4.670
+relations	4.670
+requires	4.670
+route	4.670
+saved	4.670
+schedule	4.670
+scientific	4.670
+shoes	4.670
+smoke	4.670
+squad	4.670
+teach	4.670
+testing	4.670
+tests	4.670
+values	4.670
+walked	4.670
+williams	4.670
+ya	4.670
+abuse	4.660
+angry	4.660
+businesses	4.660
+candidate	4.660
+comfortable	4.660
+concern	4.660
+developing	4.660
+discuss	4.660
+elections	4.660
+emotional	4.660
+et	4.660
+everywhere	4.660
+facilities	4.660
+falling	4.660
+fox	4.660
+guns	4.660
+hole	4.660
+holiday	4.660
+interests	4.660
+internal	4.660
+ireland	4.660
+italian	4.660
+italy	4.660
+jersey	4.660
+laugh	4.660
+leg	4.660
+letters	4.660
+liberal	4.660
+listening	4.660
+ll	4.660
+loves	4.660
+lunch	4.660
+max	4.660
+milk	4.660
+pack	4.660
+payment	4.660
+perform	4.660
+recorded	4.660
+relatively	4.660
+sector	4.660
+sharing	4.660
+snow	4.660
+storm	4.660
+streets	4.660
+strike	4.660
+studio	4.660
+sub	4.660
+weak	4.660
+youtube	4.660
+actor	4.650
+advance	4.650
+apartment	4.650
+asia	4.650
+chain	4.650
+chapter	4.650
+committed	4.650
+confidence	4.650
+cook	4.650
+cute	4.650
+equal	4.650
+fake	4.650
+finance	4.650
+focused	4.650
+hits	4.650
+identity	4.650
+journey	4.650
+kitchen	4.650
+korea	4.650
+leads	4.650
+maintain	4.650
+measure	4.650
+mm	4.650
+numerous	4.650
+owners	4.650
+posts	4.650
+properties	4.650
+quiet	4.650
+revealed	4.650
+specifically	4.650
+split	4.650
+task	4.650
+taxes	4.650
+taylor	4.650
+twenty	4.650
+urban	4.650
+acts	4.640
+affected	4.640
+aircraft	4.640
+applications	4.640
+approved	4.640
+approximately	4.640
+argument	4.640
+arrested	4.640
+claimed	4.640
+conflict	4.640
+considering	4.640
+corporate	4.640
+debate	4.640
+determined	4.640
+distribution	4.640
+documents	4.640
+escape	4.640
+extended	4.640
+factors	4.640
+faster	4.640
+fault	4.640
+fill	4.640
+films	4.640
+flowers	4.640
+friendly	4.640
+ladies	4.640
+lay	4.640
+lights	4.640
+millions	4.640
+mixed	4.640
+phase	4.640
+properly	4.640
+pure	4.640
+reduced	4.640
+requirements	4.640
+residents	4.640
+revenue	4.640
+sam	4.640
+sat	4.640
+secure	4.640
+smile	4.640
+strange	4.640
+talent	4.640
+temperature	4.640
+thousand	4.640
+tony	4.640
+troops	4.640
+truck	4.640
+votes	4.640
+ah	4.630
+authorities	4.630
+basically	4.630
+besides	4.630
+bird	4.630
+blame	4.630
+bob	4.630
+bowl	4.630
+causes	4.630
+chicken	4.630
+collected	4.630
+context	4.630
+coverage	4.630
+determine	4.630
+display	4.630
+dying	4.630
+elected	4.630
+examples	4.630
+experienced	4.630
+falls	4.630
+false	4.630
+fired	4.630
+forgot	4.630
+funding	4.630
+identified	4.630
+iii	4.630
+incredible	4.630
+inspired	4.630
+launched	4.630
+ma	4.630
+meat	4.630
+ministry	4.630
+mode	4.630
+neck	4.630
+noticed	4.630
+novel	4.630
+obvious	4.630
+passing	4.630
+positions	4.630
+remaining	4.630
+scored	4.630
+shirt	4.630
+shots	4.630
+slowly	4.630
+stadium	4.630
+stores	4.630
+surgery	4.630
+trading	4.630
+tuesday	4.630
+vision	4.630
+whenever	4.630
+worried	4.630
+zero	4.630
+alex	4.620
+allowing	4.620
+begins	4.620
+champion	4.620
+charged	4.620
+cream	4.620
+crisis	4.620
+daniel	4.620
+delivered	4.620
+editor	4.620
+estimated	4.620
+eu	4.620
+giant	4.620
+iran	4.620
+jail	4.620
+jim	4.620
+kingdom	4.620
+literature	4.620
+mayor	4.620
+minor	4.620
+moments	4.620
+opposite	4.620
+orange	4.620
+ourselves	4.620
+pages	4.620
+remained	4.620
+selection	4.620
+serving	4.620
+signal	4.620
+stream	4.620
+struggle	4.620
+suicide	4.620
+talked	4.620
+theme	4.620
+thursday	4.620
+tiny	4.620
+typically	4.620
+un	4.620
+unfortunately	4.620
+usual	4.620
+vehicles	4.620
+virginia	4.620
+voted	4.620
+voting	4.620
+walls	4.620
+wave	4.620
+alcohol	4.610
+assembly	4.610
+breakfast	4.610
+bright	4.610
+brings	4.610
+capable	4.610
+carrying	4.610
+chosen	4.610
+combination	4.610
+conservative	4.610
+customer	4.610
+cutting	4.610
+desire	4.610
+destroyed	4.610
+draft	4.610
+drunk	4.610
+essential	4.610
+fail	4.610
+familiar	4.610
+finds	4.610
+granted	4.610
+guilty	4.610
+humans	4.610
+hundreds	4.610
+id	4.610
+improved	4.610
+jewish	4.610
+largely	4.610
+laughing	4.610
+markets	4.610
+medium	4.610
+ohio	4.610
+opportunities	4.610
+papers	4.610
+perfectly	4.610
+recommend	4.610
+referred	4.610
+relevant	4.610
+seek	4.610
+sending	4.610
+solo	4.610
+spoke	4.610
+stands	4.610
+talks	4.610
+ticket	4.610
+unable	4.610
+upset	4.610
+wing	4.610
+answers	4.600
+birds	4.600
+bomb	4.600
+creative	4.600
+cycle	4.600
+dealing	4.600
+directed	4.600
+don	4.600
+educational	4.600
+entertainment	4.600
+extreme	4.600
+facility	4.600
+fields	4.600
+goods	4.600
+hang	4.600
+holds	4.600
+info	4.600
+mainly	4.600
+maximum	4.600
+newspaper	4.600
+offering	4.600
+painting	4.600
+republic	4.600
+reserve	4.600
+returns	4.600
+row	4.600
+salt	4.600
+scared	4.600
+scottish	4.600
+shares	4.600
+statistics	4.600
+switch	4.600
+territory	4.600
+threat	4.600
+tickets	4.600
+wales	4.600
+adults	4.590
+affect	4.590
+appointed	4.590
+armed	4.590
+aside	4.590
+assistance	4.590
+bell	4.590
+blow	4.590
+bond	4.590
+boyfriend	4.590
+careful	4.590
+circumstances	4.590
+communications	4.590
+concerns	4.590
+controlled	4.590
+corporation	4.590
+cry	4.590
+danger	4.590
+deals	4.590
+delivery	4.590
+deserve	4.590
+devices	4.590
+dollar	4.590
+dreams	4.590
+empty	4.590
+enjoyed	4.590
+explained	4.590
+faces	4.590
+folks	4.590
+fucked	4.590
+gender	4.590
+instance	4.590
+kim	4.590
+kinda	4.590
+matches	4.590
+mile	4.590
+motion	4.590
+moves	4.590
+nick	4.590
+pacific	4.590
+prize	4.590
+realized	4.590
+reasonable	4.590
+receiving	4.590
+register	4.590
+resolution	4.590
+rural	4.590
+ryan	4.590
+saving	4.590
+sees	4.590
+singing	4.590
+spain	4.590
+tools	4.590
+typical	4.590
+universe	4.590
+warning	4.590
+wars	4.590
+wednesday	4.590
+admit	4.580
+attitude	4.580
+branch	4.580
+brazil	4.580
+conducted	4.580
+decades	4.580
+dedicated	4.580
+definition	4.580
+drawing	4.580
+favor	4.580
+flag	4.580
+frame	4.580
+guest	4.580
+ha	4.580
+heaven	4.580
+independence	4.580
+institutions	4.580
+jackson	4.580
+kiss	4.580
+load	4.580
+plot	4.580
+possibility	4.580
+random	4.580
+recovery	4.580
+rent	4.580
+replace	4.580
+represent	4.580
+reviews	4.580
+scenes	4.580
+seeking	4.580
+senator	4.580
+sentence	4.580
+teeth	4.580
+tips	4.580
+trained	4.580
+understood	4.580
+academic	4.570
+academy	4.570
+accurate	4.570
+achieve	4.570
+adam	4.570
+afford	4.570
+andrew	4.570
+assume	4.570
+bbc	4.570
+bottle	4.570
+bunch	4.570
+category	4.570
+chat	4.570
+cheese	4.570
+chemical	4.570
+clinton	4.570
+competitive	4.570
+detail	4.570
+diet	4.570
+em	4.570
+favourite	4.570
+fruit	4.570
+harder	4.570
+index	4.570
+item	4.570
+lane	4.570
+mess	4.570
+navy	4.570
+normally	4.570
+occurred	4.570
+opposition	4.570
+parent	4.570
+permanent	4.570
+personally	4.570
+pleasure	4.570
+prefer	4.570
+programme	4.570
+representative	4.570
+scheme	4.570
+shift	4.570
+stood	4.570
+storage	4.570
+tank	4.570
+tend	4.570
+tight	4.570
+transportation	4.570
+ultimately	4.570
+unlike	4.570
+weekly	4.570
+yard	4.570
+anybody	4.560
+assets	4.560
+basketball	4.560
+button	4.560
+candidates	4.560
+combat	4.560
+constitution	4.560
+consumer	4.560
+counter	4.560
+creation	4.560
+crown	4.560
+crying	4.560
+dc	4.560
+defined	4.560
+depending	4.560
+depression	4.560
+describe	4.560
+drivers	4.560
+el	4.560
+employment	4.560
+exclusive	4.560
+excuse	4.560
+expert	4.560
+frequently	4.560
+golf	4.560
+grace	4.560
+hopefully	4.560
+identify	4.560
+importance	4.560
+kevin	4.560
+laid	4.560
+latter	4.560
+manufacturing	4.560
+mining	4.560
+object	4.560
+partners	4.560
+pattern	4.560
+performing	4.560
+personnel	4.560
+perspective	4.560
+pregnant	4.560
+premier	4.560
+promote	4.560
+revolution	4.560
+rooms	4.560
+severe	4.560
+sleeping	4.560
+suppose	4.560
+tool	4.560
+tournament	4.560
+turkey	4.560
+ve	4.560
+victim	4.560
+victims	4.560
+agents	4.550
+amazon	4.550
+arrest	4.550
+attend	4.550
+ban	4.550
+brilliant	4.550
+carbon	4.550
+catholic	4.550
+chose	4.550
+circle	4.550
+concert	4.550
+crash	4.550
+declared	4.550
+deliver	4.550
+depth	4.550
+deputy	4.550
+dirty	4.550
+doctors	4.550
+earned	4.550
+electronic	4.550
+error	4.550
+existence	4.550
+experiences	4.550
+expression	4.550
+factory	4.550
+headed	4.550
+interior	4.550
+joy	4.550
+jr	4.550
+legislation	4.550
+maintenance	4.550
+manner	4.550
+mate	4.550
+matt	4.550
+nearby	4.550
+noise	4.550
+origin	4.550
+pakistan	4.550
+panel	4.550
+personality	4.550
+plate	4.550
+practices	4.550
+prepare	4.550
+relief	4.550
+replaced	4.550
+resistance	4.550
+retail	4.550
+rice	4.550
+roads	4.550
+roof	4.550
+shame	4.550
+ships	4.550
+somewhat	4.550
+staying	4.550
+stronger	4.550
+surely	4.550
+tip	4.550
+updated	4.550
+writers	4.550
+absolute	4.540
+advertising	4.540
+agencies	4.540
+baseball	4.540
+bathroom	4.540
+bible	4.540
+cable	4.540
+calm	4.540
+championship	4.540
+checked	4.540
+client	4.540
+constant	4.540
+da	4.540
+dates	4.540
+degrees	4.540
+democrats	4.540
+doors	4.540
+driven	4.540
+dumb	4.540
+empire	4.540
+exciting	4.540
+expansion	4.540
+heavily	4.540
+hide	4.540
+incident	4.540
+irish	4.540
+linked	4.540
+manage	4.540
+messages	4.540
+michigan	4.540
+multi	4.540
+nfl	4.540
+politicians	4.540
+print	4.540
+quit	4.540
+refused	4.540
+reporting	4.540
+sight	4.540
+significantly	4.540
+sing	4.540
+soviet	4.540
+weapon	4.540
+wet	4.540
+widely	4.540
+worldwide	4.540
+ages	4.530
+anniversary	4.530
+attractive	4.530
+bike	4.530
+broad	4.530
+burn	4.530
+cake	4.530
+causing	4.530
+closely	4.530
+constantly	4.530
+contest	4.530
+deaths	4.530
+depends	4.530
+drawn	4.530
+fees	4.530
+francisco	4.530
+haha	4.530
+hardly	4.530
+hat	4.530
+height	4.530
+hidden	4.530
+hong	4.530
+invited	4.530
+letting	4.530
+loud	4.530
+manchester	4.530
+marine	4.530
+motor	4.530
+officially	4.530
+pc	4.530
+peak	4.530
+portion	4.530
+pounds	4.530
+princess	4.530
+protein	4.530
+puts	4.530
+raw	4.530
+reform	4.530
+regions	4.530
+represented	4.530
+respond	4.530
+retirement	4.530
+sample	4.530
+seats	4.530
+secondary	4.530
+solar	4.530
+somehow	4.530
+stayed	4.530
+suffering	4.530
+sydney	4.530
+tries	4.530
+ultimate	4.530
+unknown	4.530
+wilson	4.530
+wondering	4.530
+attached	4.520
+attacked	4.520
+automatically	4.520
+balls	4.520
+battery	4.520
+bills	4.520
+blind	4.520
+breath	4.520
+brief	4.520
+carolina	4.520
+chest	4.520
+conduct	4.520
+debut	4.520
+decade	4.520
+destroy	4.520
+differences	4.520
+edward	4.520
+engaged	4.520
+experts	4.520
+expressed	4.520
+external	4.520
+fantasy	4.520
+ft	4.520
+grab	4.520
+hollywood	4.520
+immediate	4.520
+introduction	4.520
+joseph	4.520
+license	4.520
+paint	4.520
+pilot	4.520
+pink	4.520
+presidential	4.520
+principal	4.520
+recognize	4.520
+recognized	4.520
+registered	4.520
+regularly	4.520
+representatives	4.520
+rising	4.520
+seasons	4.520
+shipping	4.520
+singer	4.520
+smoking	4.520
+steam	4.520
+suffered	4.520
+survive	4.520
+tall	4.520
+thats	4.520
+theatre	4.520
+therapy	4.520
+witness	4.520
+adopted	4.510
+aim	4.510
+campus	4.510
+cap	4.510
+chances	4.510
+childhood	4.510
+clinical	4.510
+clubs	4.510
+comedy	4.510
+commander	4.510
+comparison	4.510
+covers	4.510
+dan	4.510
+defeat	4.510
+defence	4.510
+democracy	4.510
+detailed	4.510
+entitled	4.510
+exact	4.510
+exposed	4.510
+fed	4.510
+fee	4.510
+injured	4.510
+jan	4.510
+jordan	4.510
+kinds	4.510
+lets	4.510
+loans	4.510
+lock	4.510
+musical	4.510
+nose	4.510
+objects	4.510
+opposed	4.510
+organized	4.510
+plastic	4.510
+protected	4.510
+purposes	4.510
+quote	4.510
+recording	4.510
+semi	4.510
+statements	4.510
+suspect	4.510
+swear	4.510
+techniques	4.510
+tie	4.510
+tim	4.510
+trend	4.510
+valuable	4.510
+wealth	4.510
+wise	4.510
+yards	4.510
+aged	4.500
+approval	4.500
+aspects	4.500
+attempts	4.500
+bread	4.500
+burning	4.500
+champions	4.500
+contain	4.500
+convention	4.500
+dancing	4.500
+document	4.500
+eggs	4.500
+employee	4.500
+en	4.500
+engineer	4.500
+equivalent	4.500
+facing	4.500
+fairly	4.500
+fingers	4.500
+ford	4.500
+founded	4.500
+functions	4.500
+gang	4.500
+graduate	4.500
+greek	4.500
+hanging	4.500
+inner	4.500
+islands	4.500
+le	4.500
+lift	4.500
+marked	4.500
+memories	4.500
+miller	4.500
+monthly	4.500
+mountains	4.500
+neighborhood	4.500
+operate	4.500
+outstanding	4.500
+permission	4.500
+porn	4.500
+racing	4.500
+recommended	4.500
+regulations	4.500
+reply	4.500
+republicans	4.500
+rid	4.500
+roman	4.500
+scientists	4.500
+shoulder	4.500
+shower	4.500
+solutions	4.500
+sons	4.500
+stations	4.500
+stephen	4.500
+tower	4.500
+tradition	4.500
+visited	4.500
+visual	4.500
+wheel	4.500
+zealand	4.500
+achieved	4.490
+admitted	4.490
+appointment	4.490
+authors	4.490
+barely	4.490
+bc	4.490
+bush	4.490
+cabinet	4.490
+celebrate	4.490
+challenges	4.490
+chocolate	4.490
+coal	4.490
+colour	4.490
+contemporary	4.490
+criticism	4.490
+davis	4.490
+dna	4.490
+effectively	4.490
+eric	4.490
+extensive	4.490
+faced	4.490
+filed	4.490
+formation	4.490
+fought	4.490
+gained	4.490
+gallery	4.490
+highway	4.490
+historic	4.490
+hunt	4.490
+improvement	4.490
+inch	4.490
+initially	4.490
+junior	4.490
+jury	4.490
+kong	4.490
+korean	4.490
+marks	4.490
+monster	4.490
+obtained	4.490
+olympic	4.490
+philosophy	4.490
+pride	4.490
+promised	4.490
+repeat	4.490
+returning	4.490
+riding	4.490
+rough	4.490
+santa	4.490
+settlement	4.490
+smell	4.490
+sought	4.490
+speaker	4.490
+studied	4.490
+suggests	4.490
+surrounding	4.490
+tone	4.490
+topic	4.490
+toronto	4.490
+universal	4.490
+vast	4.490
+visitors	4.490
+wanting	4.490
+auto	4.480
+consistent	4.480
+continuing	4.480
+earn	4.480
+exists	4.480
+finger	4.480
+grey	4.480
+guitar	4.480
+heading	4.480
+howard	4.480
+ignore	4.480
+involving	4.480
+latin	4.480
+lewis	4.480
+meal	4.480
+meanwhile	4.480
+meetings	4.480
+naturally	4.480
+necessarily	4.480
+offices	4.480
+pants	4.480
+partnership	4.480
+payments	4.480
+percentage	4.480
+pocket	4.480
+practical	4.480
+primarily	4.480
+proved	4.480
+rape	4.480
+regardless	4.480
+relative	4.480
+represents	4.480
+rescue	4.480
+resulting	4.480
+rush	4.480
+sarah	4.480
+sessions	4.480
+sharp	4.480
+simon	4.480
+soccer	4.480
+stable	4.480
+structures	4.480
+supplies	4.480
+symptoms	4.480
+temporary	4.480
+tested	4.480
+trick	4.480
+attended	4.470
+audio	4.470
+bone	4.470
+brian	4.470
+bullshit	4.470
+chamber	4.470
+chart	4.470
+circuit	4.470
+clothing	4.470
+complicated	4.470
+confused	4.470
+consequences	4.470
+defend	4.470
+divided	4.470
+elizabeth	4.470
+everyday	4.470
+extent	4.470
+fishing	4.470
+format	4.470
+gap	4.470
+gate	4.470
+gotten	4.470
+harm	4.470
+healthcare	4.470
+household	4.470
+immigration	4.470
+impressive	4.470
+jews	4.470
+joining	4.470
+killer	4.470
+lesson	4.470
+limits	4.470
+loving	4.470
+ltd	4.470
+managers	4.470
+membership	4.470
+miami	4.470
+mirror	4.470
+mount	4.470
+nights	4.470
+occur	4.470
+parking	4.470
+proposal	4.470
+province	4.470
+purchased	4.470
+recognition	4.470
+reputation	4.470
+rolling	4.470
+shortly	4.470
+situations	4.470
+strongly	4.470
+tears	4.470
+technique	4.470
+thin	4.470
+tied	4.470
+accused	4.460
+adventure	4.460
+argue	4.460
+assessment	4.460
+atmosphere	4.460
+awful	4.460
+bedroom	4.460
+belief	4.460
+bound	4.460
+breaks	4.460
+carefully	4.460
+cats	4.460
+ceo	4.460
+choices	4.460
+closing	4.460
+cloud	4.460
+colorado	4.460
+colors	4.460
+contrast	4.460
+courses	4.460
+courts	4.460
+donald	4.460
+drew	4.460
+egg	4.460
+element	4.460
+elsewhere	4.460
+establish	4.460
+extension	4.460
+files	4.460
+founder	4.460
+gear	4.460
+georgia	4.460
+hills	4.460
+hip	4.460
+hitting	4.460
+increases	4.460
+infrastructure	4.460
+jason	4.460
+locations	4.460
+loose	4.460
+machines	4.460
+moral	4.460
+offensive	4.460
+pa	4.460
+package	4.460
+pointed	4.460
+poverty	4.460
+processes	4.460
+processing	4.460
+qualified	4.460
+railway	4.460
+reaching	4.460
+ridiculous	4.460
+sensitive	4.460
+server	4.460
+shock	4.460
+silence	4.460
+soldier	4.460
+superior	4.460
+supporters	4.460
+thick	4.460
+threw	4.460
+tons	4.460
+transition	4.460
+violent	4.460
+voters	4.460
+wash	4.460
+acid	4.450
+actress	4.450
+administrative	4.450
+alan	4.450
+alongside	4.450
+angel	4.450
+anxiety	4.450
+babies	4.450
+bars	4.450
+bonus	4.450
+castle	4.450
+charity	4.450
+clients	4.450
+compare	4.450
+contained	4.450
+cooking	4.450
+covering	4.450
+curious	4.450
+directors	4.450
+discovery	4.450
+discussed	4.450
+duke	4.450
+egypt	4.450
+encourage	4.450
+enforcement	4.450
+featuring	4.450
+finals	4.450
+flash	4.450
+formal	4.450
+formula	4.450
+fort	4.450
+governments	4.450
+gray	4.450
+gross	4.450
+horses	4.450
+hungry	4.450
+informed	4.450
+innocent	4.450
+jeff	4.450
+losses	4.450
+luke	4.450
+mac	4.450
+math	4.450
+minds	4.450
+mistakes	4.450
+mystery	4.450
+networks	4.450
+olympics	4.450
+palace	4.450
+passes	4.450
+penalty	4.450
+pet	4.450
+phones	4.450
+photography	4.450
+producing	4.450
+protest	4.450
+publication	4.450
+rating	4.450
+refer	4.450
+respectively	4.450
+rome	4.450
+scheduled	4.450
+select	4.450
+silent	4.450
+spoken	4.450
+successfully	4.450
+suffer	4.450
+temple	4.450
+tracks	4.450
+trail	4.450
+uncle	4.450
+unusual	4.450
+waters	4.450
+woods	4.450
+yo	4.450
+arrival	4.440
+asks	4.440
+assault	4.440
+awareness	4.440
+badly	4.440
+bath	4.440
+captured	4.440
+chase	4.440
+components	4.440
+concrete	4.440
+dave	4.440
+deeply	4.440
+expectations	4.440
+explanation	4.440
+exposure	4.440
+featured	4.440
+fiction	4.440
+guarantee	4.440
+happiness	4.440
+harris	4.440
+hearts	4.440
+horrible	4.440
+ideal	4.440
+illinois	4.440
+injuries	4.440
+islamic	4.440
+jimmy	4.440
+kelly	4.440
+legend	4.440
+lieutenant	4.440
+mini	4.440
+mood	4.440
+muscle	4.440
+muslims	4.440
+passion	4.440
+picking	4.440
+pleased	4.440
+procedure	4.440
+producer	4.440
+pushing	4.440
+rank	4.440
+replacement	4.440
+retired	4.440
+roles	4.440
+sand	4.440
+savings	4.440
+settled	4.440
+shadow	4.440
+singles	4.440
+tag	4.440
+tape	4.440
+thread	4.440
+victoria	4.440
+visiting	4.440
+wage	4.440
+wings	4.440
+andy	4.430
+avenue	4.430
+bags	4.430
+beating	4.430
+believes	4.430
+blocks	4.430
+boring	4.430
+charlie	4.430
+checking	4.430
+clock	4.430
+commissioner	4.430
+commitment	4.430
+confident	4.430
+containing	4.430
+copies	4.430
+crimes	4.430
+custom	4.430
+denied	4.430
+desk	4.430
+drinks	4.430
+ear	4.430
+electricity	4.430
+episodes	4.430
+farmers	4.430
+fbi	4.430
+grounds	4.430
+gym	4.430
+helpful	4.430
+horror	4.430
+iphone	4.430
+iraq	4.430
+label	4.430
+liverpool	4.430
+locked	4.430
+naked	4.430
+ny	4.430
+opens	4.430
+output	4.430
+persons	4.430
+pitch	4.430
+pizza	4.430
+plain	4.430
+pushed	4.430
+raising	4.430
+rear	4.430
+reveal	4.430
+romantic	4.430
+scores	4.430
+sisters	4.430
+speaks	4.430
+stages	4.430
+strategic	4.430
+swimming	4.430
+welfare	4.430
+winners	4.430
+wire	4.430
+worker	4.430
+afterwards	4.420
+alright	4.420
+android	4.420
+anger	4.420
+architecture	4.420
+assist	4.420
+attempted	4.420
+behalf	4.420
+belt	4.420
+capture	4.420
+centers	4.420
+ceremony	4.420
+comic	4.420
+cops	4.420
+cuts	4.420
+dallas	4.420
+designer	4.420
+diamond	4.420
+disappointed	4.420
+dressed	4.420
+economics	4.420
+efficient	4.420
+electrical	4.420
+employed	4.420
+enjoying	4.420
+entering	4.420
+essentially	4.420
+establishment	4.420
+expecting	4.420
+explains	4.420
+flower	4.420
+ghost	4.420
+guests	4.420
+handed	4.420
+hockey	4.420
+houston	4.420
+https	4.420
+hunting	4.420
+industries	4.420
+islam	4.420
+jane	4.420
+judges	4.420
+kit	4.420
+lab	4.420
+languages	4.420
+maps	4.420
+min	4.420
+morgan	4.420
+moscow	4.420
+na	4.420
+nervous	4.420
+newly	4.420
+odd	4.420
+op	4.420
+ordinary	4.420
+participate	4.420
+philadelphia	4.420
+prayer	4.420
+principles	4.420
+racist	4.420
+rarely	4.420
+references	4.420
+sexy	4.420
+skill	4.420
+soil	4.420
+solve	4.420
+stomach	4.420
+struck	4.420
+studying	4.420
+suck	4.420
+supports	4.420
+trash	4.420
+ugly	4.420
+vegas	4.420
+virus	4.420
+walker	4.420
+whoever	4.420
+amounts	4.410
+anthony	4.410
+arthur	4.410
+aspect	4.410
+banned	4.410
+boost	4.410
+bureau	4.410
+colonel	4.410
+comfort	4.410
+controls	4.410
+cousin	4.410
+crack	4.410
+deck	4.410
+demands	4.410
+dies	4.410
+dragon	4.410
+dramatic	4.410
+dust	4.410
+dutch	4.410
+engineers	4.410
+evolution	4.410
+foods	4.410
+hired	4.410
+illness	4.410
+inspiration	4.410
+institution	4.410
+kings	4.410
+knife	4.410
+lately	4.410
+lowest	4.410
+memorial	4.410
+mexican	4.410
+minority	4.410
+mum	4.410
+opinions	4.410
+patterns	4.410
+presents	4.410
+priority	4.410
+promotion	4.410
+rail	4.410
+readers	4.410
+remote	4.410
+repair	4.410
+root	4.410
+saint	4.410
+steal	4.410
+stolen	4.410
+telephone	4.410
+tho	4.410
+titles	4.410
+trans	4.410
+ups	4.410
+vol	4.410
+whereas	4.410
+abandoned	4.400
+acquired	4.400
+actors	4.400
+alexander	4.400
+alliance	4.400
+annoying	4.400
+ap	4.400
+bid	4.400
+bro	4.400
+buddy	4.400
+buried	4.400
+butter	4.400
+cares	4.400
+columbia	4.400
+conclusion	4.400
+confirm	4.400
+congratulations	4.400
+contracts	4.400
+convinced	4.400
+crap	4.400
+crystal	4.400
+dean	4.400
+decent	4.400
+decline	4.400
+delay	4.400
+describes	4.400
+desert	4.400
+downtown	4.400
+elite	4.400
+enemies	4.400
+forgotten	4.400
+forth	4.400
+gods	4.400
+hire	4.400
+hop	4.400
+hopes	4.400
+insane	4.400
+installed	4.400
+israeli	4.400
+landing	4.400
+layer	4.400
+managing	4.400
+marry	4.400
+nah	4.400
+nowhere	4.400
+nurse	4.400
+obtain	4.400
+organic	4.400
+ownership	4.400
+participants	4.400
+pennsylvania	4.400
+poetry	4.400
+pot	4.400
+pray	4.400
+printed	4.400
+recall	4.400
+rugby	4.400
+sake	4.400
+sheet	4.400
+signing	4.400
+smooth	4.400
+spiritual	4.400
+stops	4.400
+string	4.400
+sudden	4.400
+sweden	4.400
+syria	4.400
+throwing	4.400
+thrown	4.400
+vacation	4.400
+abroad	4.390
+arab	4.390
+assigned	4.390
+associate	4.390
+assumed	4.390
+atlantic	4.390
+bench	4.390
+bother	4.390
+broadcast	4.390
+bye	4.390
+cambridge	4.390
+citizen	4.390
+cleaning	4.390
+compete	4.390
+consists	4.390
+consumers	4.390
+contributed	4.390
+cricket	4.390
+critics	4.390
+damaged	4.390
+disaster	4.390
+discover	4.390
+disney	4.390
+entrance	4.390
+equally	4.390
+fallen	4.390
+figured	4.390
+fitness	4.390
+francis	4.390
+friendship	4.390
+gary	4.390
+handling	4.390
+idiot	4.390
+intense	4.390
+keys	4.390
+lawyers	4.390
+lifetime	4.390
+liquid	4.390
+makeup	4.390
+medal	4.390
+mortgage	4.390
+narrative	4.390
+narrow	4.390
+nba	4.390
+observed	4.390
+occasionally	4.390
+pan	4.390
+physics	4.390
+posting	4.390
+potentially	4.390
+reduction	4.390
+reflect	4.390
+refuse	4.390
+researchers	4.390
+resource	4.390
+roger	4.390
+ross	4.390
+sciences	4.390
+seattle	4.390
+serves	4.390
+shell	4.390
+silly	4.390
+subsequent	4.390
+towns	4.390
+translation	4.390
+visible	4.390
+yep	4.390
+adds	4.380
+allen	4.380
+amendment	4.380
+angle	4.380
+arizona	4.380
+arrive	4.380
+belong	4.380
+berlin	4.380
+bishop	4.380
+channels	4.380
+clark	4.380
+commonly	4.380
+connect	4.380
+defensive	4.380
+designs	4.380
+efficiency	4.380
+enterprise	4.380
+experiment	4.380
+feb	4.380
+females	4.380
+findings	4.380
+firms	4.380
+forum	4.380
+gifts	4.380
+grass	4.380
+hence	4.380
+increasingly	4.380
+incredibly	4.380
+iv	4.380
+jay	4.380
+journalist	4.380
+kicked	4.380
+lessons	4.380
+lists	4.380
+maintained	4.380
+mill	4.380
+mo	4.380
+occasion	4.380
+oxford	4.380
+pace	4.380
+passenger	4.380
+pen	4.380
+pope	4.380
+possession	4.380
+pp	4.380
+races	4.380
+rapid	4.380
+regulation	4.380
+resident	4.380
+rocks	4.380
+shaped	4.380
+sixth	4.380
+spin	4.380
+styles	4.380
+subjects	4.380
+sucks	4.380
+suitable	4.380
+thirty	4.380
+valid	4.380
+vital	4.380
+whilst	4.380
+agriculture	4.370
+alleged	4.370
+anna	4.370
+atlanta	4.370
+bands	4.370
+christians	4.370
+collect	4.370
+commerce	4.370
+cop	4.370
+creek	4.370
+currency	4.370
+emotions	4.370
+exhibition	4.370
+fraud	4.370
+funeral	4.370
+genuine	4.370
+gordon	4.370
+honey	4.370
+honour	4.370
+hook	4.370
+hunter	4.370
+immigrants	4.370
+improving	4.370
+instructions	4.370
+introduce	4.370
+kansas	4.370
+km	4.370
+lands	4.370
+legacy	4.370
+log	4.370
+matthew	4.370
+merely	4.370
+monitor	4.370
+nov	4.370
+patrick	4.370
+phil	4.370
+prisoners	4.370
+programming	4.370
+publishing	4.370
+ratio	4.370
+regret	4.370
+rejected	4.370
+remind	4.370
+resort	4.370
+resulted	4.370
+reverse	4.370
+routine	4.370
+scary	4.370
+seed	4.370
+settle	4.370
+sin	4.370
+spell	4.370
+summary	4.370
+survival	4.370
+sword	4.370
+tongue	4.370
+ward	4.370
+waves	4.370
+wayne	4.370
+achievement	4.360
+anderson	4.360
+argued	4.360
+asleep	4.360
+austin	4.360
+automatic	4.360
+begun	4.360
+behaviour	4.360
+cd	4.360
+cents	4.360
+coat	4.360
+comprehensive	4.360
+consent	4.360
+daddy	4.360
+destruction	4.360
+diego	4.360
+diseases	4.360
+divorce	4.360
+doc	4.360
+drove	4.360
+ears	4.360
+engage	4.360
+extraordinary	4.360
+fate	4.360
+frequency	4.360
+gaming	4.360
+gene	4.360
+glory	4.360
+headquarters	4.360
+heritage	4.360
+initiative	4.360
+interviews	4.360
+jean	4.360
+juice	4.360
+landscape	4.360
+logic	4.360
+meets	4.360
+melbourne	4.360
+microsoft	4.360
+objective	4.360
+organisation	4.360
+privacy	4.360
+procedures	4.360
+profits	4.360
+reducing	4.360
+regard	4.360
+representing	4.360
+residence	4.360
+roughly	4.360
+salary	4.360
+scoring	4.360
+script	4.360
+searching	4.360
+sections	4.360
+strip	4.360
+surrounded	4.360
+threatened	4.360
+transferred	4.360
+tube	4.360
+universities	4.360
+walter	4.360
+wisconsin	4.360
+writes	4.360
+ambassador	4.350
+ann	4.350
+apps	4.350
+awarded	4.350
+banking	4.350
+breast	4.350
+cant	4.350
+carter	4.350
+chelsea	4.350
+chemistry	4.350
+concluded	4.350
+consumption	4.350
+corruption	4.350
+cotton	4.350
+crossed	4.350
+detroit	4.350
+discount	4.350
+dozen	4.350
+engines	4.350
+epic	4.350
+exception	4.350
+exit	4.350
+expand	4.350
+fancy	4.350
+gorgeous	4.350
+grateful	4.350
+heroes	4.350
+holes	4.350
+impression	4.350
+inches	4.350
+indicate	4.350
+input	4.350
+johnny	4.350
+josh	4.350
+knock	4.350
+leather	4.350
+lips	4.350
+luxury	4.350
+lyrics	4.350
+manufacturers	4.350
+masters	4.350
+movements	4.350
+oct	4.350
+operated	4.350
+ought	4.350
+outcome	4.350
+painted	4.350
+poll	4.350
+preferred	4.350
+pulling	4.350
+ranked	4.350
+referring	4.350
+removal	4.350
+rep	4.350
+reporter	4.350
+rio	4.350
+risks	4.350
+rob	4.350
+screaming	4.350
+sept	4.350
+sequence	4.350
+singapore	4.350
+stretch	4.350
+tear	4.350
+tennis	4.350
+terrorist	4.350
+theater	4.350
+ties	4.350
+twelve	4.350
+versions	4.350
+virgin	4.350
+voices	4.350
+wishes	4.350
+wolf	4.350
+absence	4.340
+agricultural	4.340
+asshole	4.340
+ate	4.340
+athletes	4.340
+bears	4.340
+blues	4.340
+boxes	4.340
+bruce	4.340
+bull	4.340
+cameras	4.340
+commonwealth	4.340
+contribute	4.340
+contribution	4.340
+contributions	4.340
+couples	4.340
+delicious	4.340
+deny	4.340
+deserves	4.340
+ease	4.340
+extend	4.340
+fame	4.340
+flood	4.340
+generated	4.340
+genetic	4.340
+glasses	4.340
+impressed	4.340
+indicated	4.340
+instant	4.340
+investors	4.340
+involves	4.340
+kate	4.340
+kills	4.340
+liberty	4.340
+maria	4.340
+ministers	4.340
+monitoring	4.340
+occurs	4.340
+passengers	4.340
+photographs	4.340
+principle	4.340
+producers	4.340
+progressive	4.340
+punishment	4.340
+rally	4.340
+rapidly	4.340
+reader	4.340
+representation	4.340
+restaurants	4.340
+reveals	4.340
+roots	4.340
+samples	4.340
+shops	4.340
+sum	4.340
+swing	4.340
+tail	4.340
+texts	4.340
+twin	4.340
+upcoming	4.340
+veterans	4.340
+alert	4.330
+arena	4.330
+arguments	4.330
+aug	4.330
+billy	4.330
+boom	4.330
+boots	4.330
+brave	4.330
+claiming	4.330
+column	4.330
+commit	4.330
+compensation	4.330
+composition	4.330
+computers	4.330
+conservation	4.330
+constitutional	4.330
+crossing	4.330
+defending	4.330
+density	4.330
+di	4.330
+difficulty	4.330
+dropping	4.330
+drops	4.330
+elementary	4.330
+ethnic	4.330
+expenses	4.330
+fleet	4.330
+foster	4.330
+fuckin	4.330
+fundamental	4.330
+gen	4.330
+genius	4.330
+greatly	4.330
+guidance	4.330
+hospitals	4.330
+infection	4.330
+instagram	4.330
+intention	4.330
+iowa	4.330
+jokes	4.330
+knee	4.330
+mechanical	4.330
+nigeria	4.330
+parks	4.330
+participation	4.330
+periods	4.330
+precious	4.330
+pregnancy	4.330
+premium	4.330
+preparing	4.330
+pretend	4.330
+priest	4.330
+prominent	4.330
+proven	4.330
+radical	4.330
+remembered	4.330
+requested	4.330
+residential	4.330
+reward	4.330
+rings	4.330
+robin	4.330
+russell	4.330
+satellite	4.330
+shake	4.330
+shore	4.330
+spots	4.330
+stats	4.330
+struggling	4.330
+substantial	4.330
+teen	4.330
+temperatures	4.330
+transmission	4.330
+trap	4.330
+uniform	4.330
+wildlife	4.330
+wooden	4.330
+ads	4.320
+aggressive	4.320
+anne	4.320
+answered	4.320
+apparent	4.320
+bang	4.320
+blast	4.320
+bones	4.320
+brands	4.320
+centuries	4.320
+communist	4.320
+complaint	4.320
+component	4.320
+connections	4.320
+courage	4.320
+cure	4.320
+del	4.320
+desperate	4.320
+diversity	4.320
+duties	4.320
+encouraged	4.320
+eve	4.320
+faculty	4.320
+feedback	4.320
+fighter	4.320
+frozen	4.320
+guards	4.320
+hiding	4.320
+humanity	4.320
+ian	4.320
+il	4.320
+innovation	4.320
+instruments	4.320
+invest	4.320
+jacket	4.320
+justin	4.320
+legislative	4.320
+listing	4.320
+manual	4.320
+mothers	4.320
+murdered	4.320
+nursing	4.320
+occupied	4.320
+ongoing	4.320
+operator	4.320
+painful	4.320
+pound	4.320
+preparation	4.320
+punch	4.320
+purple	4.320
+railroad	4.320
+registration	4.320
+releases	4.320
+rick	4.320
+romance	4.320
+submitted	4.320
+sufficient	4.320
+survived	4.320
+suspended	4.320
+technologies	4.320
+tissue	4.320
+trailer	4.320
+trends	4.320
+trials	4.320
+ukraine	4.320
+underground	4.320
+versus	4.320
+virtual	4.320
+walks	4.320
+wounded	4.320
+ali	4.310
+amongst	4.310
+announcement	4.310
+arranged	4.310
+arsenal	4.310
+attending	4.310
+attracted	4.310
+biological	4.310
+bite	4.310
+blocked	4.310
+boards	4.310
+burned	4.310
+categories	4.310
+checks	4.310
+chip	4.310
+concerning	4.310
+dare	4.310
+database	4.310
+define	4.310
+discrimination	4.310
+disorder	4.310
+distributed	4.310
+districts	4.310
+documentary	4.310
+domain	4.310
+dynamic	4.310
+edited	4.310
+engagement	4.310
+explore	4.310
+favour	4.310
+fewer	4.310
+footage	4.310
+giants	4.310
+grave	4.310
+hamilton	4.310
+implementation	4.310
+indiana	4.310
+investigate	4.310
+jazz	4.310
+jon	4.310
+jonathan	4.310
+laboratory	4.310
+lawrence	4.310
+lincoln	4.310
+literary	4.310
+mask	4.310
+massachusetts	4.310
+midnight	4.310
+minnesota	4.310
+mouse	4.310
+oscar	4.310
+packed	4.310
+piano	4.310
+praise	4.310
+presentation	4.310
+psychology	4.310
+relation	4.310
+restrictions	4.310
+rocket	4.310
+ruin	4.310
+saudi	4.310
+sean	4.310
+sec	4.310
+secrets	4.310
+slave	4.310
+stability	4.310
+steady	4.310
+stones	4.310
+symbol	4.310
+terminal	4.310
+toilet	4.310
+treaty	4.310
+triple	4.310
+unlikely	4.310
+updates	4.310
+vietnam	4.310
+viewed	4.310
+affair	4.300
+agenda	4.300
+bat	4.300
+bow	4.300
+calendar	4.300
+cape	4.300
+collective	4.300
+conversations	4.300
+cooperation	4.300
+craft	4.300
+darkness	4.300
+deeper	4.300
+devil	4.300
+edit	4.300
+enable	4.300
+equity	4.300
+estimates	4.300
+failing	4.300
+finishing	4.300
+fortune	4.300
+gates	4.300
+goodbye	4.300
+graham	4.300
+hardware	4.300
+hillary	4.300
+hurts	4.300
+intellectual	4.300
+invite	4.300
+involvement	4.300
+kentucky	4.300
+madrid	4.300
+mi	4.300
+nuts	4.300
+oregon	4.300
+partly	4.300
+petition	4.300
+phrase	4.300
+physically	4.300
+protecting	4.300
+racial	4.300
+rated	4.300
+regime	4.300
+rivers	4.300
+rounds	4.300
+ruled	4.300
+sa	4.300
+sauce	4.300
+seal	4.300
+separated	4.300
+shield	4.300
+similarly	4.300
+slide	4.300
+stem	4.300
+summit	4.300
+talented	4.300
+throat	4.300
+tiger	4.300
+touched	4.300
+toy	4.300
+visits	4.300
+warriors	4.300
+wisdom	4.300
+accounting	4.290
+alien	4.290
+attacking	4.290
+awkward	4.290
+beast	4.290
+beef	4.290
+candy	4.290
+carrier	4.290
+celebration	4.290
+celebrity	4.290
+certificate	4.290
+cited	4.290
+clay	4.290
+coaching	4.290
+colleagues	4.290
+constructed	4.290
+dated	4.290
+dec	4.290
+default	4.290
+delhi	4.290
+derived	4.290
+dialogue	4.290
+disabled	4.290
+distinct	4.290
+drag	4.290
+educated	4.290
+eligible	4.290
+estimate	4.290
+execution	4.290
+existed	4.290
+fifty	4.290
+followers	4.290
+fool	4.290
+framework	4.290
+franchise	4.290
+funded	4.290
+furniture	4.290
+generations	4.290
+guaranteed	4.290
+integrated	4.290
+intelligent	4.290
+interaction	4.290
+jet	4.290
+journalists	4.290
+lifestyle	4.290
+lighting	4.290
+lisa	4.290
+loop	4.290
+mall	4.290
+mp	4.290
+overseas	4.290
+performances	4.290
+philippines	4.290
+polish	4.290
+recommendations	4.290
+recover	4.290
+regarded	4.290
+relax	4.290
+reliable	4.290
+rely	4.290
+remarkable	4.290
+responses	4.290
+ruling	4.290
+sacrifice	4.290
+se	4.290
+sole	4.290
+stopping	4.290
+strategies	4.290
+succeed	4.290
+tables	4.290
+tale	4.290
+targets	4.290
+timing	4.290
+ton	4.290
+volunteers	4.290
+witnesses	4.290
+wore	4.290
+worship	4.290
+worthy	4.290
+acted	4.280
+alarm	4.280
+bass	4.280
+bloody	4.280
+breathing	4.280
+butt	4.280
+characteristics	4.280
+cnn	4.280
+collaboration	4.280
+con	4.280
+consideration	4.280
+counts	4.280
+creates	4.280
+crucial	4.280
+daughters	4.280
+dependent	4.280
+discussions	4.280
+drives	4.280
+dual	4.280
+edinburgh	4.280
+equipped	4.280
+expanded	4.280
+experimental	4.280
+feeding	4.280
+filter	4.280
+galaxy	4.280
+globe	4.280
+grades	4.280
+greece	4.280
+gulf	4.280
+highlights	4.280
+hoped	4.280
+intent	4.280
+involve	4.280
+judgment	4.280
+kennedy	4.280
+knight	4.280
+larry	4.280
+las	4.280
+lmao	4.280
+logo	4.280
+malaysia	4.280
+mature	4.280
+moore	4.280
+nazi	4.280
+netherlands	4.280
+odds	4.280
+peaceful	4.280
+philip	4.280
+photographer	4.280
+pin	4.280
+prevention	4.280
+printing	4.280
+promoting	4.280
+publicly	4.280
+pump	4.280
+repeated	4.280
+replied	4.280
+requests	4.280
+revenge	4.280
+satisfied	4.280
+seeds	4.280
+signals	4.280
+slip	4.280
+spaces	4.280
+spare	4.280
+specialist	4.280
+stocks	4.280
+stranger	4.280
+submit	4.280
+surprising	4.280
+tap	4.280
+thompson	4.280
+threats	4.280
+tourism	4.280
+turkish	4.280
+volunteer	4.280
+acceptable	4.270
+allies	4.270
+attempting	4.270
+auction	4.270
+bonds	4.270
+challenging	4.270
+chaos	4.270
+churches	4.270
+cleveland	4.270
+cm	4.270
+composed	4.270
+concentration	4.270
+copper	4.270
+corp	4.270
+corps	4.270
+counting	4.270
+credits	4.270
+dawn	4.270
+dispute	4.270
+earnings	4.270
+editing	4.270
+executed	4.270
+firing	4.270
+fits	4.270
+frequent	4.270
+gardens	4.270
+gathered	4.270
+hilarious	4.270
+huh	4.270
+ignored	4.270
+improvements	4.270
+investments	4.270
+isis	4.270
+margin	4.270
+mars	4.270
+maryland	4.270
+mechanism	4.270
+moderate	4.270
+murray	4.270
+oklahoma	4.270
+opera	4.270
+overcome	4.270
+parallel	4.270
+passage	4.270
+pit	4.270
+psychological	4.270
+publications	4.270
+quest	4.270
+radiation	4.270
+shocked	4.270
+sized	4.270
+stroke	4.270
+stunning	4.270
+tanks	4.270
+tokyo	4.270
+topics	4.270
+trains	4.270
+traveling	4.270
+treating	4.270
+tune	4.270
+utility	4.270
+vessel	4.270
+weed	4.270
+wherever	4.270
+acquisition	4.260
+addressed	4.260
+alabama	4.260
+alice	4.260
+angels	4.260
+anime	4.260
+announce	4.260
+autumn	4.260
+backed	4.260
+barry	4.260
+bold	4.260
+borders	4.260
+breathe	4.260
+cameron	4.260
+choosing	4.260
+classical	4.260
+classified	4.260
+clip	4.260
+coaches	4.260
+coins	4.260
+concepts	4.260
+conspiracy	4.260
+controversy	4.260
+convince	4.260
+cooper	4.260
+disappeared	4.260
+eh	4.260
+encounter	4.260
+equality	4.260
+exam	4.260
+examination	4.260
+fails	4.260
+federation	4.260
+fi	4.260
+fiscal	4.260
+guardian	4.260
+hd	4.260
+homeless	4.260
+instrument	4.260
+intervention	4.260
+jerry	4.260
+lover	4.260
+mainstream	4.260
+menu	4.260
+missouri	4.260
+mounted	4.260
+mutual	4.260
+nope	4.260
+occasions	4.260
+offense	4.260
+oral	4.260
+panic	4.260
+pays	4.260
+peoples	4.260
+pursue	4.260
+realise	4.260
+refugees	4.260
+removing	4.260
+requirement	4.260
+responded	4.260
+rip	4.260
+ruined	4.260
+scope	4.260
+segment	4.260
+spectrum	4.260
+stays	4.260
+ted	4.260
+terror	4.260
+uh	4.260
+va	4.260
+venture	4.260
+virtually	4.260
+waited	4.260
+warren	4.260
+worn	4.260
+yea	4.260
+ac	4.250
+accompanied	4.250
+adams	4.250
+aids	4.250
+aimed	4.250
+alpha	4.250
+approaches	4.250
+arguing	4.250
+arrangement	4.250
+beliefs	4.250
+boats	4.250
+boundaries	4.250
+brick	4.250
+brooklyn	4.250
+colleges	4.250
+considerable	4.250
+conventional	4.250
+danny	4.250
+des	4.250
+designated	4.250
+dvd	4.250
+emperor	4.250
+employers	4.250
+enormous	4.250
+errors	4.250
+focusing	4.250
+forgive	4.250
+gains	4.250
+garage	4.250
+gathering	4.250
+guidelines	4.250
+handled	4.250
+hosted	4.250
+indians	4.250
+indonesia	4.250
+inquiry	4.250
+inspector	4.250
+jumped	4.250
+khan	4.250
+li	4.250
+lion	4.250
+loaded	4.250
+lonely	4.250
+maintaining	4.250
+measured	4.250
+mercy	4.250
+nevertheless	4.250
+newspapers	4.250
+outer	4.250
+oxygen	4.250
+pipe	4.250
+pissed	4.250
+poem	4.250
+powder	4.250
+powered	4.250
+promises	4.250
+quotes	4.250
+racism	4.250
+ratings	4.250
+reads	4.250
+recovered	4.250
+refers	4.250
+roy	4.250
+rude	4.250
+screw	4.250
+seventh	4.250
+shelter	4.250
+signature	4.250
+sooner	4.250
+spider	4.250
+stewart	4.250
+strikes	4.250
+suggesting	4.250
+suits	4.250
+toys	4.250
+tracking	4.250
+tribute	4.250
+trigger	4.250
+vary	4.250
+venue	4.250
+wages	4.250
+wells	4.250
+wheels	4.250
+ye	4.250
+abc	4.240
+abortion	4.240
+accuracy	4.240
+albert	4.240
+applying	4.240
+artificial	4.240
+belongs	4.240
+beneath	4.240
+bitcoin	4.240
+bullet	4.240
+burns	4.240
+carl	4.240
+celebrated	4.240
+consistently	4.240
+conversion	4.240
+copyright	4.240
+counties	4.240
+democrat	4.240
+deposit	4.240
+destination	4.240
+dirt	4.240
+diverse	4.240
+divine	4.240
+emails	4.240
+er	4.240
+exclusively	4.240
+export	4.240
+fastest	4.240
+formerly	4.240
+functional	4.240
+gather	4.240
+grandfather	4.240
+habit	4.240
+harvard	4.240
+indicates	4.240
+isolated	4.240
+jealous	4.240
+knocked	4.240
+landed	4.240
+laughed	4.240
+laura	4.240
+lazy	4.240
+mama	4.240
+marshall	4.240
+mitchell	4.240
+modified	4.240
+municipal	4.240
+naval	4.240
+neighbors	4.240
+nelson	4.240
+neutral	4.240
+noble	4.240
+oldest	4.240
+pat	4.240
+picks	4.240
+poland	4.240
+popularity	4.240
+professionals	4.240
+pussy	4.240
+reactions	4.240
+relate	4.240
+robot	4.240
+sacred	4.240
+securities	4.240
+shoe	4.240
+speakers	4.240
+springs	4.240
+spy	4.240
+steven	4.240
+suggestions	4.240
+supplied	4.240
+susan	4.240
+suspension	4.240
+terrorism	4.240
+terry	4.240
+toxic	4.240
+treasury	4.240
+tunnel	4.240
+unions	4.240
+upgrade	4.240
+warrant	4.240
+wider	4.240
+wound	4.240
+aaron	4.230
+actively	4.230
+afghanistan	4.230
+ai	4.230
+applies	4.230
+arrangements	4.230
+asset	4.230
+assuming	4.230
+backing	4.230
+baker	4.230
+barcelona	4.230
+blessed	4.230
+brazilian	4.230
+brush	4.230
+burden	4.230
+campbell	4.230
+carries	4.230
+casual	4.230
+certified	4.230
+charter	4.230
+chef	4.230
+civilian	4.230
+coalition	4.230
+cock	4.230
+complain	4.230
+complaints	4.230
+controversial	4.230
+denver	4.230
+describing	4.230
+differently	4.230
+directions	4.230
+discipline	4.230
+discussing	4.230
+disgusting	4.230
+dj	4.230
+dominant	4.230
+earning	4.230
+emma	4.230
+essay	4.230
+expense	4.230
+explaining	4.230
+furthermore	4.230
+graphic	4.230
+greg	4.230
+healing	4.230
+hiring	4.230
+hosts	4.230
+implemented	4.230
+instantly	4.230
+invasion	4.230
+jacob	4.230
+jumping	4.230
+laptop	4.230
+legendary	4.230
+leo	4.230
+maker	4.230
+margaret	4.230
+mario	4.230
+opponents	4.230
+outdoor	4.230
+palm	4.230
+parker	4.230
+photograph	4.230
+pole	4.230
+pub	4.230
+quarters	4.230
+queensland	4.230
+rangers	4.230
+ranks	4.230
+reception	4.230
+recipe	4.230
+regulatory	4.230
+reviewed	4.230
+rolls	4.230
+rubber	4.230
+secured	4.230
+serial	4.230
+settings	4.230
+shed	4.230
+snake	4.230
+sponsored	4.230
+stealing	4.230
+strict	4.230
+subsequently	4.230
+substance	4.230
+suggestion	4.230
+switzerland	4.230
+syndrome	4.230
+tasks	4.230
+trips	4.230
+ultra	4.230
+unexpected	4.230
+usage	4.230
+utah	4.230
+worlds	4.230
+accidentally	4.220
+affordable	4.220
+amateur	4.220
+appeals	4.220
+argentina	4.220
+baltimore	4.220
+batman	4.220
+bearing	4.220
+beats	4.220
+bin	4.220
+biology	4.220
+bobby	4.220
+briefly	4.220
+canal	4.220
+cancelled	4.220
+charlotte	4.220
+cheaper	4.220
+christopher	4.220
+climb	4.220
+com	4.220
+competing	4.220
+completion	4.220
+cruise	4.220
+custody	4.220
+delete	4.220
+demonstrated	4.220
+departure	4.220
+developers	4.220
+developments	4.220
+dig	4.220
+eagles	4.220
+employer	4.220
+evans	4.220
+explosion	4.220
+fever	4.220
+fluid	4.220
+folk	4.220
+generate	4.220
+gop	4.220
+handsome	4.220
+ho	4.220
+holidays	4.220
+hotels	4.220
+imagination	4.220
+integration	4.220
+integrity	4.220
+interpretation	4.220
+leaf	4.220
+legitimate	4.220
+lightning	4.220
+loads	4.220
+longest	4.220
+magical	4.220
+mills	4.220
+motivation	4.220
+nasty	4.220
+oliver	4.220
+outfit	4.220
+pension	4.220
+permit	4.220
+perry	4.220
+plates	4.220
+pleasant	4.220
+portrait	4.220
+productive	4.220
+reminds	4.220
+reserves	4.220
+ron	4.220
+safely	4.220
+shirts	4.220
+shorter	4.220
+slight	4.220
+socialist	4.220
+streaming	4.220
+sue	4.220
+targeted	4.220
+tension	4.220
+thailand	4.220
+theories	4.220
+touching	4.220
+transactions	4.220
+twist	4.220
+ugh	4.220
+unemployment	4.220
+unity	4.220
+useless	4.220
+viewers	4.220
+winds	4.220
+woke	4.220
+wtf	4.220
+abilities	4.210
+advocate	4.210
+aims	4.210
+arc	4.210
+backup	4.210
+beaten	4.210
+bitter	4.210
+blown	4.210
+branches	4.210
+campaigns	4.210
+chips	4.210
+cia	4.210
+clever	4.210
+clinic	4.210
+closest	4.210
+collections	4.210
+continuous	4.210
+converted	4.210
+correctly	4.210
+creator	4.210
+creatures	4.210
+criteria	4.210
+declined	4.210
+detective	4.210
+difficulties	4.210
+disability	4.210
+dish	4.210
+douglas	4.210
+du	4.210
+duck	4.210
+egyptian	4.210
+ep	4.210
+evaluation	4.210
+excess	4.210
+farming	4.210
+fence	4.210
+fifa	4.210
+fighters	4.210
+flights	4.210
+forcing	4.210
+forming	4.210
+franklin	4.210
+fred	4.210
+gradually	4.210
+gravity	4.210
+habits	4.210
+hawaii	4.210
+highlight	4.210
+holder	4.210
+hood	4.210
+hung	4.210
+identical	4.210
+imperial	4.210
+investigations	4.210
+jose	4.210
+ken	4.210
+legally	4.210
+lied	4.210
+listened	4.210
+males	4.210
+manufacturer	4.210
+meters	4.210
+nail	4.210
+nasa	4.210
+negotiations	4.210
+nonsense	4.210
+ontario	4.210
+operational	4.210
+orleans	4.210
+owns	4.210
+phoenix	4.210
+playoffs	4.210
+poet	4.210
+quoted	4.210
+relating	4.210
+repeatedly	4.210
+robinson	4.210
+rolled	4.210
+scientist	4.210
+sink	4.210
+skip	4.210
+slavery	4.210
+snap	4.210
+sorts	4.210
+souls	4.210
+stole	4.210
+swedish	4.210
+swim	4.210
+swiss	4.210
+tennessee	4.210
+transaction	4.210
+transformation	4.210
+veteran	4.210
+vulnerable	4.210
+wealthy	4.210
+additionally	4.200
+amy	4.200
+attract	4.200
+barbara	4.200
+beta	4.200
+blowing	4.200
+bored	4.200
+bronze	4.200
+bug	4.200
+caring	4.200
+catching	4.200
+cave	4.200
+cheating	4.200
+chronic	4.200
+cleared	4.200
+communicate	4.200
+convicted	4.200
+cultures	4.200
+dealt	4.200
+delayed	4.200
+demonstrate	4.200
+departments	4.200
+depend	4.200
+developer	4.200
+diagnosis	4.200
+dismissed	4.200
+distinguished	4.200
+dose	4.200
+eighth	4.200
+experiments	4.200
+fa	4.200
+flesh	4.200
+flip	4.200
+forty	4.200
+generous	4.200
+germans	4.200

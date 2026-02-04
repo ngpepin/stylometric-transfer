@@ -23,7 +23,7 @@ import re
 import textwrap
 import webbrowser
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple, Optional
 
 
 def load_json(path: Path) -> Dict[str, Any]:
@@ -62,6 +62,32 @@ def take_items(items: Iterable[Any], limit: int = 10) -> List[Any]:
         if len(out) >= limit:
             break
     return out
+
+
+def load_common_word_frequencies() -> Dict[str, float]:
+    # Load common-word Zipf frequencies from config.common_words.txt if present.
+    filename = "config.common_words.txt"
+    cwd_path = Path.cwd() / filename
+    script_path = Path(__file__).resolve().parent / filename
+    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    if not path:
+        return {}
+    freq_map: Dict[str, float] = {}
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = re.split(r"\s+", line)
+        if not parts:
+            continue
+        word = parts[0].strip().lower()
+        if not word or len(parts) < 2:
+            continue
+        try:
+            freq_map[word] = float(parts[1])
+        except Exception:
+            continue
+    return freq_map
 
 
 def truncate_text(text: str, max_len: int = 60) -> str:
@@ -194,7 +220,21 @@ def list_kv(items: List[Tuple[str, Any]]) -> str:
 
 
 def chips(items: Iterable[str]) -> str:
-    return "".join(f"<span class='chip'>{esc(item)}</span>" for item in items)
+    items = list(items)
+    if not items:
+        return ""
+    return "<div class='chip-list'>" + "".join(f"<span class='chip'>{esc(item)}</span>" for item in items) + "</div>"
+
+
+def chips_with_titles(items: Iterable[Tuple[str, Optional[str]]]) -> str:
+    items = list(items)
+    if not items:
+        return ""
+    parts = []
+    for label, title in items:
+        title_attr = f" title='{esc(title)}'" if title else ""
+        parts.append(f"<span class='chip'{title_attr}>{esc(label)}</span>")
+    return "<div class='chip-list'>" + "".join(parts) + "</div>"
 
 
 def json_block(obj: Any) -> str:
@@ -296,9 +336,18 @@ def render_dashboard(fp: Dict[str, Any], source_path: Path) -> str:
             + f"<div class='ratio-pill'>claim/evidence ratio: {ratio_label}</div>"
         )
 
-    lex_prefer = take_items(lexicon.get("prefer_words", []) or [], 12)
-    lex_avoid = take_items(lexicon.get("avoid_words", []) or [], 12)
-    lex_hard = take_items(lexicon.get("avoid_words_hard", []) or [], 12)
+    freq_map = load_common_word_frequencies()
+    lex_prefer = take_items(lexicon.get("prefer_words", []) or [], 100)
+
+    def sort_by_freq(words: Iterable[str]) -> List[str]:
+        def key(w: str) -> Tuple[float, str]:
+            freq = freq_map.get(w.lower())
+            freq_val = float(freq) if isinstance(freq, (int, float)) else -1.0
+            return (-freq_val, w.lower())
+        return sorted([w for w in words if isinstance(w, str)], key=key)
+
+    lex_avoid_hard = take_items(sort_by_freq(lexicon.get("avoid_words", []) or []), 100)
+    lex_avoid_soft = take_items(sort_by_freq(lexicon.get("avoid_words_soft", []) or []), 100)
 
     template_openers = take_items(templates.get("sentence_openers", []) or [], 8)
     template_trans = take_items(templates.get("transition_openers", []) or [], 8)
@@ -336,17 +385,41 @@ def render_dashboard(fp: Dict[str, Any], source_path: Path) -> str:
     ])
 
     rare_words = safe_get(fp, "measurements", "lexical_signals", "rare_words", default=[]) or []
-    rare_words = take_items(rare_words, 12)
-    rare_list = "".join(
-        f"<div class='pill'><span>{esc(item.get('word',''))}</span><strong>{fmt_num(item.get('count',''))}</strong></div>"
-        for item in rare_words
+    rare_words_sorted = sorted(
+        [item for item in rare_words if isinstance(item, dict)],
+        key=lambda x: str(x.get("word", "")).lower()
     )
+    rare_words_sorted = take_items(rare_words_sorted, 100)
+    rare_chip_items: List[Tuple[str, Optional[str]]] = []
+    for item in rare_words_sorted:
+        word = str(item.get("word", "")).strip()
+        if not word:
+            continue
+        title = f"count: {fmt_num(item.get('count',''))}, rate/1k: {fmt_num(item.get('rate_per_1000w',''))}"
+        rare_chip_items.append((word, title))
+    rare_list = chips_with_titles(rare_chip_items)
+
     avoidance_words = safe_get(fp, "measurements", "lexical_avoidance", "rare_words", default=[]) or []
-    avoidance_words = take_items(avoidance_words, 12)
-    avoidance_list = "".join(
-        f"<div class='pill'><span>{esc(item.get('word',''))}</span><strong>{fmt_num(item.get('count',''))}</strong></div>"
-        for item in avoidance_words
-    )
+    avoidance_items = [item for item in avoidance_words if isinstance(item, dict)]
+    def avoid_sort_key(item: Dict[str, Any]) -> Tuple[float, str]:
+        word = str(item.get("word", "")).lower()
+        freq = item.get("zipf_frequency")
+        if freq is None:
+            freq = freq_map.get(word)
+        freq_val = float(freq) if isinstance(freq, (int, float)) else -1.0
+        return (-freq_val, word)
+    avoidance_sorted = sorted(avoidance_items, key=avoid_sort_key)
+    avoidance_sorted = take_items(avoidance_sorted, 100)
+    avoidance_chip_items: List[Tuple[str, Optional[str]]] = []
+    for item in avoidance_sorted:
+        word = str(item.get("word", "")).strip()
+        if not word:
+            continue
+        freq = item.get("zipf_frequency")
+        freq_label = f", zipf: {fmt_num(freq, 3)}" if isinstance(freq, (int, float)) else ""
+        title = f"count: {fmt_num(item.get('count',''))}, rate/1k: {fmt_num(item.get('rate_per_1000w',''))}{freq_label}"
+        avoidance_chip_items.append((word, title))
+    avoidance_list = chips_with_titles(avoidance_chip_items)
 
     target_sections = []
     for key, block in targets.items():
@@ -403,7 +476,8 @@ main {{ padding: 24px 36px 48px; }}
 .subhead {{ margin-top: 12px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }}
 .doc-list {{ list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; }}
 .doc-item {{ background: #0b1225; border: 1px solid #1f2a44; border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--text); }}
-.chip {{ display:inline-block; background: #1f2937; color: #e5e7eb; padding: 4px 8px; margin: 4px 4px 0 0; border-radius: 999px; font-size: 12px; }}
+.chip-list {{ display: flex; flex-wrap: wrap; gap: 6px; }}
+.chip {{ display:inline-block; background: #1f2937; color: #e5e7eb; padding: 3px 8px; border-radius: 999px; font-size: 11px; line-height: 1.4; }}
 .muted {{ color: var(--muted); font-size: 12px; }}
 .section {{ margin-top: 22px; }}
 .section h2 {{ font-size: 18px; margin: 0 0 12px; color: #e5e7eb; }}
@@ -446,8 +520,8 @@ footer {{ color: var(--muted); padding: 24px 36px; font-size: 12px; border-top: 
       {card("Corpus Totals", totals_block, accent="#38BDF8")}
       {card("Function Words", fn_list or "<p class='muted'>No data</p>", accent="#94A3B8")}
       {card("Lexicon - Prefer", chips(lex_prefer) or "<p class='muted'>None</p>", accent="#38BDF8")}
-      {card("Lexicon - Avoid", chips(lex_avoid) or "<p class='muted'>None</p>", accent="#F87171")}
-      {card("Lexicon - Hard Avoid", chips(lex_hard) or "<p class='muted'>None</p>", accent="#EF4444")}
+      {card("Lexicon - Avoid (Hard)", chips(lex_avoid_hard) or "<p class='muted'>None</p>", accent="#EF4444")}
+      {card("Lexicon - Avoid (Soft)", chips(lex_avoid_soft) or "<p class='muted'>None</p>", accent="#F87171")}
       {card("Rare Words", rare_list or "<p class='muted'>None</p>", accent="#10B981")}
       {card("Avoidance Words", avoidance_list or "<p class='muted'>None</p>", accent="#F59E0B")}
       {card("Templates - Openers", chips(template_openers) or "<p class='muted'>None</p>", accent="#818CF8")}

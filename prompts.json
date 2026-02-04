@@ -22,7 +22,7 @@
         "Use lexical_avoidance.category_rates_per_1000w to set soft avoid guidance where appropriate.",
         "Use templates_signals.transition_marker_positions to set discourse marker position targets.",
         "Use repetition.bigram_repeat_rate and repetition.trigram_repeat_rate to set repetition ceilings.",
-        "Use lexical_avoidance.rare_words to populate lexicon.avoid_words when appropriate (avoid common words the author rarely uses).",
+        "Use lexical_avoidance.rare_words to populate lexicon.avoid_words_soft when appropriate (avoid common words the author does not use).",
         "If lexicon_hints are present, reflect them in lexicon.prefer/avoid with appropriate severity. If lexicon_hints include avoid_words or avoid_words_hard, include them in lexicon.avoid_words as hard avoids.",
         "Use controlled vocabulary values where possible (low|medium|high, rare|sometimes|often, etc.).",
         "If appropriate, include controls.humanizer_variance with conservative defaults (disabled unless explicitly warranted).",
@@ -257,7 +257,7 @@
         "Follow controls.priority_order if present; otherwise prioritize persona > rhetoric > paragraph > sentence > lexical > punctuation > orthography.",
         "Respect targets.rhetoric_moves, targets.epistemic_profile, targets.paragraph_cadence, targets.syntax_texture, targets.discourse_markers, and targets.repetition when present.",
         "If controls.humanizer_variance is enabled, apply only the allowed_ops up to max_ops_per_1000w to introduce subtle variation without changing meaning.",
-        "Avoid lexicon.avoid_phrases and lexicon.avoid_words (treat any severity 'hard' fields as strict).",
+        "Avoid lexicon.avoid_phrases and lexicon.avoid_words (hard avoids). Treat lexicon.avoid_words_soft as soft guidance when it does not conflict with meaning.",
         "Use preferred phrases sparingly (respect max_per_1000w if present)."
       ]
     }

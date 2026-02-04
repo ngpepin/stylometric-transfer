@@ -221,30 +221,39 @@ def load_avoid_list() -> List[str]:
         return []
 
 
-def load_common_words() -> List[str]:
+def load_common_words() -> List[Tuple[str, Optional[float]]]:
     # Load optional common-words list from CWD or script directory.
     cwd_path = Path.cwd() / COMMON_WORDS_FILENAME
     script_path = Path(__file__).resolve().parent / COMMON_WORDS_FILENAME
     for path in (cwd_path, script_path):
         if path.exists():
             try:
-                lines = parse_list_lines(path.read_text(encoding="utf-8"))
+                raw_lines = path.read_text(encoding="utf-8").splitlines()
             except Exception:
-                lines = []
-            words: List[str] = []
-            for line in lines:
-                for token in re.split(r"\s+", line.strip()):
-                    if token:
-                        words.append(token.lower())
-            if words:
-                seen: set[str] = set()
-                deduped: List[str] = []
-                for token in words:
-                    if token not in seen:
-                        seen.add(token)
-                        deduped.append(token)
-                return deduped
-    return sorted(DEFAULT_COMMON_WORDS)
+                raw_lines = []
+            entries: List[Tuple[str, Optional[float]]] = []
+            seen: set[str] = set()
+            for raw in raw_lines:
+                line = raw.split("#", 1)[0].strip()
+                if not line:
+                    continue
+                parts = re.split(r"\s+", line)
+                if not parts:
+                    continue
+                word = parts[0].strip().lower()
+                if not word or word in seen:
+                    continue
+                freq: Optional[float] = None
+                if len(parts) >= 2:
+                    try:
+                        freq = float(parts[1])
+                    except Exception:
+                        freq = None
+                seen.add(word)
+                entries.append((word, freq))
+            if entries:
+                return entries
+    return [(w, None) for w in sorted(DEFAULT_COMMON_WORDS)]
 
 
 def normalize_entity_name(value: str) -> str:
@@ -1100,17 +1109,35 @@ def compute_measurements(
 
     max_count = max(2, int(total_words * 0.0001))
     max_count = min(5, max_count)
-    common_word_set = {
-        w.lower() for w in (common_words or DEFAULT_COMMON_WORDS)
-        if isinstance(w, str) and w.strip()
-    }
+    common_entries: List[Tuple[str, Optional[float], int]] = []
+    has_freq = False
+    for idx, entry in enumerate(common_words or [(w, None) for w in DEFAULT_COMMON_WORDS]):
+        if isinstance(entry, tuple):
+            word = entry[0] if entry else ""
+            freq = entry[1] if len(entry) > 1 else None
+        else:
+            word = entry
+            freq = None
+        if isinstance(word, str):
+            word = word.strip().lower()
+        else:
+            word = ""
+        if not word:
+            continue
+        if freq is not None:
+            has_freq = True
+        common_entries.append((word, freq, idx))
+    if has_freq:
+        common_entries.sort(key=lambda x: (x[1] if x[1] is not None else float("-inf")), reverse=True)
+    else:
+        common_entries.sort(key=lambda x: x[2])
     rare_candidates = [
         (token, count) for token, count in token_counts.items()
         if count <= max_count and is_candidate_rare(token)
     ]
-    common_rare_candidates = [
-        (token, token_counts.get(token, 0)) for token in common_word_set
-        if is_candidate_common(token) and token_counts.get(token, 0) <= max_count
+    common_absent_candidates = [
+        (token, token_counts.get(token, 0), freq) for token, freq, _ in common_entries
+        if is_candidate_common(token) and token_counts.get(token, 0) == 0
     ]
     def stable_token_hash(token: str) -> int:
         return int(hashlib.md5(token.encode("utf-8")).hexdigest()[:8], 16)
@@ -1138,8 +1165,8 @@ def compute_measurements(
             if bucket and len(selected) < 40:
                 next_initials.append(initial)
         initials = next_initials
-    limit_signals = rare_words_limit if isinstance(rare_words_limit, int) and rare_words_limit > 0 else 40
-    limit_avoid = rare_words_limit_avoidance if isinstance(rare_words_limit_avoidance, int) and rare_words_limit_avoidance > 0 else limit_signals
+    limit_signals = rare_words_limit if isinstance(rare_words_limit, int) and rare_words_limit > 0 else 100
+    limit_avoid = rare_words_limit_avoidance if isinstance(rare_words_limit_avoidance, int) and rare_words_limit_avoidance > 0 else 100
     pool_size = max(limit_signals, limit_avoid) * 2
     candidate_pool = selected[:pool_size]
     candidate_pool.sort(key=lambda x: (proper_name_likelihood(x[0]), x[1], stable_token_hash(x[0])))
@@ -1153,14 +1180,16 @@ def compute_measurements(
         }
         for token, count in filtered[:limit_signals]
     ]
-    rare_words_avoid = [
-        {
+    rare_words_avoid = []
+    for token, count, freq in common_absent_candidates[:limit_avoid]:
+        item = {
             "word": token,
             "count": count,
             "rate_per_1000w": approx_rate_per_1000_words(count, total_words)
         }
-        for token, count in sorted(common_rare_candidates, key=lambda x: (x[1], stable_token_hash(x[0])))[:limit_avoid]
-    ]
+        if freq is not None:
+            item["zipf_frequency"] = freq
+        rare_words_avoid.append(item)
     def ngrams(n: int) -> Iterable[str]:
         for i in range(0, len(toks) - n + 1):
             chunk = toks[i:i+n]

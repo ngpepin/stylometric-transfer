@@ -196,7 +196,7 @@ Notes:
 - Prompt templates are stored in `prompts.json` next to the Python scripts and are loaded at runtime (includes the `validate_phrases` template used for common-phrase validation)
 - Optional `lexicon_hints.json` (in repo root or next to the scripts) can provide preferred or avoided phrases for fingerprinting
 - Optional `config.avoid.txt` (in repo root or next to the scripts) lists words or phrases to always avoid; it is merged into the fingerprint lexicon and enforced during style application
-- Optional `config.common_words.txt` (in repo root or next to the scripts) defines the common‑word list used to derive `measurements.lexical_avoidance.rare_words` (words common in English but rare in the corpus)
+- Optional `config.common_words.txt` (in repo root or next to the scripts) defines the common‑word list used to derive `measurements.lexical_avoidance.rare_words` (words common in English but absent from the corpus). Format: `word <zipf_frequency>`; the frequency is optional but used to prioritize higher‑frequency words first.
 - Optional `config.entity_blacklist.txt` (in repo root or next to the scripts) lists entities (people, places, organizations) to suppress from common-phrase extraction to avoid proper‑name dominance
 - Genre handling: by default the tools auto-detect fiction vs non-fiction; override with `--fiction` or `--non-fiction`. In non-fiction, multi-word quotations are excluded from fingerprinting and preserved verbatim during rewriting.
 - When fingerprinting, the current `config.tunables.json` can be embedded as `metadata.extraction.tunables_snapshot` for auditability
@@ -254,10 +254,10 @@ Example (defaults shown):
     }
   },
   "lexical_signals": {
-    "rare_words_limit": 40
+    "rare_words_limit": 100
   },
   "lexical_avoidance": {
-    "rare_words_limit": 40
+    "rare_words_limit": 100
   },
   "fiction_detection": {
     "quote_span_min": 6,
@@ -307,7 +307,7 @@ Example (defaults shown):
   - `drop_filler`: removes low‑information filler words/phrases when safe (bounded by the ops budget).
 - `humanization_metrics.weights` (object): optional weighting for the 0–100 aggregate humanization score. Any metric with a weight of 0 is excluded.
 - `lexical_signals.rare_words_limit` (integer): maximum number of rare words to include in `measurements.lexical_signals.rare_words`.
-- `lexical_avoidance.rare_words_limit` (integer): maximum number of rare words to include in `measurements.lexical_avoidance.rare_words`.
+- `lexical_avoidance.rare_words_limit` (integer): maximum number of absent common words (from `config.common_words.txt`) to include in `measurements.lexical_avoidance.rare_words`.
 - `fiction_detection.quote_span_min` (integer): minimum multi‑word quote spans required before classifying as fiction (lower = more likely fiction).
 - `fiction_detection.quoted_ratio_min` (float 0–1): minimum fraction of words inside multi‑word quotes to classify as fiction (lower = more likely fiction).
 - `fiction_detection.quote_para_ratio_min` (float 0–1): minimum fraction of paragraphs starting with a quote to classify as fiction (lower = more likely fiction).
@@ -337,6 +337,8 @@ If present, `config.avoid.txt` provides a hard “never use” list. Each non-em
 - Merged into `lexicon.avoid_words` during application (even if the fingerprint does not include them)
 
 Organizational bans, regulatory requirements or personal preferences may take precedence over the author's stylistic choices.
+
+The algorithmic common‑word omissions from `config.common_words.txt` populate `lexicon.avoid_words_soft` instead (soft guidance).
 
 ---
 
@@ -453,7 +455,7 @@ Contents include:
 - `metadata.corpus.documents`: per-document metadata (path, title when available, size, language/locale, genres, time range)
 - `measurements`: raw statistical signals (including `orthography_signals.spelling_variant`, paragraph rhythm, `lexical_signals.rare_words`, and `lexical_avoidance.rare_words` derived from a built-in common-words list)
 - `targets`: stylistic constraints and distributions (including optional persona pronoun preferences)
-- `lexicon`: preferred and avoided words and phrases (includes soft avoid lists)
+- `lexicon`: preferred and avoided words and phrases (`avoid_words` = hard avoids, `avoid_words_soft` = soft avoids)
 - `templates`: syntactic and rhetorical patterns
 - `controls`: strictness, priority ordering, and optional humanizer variance (seeded, bounded micro‑variation)
 - `validators`: scoring weights and checks
