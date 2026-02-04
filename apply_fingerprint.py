@@ -2382,8 +2382,7 @@ def chunk_markdown(
                     current = cand2
                 continue
             current = candidate
-        if current:
-            flush()
+    flush()
     return [c for c in chunks if c.strip()]
 
 def approx_rate_per_1000_words(count: int, total_words: int) -> float:
