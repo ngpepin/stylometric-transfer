@@ -3134,7 +3134,7 @@ def main() -> int:
         # put model and date if missing
         fingerprint["metadata"].setdefault("extraction", {})
         if isinstance(fingerprint["metadata"].get("extraction"), dict):
-            fingerprint["metadata"]["extraction"].setdefault("model", cfg.model)
+            fingerprint["metadata"]["extraction"]["model"] = cfg.model
             fingerprint["metadata"]["extraction"].setdefault("methods", ["hybrid"])
             fingerprint["metadata"]["extraction"].setdefault("confidence", "medium")
             if tunables_snapshot is not None:

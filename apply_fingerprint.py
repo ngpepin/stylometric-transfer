@@ -3299,7 +3299,8 @@ def build_apply_prompt(
     prompts: Dict[str, Any],
     style_feedback: Dict[str, Any] | None = None,
     humanizer_rules: List[Dict[str, Any]] | None = None,
-    controller_overlay: Dict[str, Any] | None = None
+    controller_overlay: Dict[str, Any] | None = None,
+    voice_override: str | None = None
 ) -> List[Dict[str, str]]:
     # Fill the apply prompt template with runtime data.
     system = get_prompt_value(prompts, "apply", "system")
@@ -3333,6 +3334,19 @@ def build_apply_prompt(
         user["humanizer_guidelines"] = humanizer_rules
     if controller_overlay:
         user["controller_overlay"] = controller_overlay
+    if voice_override:
+        override_rules = {
+            "first": "Force narrative voice to first-person (I/we). Avoid second- and third-person pronouns unless they appear in preserved quotations or frozen blocks.",
+            "second": "Force narrative voice to second-person (you/your). Avoid first- and third-person pronouns unless they appear in preserved quotations or frozen blocks.",
+            "third": "Force narrative voice to third-person (he/she/they). Avoid first- and second-person pronouns unless they appear in preserved quotations or frozen blocks."
+        }
+        rule = override_rules.get(voice_override)
+        if isinstance(user.get("rules"), list):
+            if rule:
+                user["rules"].append(rule)
+        elif rule:
+            user["rules"] = [rule]
+        user["voice_override"] = voice_override
 
     return [
         {"role": "system", "content": system},
@@ -3765,7 +3779,8 @@ def main() -> int:
             prompts,
             style_feedback,
             humanizer_rules,
-            controller_overlay
+            controller_overlay,
+            args.force_person
         )
 
     def rewrite_chunk(
@@ -3997,6 +4012,19 @@ def main() -> int:
                         "removed": removed_emoji,
                         "replaced": replaced_emoji
                     })
+
+            if args.force_person and not args.no_style_retry and attempts < args.max_style_retries:
+                voice_text = filter_author_voice_text(final_md)
+                override_eval = evaluate_pronoun_override(voice_text, args.force_person)
+                if override_eval.get("violations"):
+                    style_feedback = {
+                        "pronoun_override": override_eval,
+                        "notes": [
+                            "Pronoun override violations detected. Rewrite to match forced narrative voice."
+                        ]
+                    }
+                    attempts += 1
+                    continue
 
             compliance = compute_style_compliance(fingerprint, filter_author_voice_text(final_md))
             if not args.no_style_retry and attempts < args.max_style_retries and compliance["score"] < args.style_retry_threshold:
