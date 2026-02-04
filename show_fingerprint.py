@@ -523,7 +523,7 @@ footer {{ color: var(--muted); padding: 24px 36px; font-size: 12px; border-top: 
       {card("Corpus Totals", totals_block, accent="#38BDF8")}
       {card("Function Words", fn_list or "<p class='muted'>No data</p>", accent="#94A3B8")}
       {card("Lexicon - Prefer", chips(lex_prefer) or "<p class='muted'>None</p>", accent="#38BDF8")}
-      {card("Rare Words", rare_list or "<p class='muted'>None</p>", accent="#10B981")}
+      {card("Lexicon - Rare Words", rare_list or "<p class='muted'>None</p>", accent="#10B981")}
       {card("Lexicon - Avoid (Soft)", chips(lex_avoid_soft) or "<p class='muted'>None</p>", accent="#F87171")}
       {avoidance_card}
       {card("Templates - Openers", chips(template_openers) or "<p class='muted'>None</p>", accent="#818CF8")}
