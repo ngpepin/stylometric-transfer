@@ -6,9 +6,16 @@
 
 In practical terms, the system enables an LLM to apply a specified writing style to any text input. It performs stylometric profiling and humanization on writing samples, then uses constraint-guided author-style transfer for a target document. A style "fingerprint" is built from the writing corpus using classic stylometric measurements and graph structure, and that fingerprint is applied via an LLM to rewrite any text.
 
-The approach is effective; comments are encouraged.
+Comments are encouraged.
 
 Further details are available in `Article-Teaching-Machines-to-Write-Like-You.md` and `Research-Paper.md`.
+
+<p align="center">
+  <img src="media/fingerprint-example.png" width="900">
+  <br/>
+  <em>An example fingerprint (show_fingerprint.py output)</em>
+</p>
+
 
 This repository includes:
 - `fingerprint_style.py`: extracts a **style fingerprint (stylometric profile)** from a writing archive
