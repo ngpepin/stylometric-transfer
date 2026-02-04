@@ -3186,6 +3186,23 @@ def main() -> int:
 
     def rewrite_chunk(md_chunk: str, chunk_index: int | None = None, chunk_total: int | None = None) -> tuple[str, Dict[str, Any], Dict[str, Any]]:
         # Rewrite a chunk with optional style retry.
+        author_voice = filter_author_voice_text(md_chunk)
+        if not author_voice.strip():
+            if args.verbose and chunk_index is not None and chunk_total is not None:
+                vprint(f"Chunk {chunk_index}/{chunk_total} has no author-voice content; skipping LLM.")
+            out_obj = {
+                "final_markdown": md_chunk,
+                "deviations": [
+                    {
+                        "rule_or_field": "skip_llm",
+                        "reason": "Chunk contains no author-voice content; preserved verbatim."
+                    }
+                ],
+                "self_check": {
+                    "notes": ["No author-voice content in chunk; preserved verbatim."]
+                }
+            }
+            return md_chunk, out_obj, {"score": 1.0, "deltas": []}
         attempts = 0
         style_feedback: Dict[str, Any] | None = None
         last_out: Dict[str, Any] = {}
