@@ -56,6 +56,10 @@ try:
 except Exception:
     Document = None  # optional
 
+
+def print_warn(msg: str) -> None:
+    print(msg, file=sys.stderr)
+
 # Script overview:
 # - Extract a corpus archive into a temp directory
 # - Read text-like files and normalize content
@@ -1956,11 +1960,7 @@ def validate_common_phrases(
             )
         except Exception:
             pass
-    raw, _ = chat_completions(cfg, messages)
-    try:
-        result = parse_json_strict(raw)
-    except Exception:
-        result = repair_json_with_llm(cfg, raw, prompts)
+    result, _ = request_json_with_retries(cfg, messages, prompts, "phrase validation")
     if dropped:
         result.setdefault("decisions", [])
         for d in dropped:
@@ -2168,6 +2168,43 @@ def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any
     ]
     fixed, _ = chat_completions(cfg, messages)
     return parse_json_strict(fixed)
+
+
+def request_json_with_retries(
+    cfg: LLMConfig,
+    messages: List[Dict[str, str]],
+    prompts: Dict[str, Any],
+    purpose: str
+) -> tuple[Dict[str, Any], Dict[str, Any] | None]:
+    last_err: Exception | None = None
+    last_raw = ""
+    for attempt in range(cfg.max_retries + 1):
+        try:
+            raw, usage = chat_completions(cfg, messages)
+            last_raw = raw
+            try:
+                result = parse_json_strict(raw)
+            except Exception:
+                result = repair_json_with_llm(cfg, raw, prompts)
+            if isinstance(result, dict) and result:
+                if attempt > 0:
+                    print_warn(f"LLM output recovered after {attempt} retry(ies) ({purpose}).")
+                return result, usage
+            last_err = RuntimeError("LLM returned empty or invalid JSON")
+        except Exception as exc:
+            last_err = exc
+        if attempt >= cfg.max_retries:
+            break
+        backoff = min(cfg.backoff_max_seconds, cfg.backoff_base_seconds * (2 ** attempt))
+        jitter = random.uniform(0, backoff * 0.2)
+        sleep_s = backoff + jitter
+        print_warn(
+            f"LLM output invalid ({purpose}) "
+            f"(attempt {attempt + 1}/{cfg.max_retries + 1}); "
+            f"retrying in {sleep_s:.1f}s. Error: {last_err}"
+        )
+        time.sleep(sleep_s)
+    raise RuntimeError(f"LLM output invalid after {cfg.max_retries + 1} attempts ({purpose}): {last_err}")
 
 
 # ----------------------------
@@ -2494,12 +2531,7 @@ def main() -> int:
         messages = build_fingerprint_prompt(measurements, excerpts, cfg, prompts, lexicon_hints)
         prompt_tokens = estimate_tokens_for_messages(messages)
         if prompt_tokens <= cfg.max_prompt_tokens:
-            raw, usage = chat_completions(cfg, messages)
-            try:
-                fingerprint = parse_json_strict(raw)
-            except Exception:
-                vprint("Invalid JSON returned; attempting repair...")
-                fingerprint = repair_json_with_llm(cfg, raw, prompts)
+            fingerprint, usage = request_json_with_retries(cfg, messages, prompts, "fingerprint synthesis")
         else:
             vprint(f"Prompt too large ({prompt_tokens} tokens); chunking excerpts...")
             batches = chunk_excerpts(excerpts, measurements, cfg, cfg.max_prompt_tokens, prompts, lexicon_hints)
@@ -2508,12 +2540,7 @@ def main() -> int:
             for idx, batch in enumerate(batches, start=1):
                 vprint(f"Synthesizing partial fingerprint {idx}/{len(batches)}...")
                 batch_messages = build_fingerprint_prompt(measurements, batch, cfg, prompts, lexicon_hints)
-                raw, usage = chat_completions(cfg, batch_messages)
-                try:
-                    partial = parse_json_strict(raw)
-                except Exception:
-                    vprint("Invalid JSON returned; attempting repair...")
-                    partial = repair_json_with_llm(cfg, raw, prompts)
+                partial, usage = request_json_with_retries(cfg, batch_messages, prompts, "partial fingerprint")
                 if usage and args.verbose:
                     vprint(
                         f"Partial {idx}/{len(batches)} token usage: "
@@ -2533,12 +2560,7 @@ def main() -> int:
                     cfg,
                     prompts
                 )
-                raw, usage = chat_completions(cfg, merge_messages)
-                try:
-                    fingerprint = parse_json_strict(raw)
-                except Exception:
-                    vprint("Invalid JSON returned; attempting repair...")
-                    fingerprint = repair_json_with_llm(cfg, raw, prompts)
+                fingerprint, usage = request_json_with_retries(cfg, merge_messages, prompts, "merge fingerprint")
                 if usage and args.verbose:
                     vprint(
                         f"Merge {idx}/{len(partials)} token usage: "

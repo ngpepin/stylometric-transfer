@@ -3046,18 +3046,47 @@ def main() -> int:
         while True:
             messages = build_messages_for_chunk(md_chunk, style_feedback)
             input_tokens = estimate_tokens_for_messages(messages)
-            raw, usage = chat_completions(cfg, messages)
-            try:
-                out_obj = parse_json_strict(raw)
-            except Exception:
-                vprint("Invalid JSON returned; attempting repair...")
-                out_obj = repair_json_with_llm(cfg, raw, prompts)
-
-            final_md = out_obj.get("final_markdown")
-            if not isinstance(final_md, str) or not final_md.strip():
+            last_raw = ""
+            last_usage: Dict[str, Any] | None = None
+            last_err: Exception | None = None
+            out_obj: Dict[str, Any] | None = None
+            for attempt in range(cfg.max_retries + 1):
+                try:
+                    raw, usage = chat_completions(cfg, messages)
+                    last_raw = raw
+                    last_usage = usage
+                    try:
+                        out_obj = parse_json_strict(raw)
+                    except Exception:
+                        vprint("Invalid JSON returned; attempting repair...")
+                        out_obj = repair_json_with_llm(cfg, raw, prompts)
+                    final_md = out_obj.get("final_markdown") if isinstance(out_obj, dict) else None
+                    if isinstance(final_md, str) and final_md.strip():
+                        if attempt > 0:
+                            print_warn(f"LLM output recovered after {attempt} retry(ies).")
+                        break
+                    last_err = RuntimeError("LLM did not return final_markdown")
+                except Exception as exc:
+                    last_err = exc
+                if attempt >= cfg.max_retries:
+                    break
+                backoff = min(cfg.backoff_max_seconds, cfg.backoff_base_seconds * (2 ** attempt))
+                jitter = random.uniform(0, backoff * 0.2)
+                sleep_s = backoff + jitter
+                print_warn(
+                    "LLM output invalid "
+                    f"(attempt {attempt + 1}/{cfg.max_retries + 1}); "
+                    f"retrying in {sleep_s:.1f}s. Error: {last_err}"
+                )
+                time.sleep(sleep_s)
+            if not isinstance(out_obj, dict) or not isinstance(out_obj.get("final_markdown"), str) or not out_obj.get("final_markdown", "").strip():
                 print_error("LLM did not return final_markdown.")
-                print(raw)
+                if last_raw:
+                    print(last_raw)
                 raise RuntimeError("LLM did not return final_markdown")
+            raw = last_raw
+            usage = last_usage
+            final_md = out_obj.get("final_markdown")
 
             # Optional stochastic micro-variation layer (bounded, deterministic).
             variance = {}
