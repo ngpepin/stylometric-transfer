@@ -97,6 +97,7 @@ This is a practical implementation of:
 | **Controls** | Priority/strictness and rewrite policies that govern tradeoffs. |
 | **Validators** | Checks and weights used to score compliance or detect deviations. |
 | **Deviations** | Structured report of where the model could not comply or had to adjust. |
+| **Rewrite‑policy normalization** | Deterministic de‑duplication of repeated policy clauses before use. |
 | **Humanizer rules** | General guidelines (from `general-guidelines.md`) filtered for conflicts with the fingerprint. |
 | **Tunables** | Runtime configuration (`config.tunables.json`) that shapes filtering, retries, chunking, and metrics. |
 | **Entity blacklist** | Names/places/orgs list used to suppress proper‑name phrases during phrase validation. |
@@ -140,6 +141,7 @@ In research terms, the system performs:
   - Structural fidelity
   - Deviation reporting
   - Optional style-compliance retry with delta feedback
+  - Deterministic normalization of verbose/duplicative rewrite policies before use
 - Filters out blockquotes, reference sections, footnotes, citation markers, and boilerplate notices (copyright/terms/privacy) from style measurements and excerpts, preserving them verbatim during rewrite
 - Strips embedded BASE64 images before sending prompts to the LLM and re-embeds them in output
 - Compatible with OpenAI (works with OpenAI, Azure OpenAI, vLLM, etc.)

@@ -26,6 +26,7 @@ class ApplyPipeline {
   +load_fingerprint()
   +load_markdown()
   +detect_fiction()
+  +normalize_rewrite_policy()
   +mask_quoted_passages()
   +mask_non_voice_blocks()
   +mask_inline_citations()
@@ -97,6 +98,7 @@ start
 
 :Read fingerprint JSON;
 :Merge avoid list into lexicon.avoid_words;
+:Normalize rewrite_policy clauses;
 :Read input Markdown;
 :Detect fiction vs non-fiction (can be forced by flags);
 

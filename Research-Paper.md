@@ -286,6 +286,7 @@ The repository provides:
    - Schema-guided, JSON-only prompting
    - Embedding of measurements verbatim
    - Automated JSON repair if parsing fails
+   - Deterministic de-duplication of verbose `rewrite_policy` clauses in `controls`
 
 3. **Rewrite stage**
    - Fingerprint, input measurements, and markdown text

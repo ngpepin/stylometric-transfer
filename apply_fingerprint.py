@@ -291,6 +291,63 @@ def merge_avoid_list_into_fingerprint(
     return fingerprint
 
 
+def normalize_rewrite_policy(text: str) -> str:
+    if not isinstance(text, str):
+        return text
+    policy = re.sub(r"\s+", " ", text.strip())
+    if not policy:
+        return policy
+    clauses: List[str] = []
+    for chunk in re.split(r"[.;:]+", policy):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        parts = re.split(
+            r"(?i)(?=\b(?:preserve|avoid|maintain|ensure|keep|favor|use|prefer|minimize|maximize|do not|don't)\b)",
+            chunk
+        )
+        for part in parts:
+            part = part.strip()
+            if part:
+                clauses.append(part)
+
+    stopwords = {
+        "the", "and", "of", "to", "a", "an", "in", "on", "for", "with", "or", "but",
+        "as", "by", "from", "into", "at", "that", "this", "these", "those", "be", "is",
+        "are", "was", "were", "been", "being"
+    }
+
+    def norm_tokens(s: str) -> List[str]:
+        s = s.lower()
+        s = re.sub(r"[^\w\s'-]", " ", s)
+        tokens = [t for t in s.split() if t and t not in stopwords]
+        return tokens
+
+    deduped: List[str] = []
+    seen: List[set[str]] = []
+    for clause in clauses:
+        tokens = set(norm_tokens(clause))
+        if not tokens:
+            continue
+        is_dup = False
+        for prior in seen:
+            overlap = len(tokens & prior) / max(1, len(tokens | prior))
+            if overlap >= 0.85:
+                is_dup = True
+                break
+        if is_dup:
+            continue
+        seen.append(tokens)
+        deduped.append(clause)
+
+    if not deduped:
+        return policy
+    cleaned = "; ".join(deduped)
+    if cleaned and cleaned[-1] not in ".;:":
+        cleaned += "."
+    return cleaned
+
+
 def should_forbid_em_dashes(tunables: Dict[str, Any] | None) -> bool:
     mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
     return bool(mandatory.get("avoid_em_dashes", False))
@@ -2875,6 +2932,9 @@ def main() -> int:
     avoid_list = load_avoid_list()
     if avoid_list:
         fingerprint = merge_avoid_list_into_fingerprint(fingerprint, avoid_list)
+    controls = fingerprint.get("controls")
+    if isinstance(controls, dict) and isinstance(controls.get("rewrite_policy"), str):
+        controls["rewrite_policy"] = normalize_rewrite_policy(controls["rewrite_policy"])
     apply_pronoun_override(fingerprint, args.force_person)
     forbid_em_dashes = should_forbid_em_dashes(tunables)
     emoji_policy = None

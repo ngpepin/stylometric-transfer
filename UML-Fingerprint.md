@@ -37,6 +37,7 @@ class FingerprintPipeline {
   +derive_new_measurements()
   +chat_completions()
   +repair_json_with_llm()
+  +normalize_rewrite_policy()
   +write_fingerprint()
 }
 
@@ -124,6 +125,7 @@ endif
 :Embed tunables snapshot (optional);
 :Embed measurements verbatim;
 :Include targets for rhetoric/cadence/epistemic/syntax/repetition;
+:Normalize rewrite_policy clauses;
 :Write style_fingerprint.json;
 stop
 @enduml
