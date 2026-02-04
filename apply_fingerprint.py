@@ -4503,19 +4503,20 @@ def main() -> int:
                     output_weights = dict(input_weights)
         input_metrics.update(compute_humanization_aggregate(input_metrics.get("scores", {}), input_weights))
         output_metrics.update(compute_humanization_aggregate(output_metrics.get("scores", {}), output_weights))
-    humanization_weights = {}
-    if isinstance(tunables, dict):
-        hm = tunables.get("humanization_metrics", {})
-        if isinstance(hm, dict):
-            weights = hm.get("weights", {})
-            if isinstance(weights, dict):
-                humanization_weights = {str(k): float(v) for k, v in weights.items() if isinstance(v, (int, float))}
-    aggregate = compute_humanization_aggregate(humanization_metrics.get("scores", {}), humanization_weights)
-    humanization_metrics.update(aggregate)
-    all_deviations.append({
-        "rule_or_field": "humanization_metrics",
-        "metrics": humanization_metrics
-    })
+    if args.metrics and isinstance(humanization_metrics, dict):
+        humanization_weights = {}
+        if isinstance(tunables, dict):
+            hm = tunables.get("humanization_metrics", {})
+            if isinstance(hm, dict):
+                weights = hm.get("weights", {})
+                if isinstance(weights, dict):
+                    humanization_weights = {str(k): float(v) for k, v in weights.items() if isinstance(v, (int, float))}
+        aggregate = compute_humanization_aggregate(humanization_metrics.get("scores", {}), humanization_weights)
+        humanization_metrics.update(aggregate)
+        all_deviations.append({
+            "rule_or_field": "humanization_metrics",
+            "metrics": humanization_metrics
+        })
 
     out_path = args.out or args.inp.with_suffix(args.inp.suffix + ".styled.md")
     vprint(f"Writing output: {out_path}")
