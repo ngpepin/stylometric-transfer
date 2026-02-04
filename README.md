@@ -85,16 +85,31 @@ This is a practical implementation of:
 
 | Term | Meaning |
 |------|---------|
-| **Stylometry** | Quantitative analysis of writing style |
-| **Stylometric profile** | Feature-based representation of an author’s style |
-| **Style fingerprint** | Explicit JSON encoding of stylistic constraints |
-| **Style transfer** | Rewriting text while preserving meaning but altering style |
-| **Author-conditioned generation** | Text generation guided by an author profile |
+| **Stylometry** | Quantitative analysis of writing style (measurable signals, not semantics). |
+| **Stylometric profile** | A feature-based summary of an author’s style derived from a corpus. |
+| **Style fingerprint** | The explicit JSON artifact that encodes style measurements, targets, and controls. |
+| **Style transfer** | Rewriting text to match a fingerprint while preserving meaning. |
+| **Author‑conditioned generation** | Generating new text guided by a fingerprint rather than a raw prompt alone. |
+| **Measurements** | Observed statistics from the corpus (e.g., sentence length histograms, punctuation rates). |
+| **Targets** | Desired ranges or qualitative goals derived from measurements (used in rewriting). |
+| **Lexicon** | Preferred/avoided words and phrases; soft or hard constraints. |
+| **Templates** | Rhetorical or syntactic patterns (openers, transitions, paragraph moves). |
+| **Controls** | Priority/strictness and rewrite policies that govern tradeoffs. |
+| **Validators** | Checks and weights used to score compliance or detect deviations. |
+| **Deviations** | Structured report of where the model could not comply or had to adjust. |
+| **Humanizer rules** | General guidelines (from `general-guidelines.md`) filtered for conflicts with the fingerprint. |
+| **Tunables** | Runtime configuration (`config.tunables.json`) that shapes filtering, retries, chunking, and metrics. |
+| **Entity blacklist** | Names/places/orgs list used to suppress proper‑name phrases during phrase validation. |
+| **Lexical avoidance list** | Common words the author rarely uses (treated as soft avoids). |
+| **Fiction vs non‑fiction** | Classification that determines whether multi‑word quotes are rewritten or preserved. |
+| **Chunking** | Splitting large inputs to fit the model context, then reconciling outputs. |
+| **Style retry** | Optional delta‑feedback loop that re‑prompts if compliance score is low. |
+| **Humanization metrics** | Quantitative, research‑grounded signals used to score “human‑likeness.” |
 
 In research terms, the system performs:
-- Feature-based stylometric profiling
-- Interpretable controllable text generation
-- Constraint-augmented author style transfer
+- Feature-based stylometric profiling from real corpus statistics
+- Interpretable, constraint‑driven rewriting/generation
+- Conflict‑aware humanization aligned with explicit style constraints
 
 ---
 
