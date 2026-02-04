@@ -3412,6 +3412,10 @@ def main() -> int:
     else:
         vprint(f"Prompt too large ({initial_tokens} tokens); chunking input...")
         chunks = chunk_markdown(input_md, build_messages_for_chunk, cfg.max_prompt_tokens)
+        non_empty = [c for c in chunks if isinstance(c, str) and c.strip()]
+        if len(non_empty) != len(chunks):
+            vprint(f"Filtered out {len(chunks) - len(non_empty)} empty chunk(s).")
+        chunks = non_empty
         vprint(f"Chunked into {len(chunks)} parts.")
         for idx, chunk in enumerate(chunks, start=1):
             vprint(f"Rewriting chunk {idx}/{len(chunks)}...")
