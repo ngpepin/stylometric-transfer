@@ -1194,6 +1194,76 @@ def normalize_summary(summary: str, max_words: int | None) -> str:
             flags=re.IGNORECASE
         )
     summary = re.sub(r"\\bin\\s+this\\s+summary\\b", "in the previous summary", summary, flags=re.IGNORECASE)
+    # Prefer past tense when referring to prior content.
+    verb_map = {
+        "introduces": "introduced",
+        "outlines": "outlined",
+        "discusses": "discussed",
+        "explains": "explained",
+        "details": "detailed",
+        "presents": "presented",
+        "describes": "described",
+        "summarizes": "summarized",
+        "summarises": "summarised",
+        "argues": "argued",
+        "emphasizes": "emphasized",
+        "emphasises": "emphasised",
+        "highlights": "highlighted",
+        "notes": "noted",
+        "states": "stated",
+        "claims": "claimed",
+        "defines": "defined",
+        "frames": "framed",
+        "motivates": "motivated",
+        "proposes": "proposed",
+        "recommends": "recommended",
+        "compares": "compared",
+        "contrasts": "contrasted",
+        "evaluates": "evaluated",
+        "assesses": "assessed",
+        "examines": "examined",
+        "explores": "explored",
+        "covers": "covered",
+        "lists": "listed",
+        "catalogs": "catalogued",
+        "catalogues": "catalogued",
+        "illustrates": "illustrated",
+        "demonstrates": "demonstrated",
+        "shows": "showed",
+        "mentions": "mentioned",
+        "addresses": "addressed",
+        "focuses": "focused",
+        "considers": "considered",
+        "identifies": "identified",
+        "summons": "summoned",
+        "calls out": "called out",
+        "calls": "called"
+    }
+    verb_pattern = "|".join(re.escape(k) for k in verb_map.keys())
+    summary = re.sub(
+        rf"\\b(the previous (?:{'|'.join(context_nouns)}))\\s+({verb_pattern})\\b",
+        lambda m: f"{m.group(1)} {verb_map.get(m.group(2).lower(), m.group(2))}",
+        summary,
+        flags=re.IGNORECASE
+    )
+    summary = re.sub(r"\\bis discussed\\b", "was discussed", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bare discussed\\b", "were discussed", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bis outlined\\b", "was outlined", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bare outlined\\b", "were outlined", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bis described\\b", "was described", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bare described\\b", "were described", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bis presented\\b", "was presented", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bare presented\\b", "were presented", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bis detailed\\b", "was detailed", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bare detailed\\b", "were detailed", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bis explained\\b", "was explained", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bare explained\\b", "were explained", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bis compared\\b", "was compared", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bare compared\\b", "were compared", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bis contrasted\\b", "was contrasted", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bare contrasted\\b", "were contrasted", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bis evaluated\\b", "was evaluated", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bare evaluated\\b", "were evaluated", summary, flags=re.IGNORECASE)
     if isinstance(max_words, int) and max_words > 0:
         tokens = summary.split()
         if len(tokens) > max_words:
