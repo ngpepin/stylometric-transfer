@@ -13,7 +13,18 @@
     "avoid_em_dashes": true,
     "emoji_policy": "replace",
     "normalize_double_quotes": true,
-    "allow_heading_case_changes": false,
+    "heading_case_normalization": "by-level",
+    "heading_case_by_level": {
+      "h1": "title-case",
+      "h2": "title-case",
+      "h3": "title-case",
+      "h4": "sentence-case",
+      "h5": "identical",
+      "h6": "automatic",
+      "h7": "lower",
+      "h8": "upper"
+    },
+    "preserve_proper_name_case": true,
     "sanitize_heading_qualifiers": {
       "enabled": true,
       "allowlist": ["quick win"]

@@ -45,6 +45,7 @@ class ApplyPipeline {
   +compute_style_compliance()
   +rewrite_with_retry()
   +rewrite_with_recovery_split()
+  +enforce_heading_case_normalization_from_source()
   +restore_missing_sections()
   +restore_placeholders()
   +write_outputs()
@@ -153,6 +154,8 @@ endif
 :Apply bounded humanizer variance (optional);
 :Restore placeholders;
 :Apply mandatory output normalizations (em dashes, quotes, heading qualifiers, local spelling);
+:Apply heading-case normalization policy (automatic/identical/by-level);
+:If preserve_proper_name_case=true, keep source proper-name casing in deterministic heading transforms;
 :Compute style compliance;
 
 if (Compliance below threshold?) then (yes)

@@ -95,7 +95,18 @@ DEFAULT_TUNABLES = {
     "humanizer_mandatory": {
         "avoid_em_dashes": False,
         "emoji_policy": "remove",
-        "allow_heading_case_changes": False
+        "heading_case_normalization": "by-level",
+        "heading_case_by_level": {
+            "h1": "title-case",
+            "h2": "sentence-case",
+            "h3": "identical",
+            "h4": "automatic",
+            "h5": "caps",
+            "h6": "lower",
+            "h7": "automatic",
+            "h8": "automatic"
+        },
+        "preserve_proper_name_case": True
     },
     "section_restore": {
         "enabled": True,
@@ -121,12 +132,13 @@ REFERENCE_HEADINGS = {
     "footnotes",
     "notes"
 }
-ATX_HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.+?)\s*$")
+ATX_HEADING_RE = re.compile(r"^\s{0,3}(#{1,8})\s+(.+?)\s*$")
 LIST_LINE_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
 SETEXT_H1_RE = re.compile(r"^\s*=+\s*$")
 SETEXT_H2_RE = re.compile(r"^\s*-+\s*$")
 BLOCKQUOTE_LINE_RE = re.compile(r"^\s*>")
 FOOTNOTE_DEF_RE = re.compile(r"^\s*\[\^[^\]]+\]:")
+MAX_CONFIG_HEADING_LEVEL = 8
 
 INLINE_FOOTNOTE_RE = re.compile(r"\[\^[^\]]+\]")
 INLINE_NUMERIC_CITE_RE = re.compile(r"\[(?:\d+|[IVX]+)(?:\s*[-–,;]\s*(?:\d+|[IVX]+))*\]")
@@ -1001,10 +1013,57 @@ def get_heading_qualifier_sanitize_conf(
     return bool(conf), []
 
 
-# Function: Decide whether heading casing is allowed to change.
-def allow_heading_case_changes(tunables: Dict[str, Any] | None) -> bool:
+# Function: Read heading case-normalization settings.
+def get_heading_case_normalization_conf(
+    tunables: Dict[str, Any] | None
+) -> tuple[str, Dict[int, str], bool]:
     mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
-    return bool(mandatory.get("allow_heading_case_changes", False))
+    mode = str(mandatory.get("heading_case_normalization", "")).strip().lower()
+    # Backward compatibility with removed boolean.
+    if not mode and "allow_heading_case_changes" in mandatory:
+        mode = "automatic" if bool(mandatory.get("allow_heading_case_changes")) else "identical"
+    if mode not in {"automatic", "identical", "by-level"}:
+        mode = "by-level"
+
+    raw_by_level = mandatory.get("heading_case_by_level", {})
+    normalized_by_level: Dict[int, str] = {}
+    default_by_level = {
+        1: "title-case",
+        2: "sentence-case",
+        3: "identical",
+        4: "automatic",
+        5: "caps",
+        6: "lower",
+        7: "automatic",
+        8: "automatic",
+    }
+    allowed_level_modes = {"automatic", "identical", "unchanged", "title-case", "sentence-case", "caps", "lower"}
+    mode_aliases = {
+        "upper": "caps",
+        "uppercase": "caps",
+        "title": "title-case",
+        "sentence": "sentence-case",
+    }
+    if isinstance(raw_by_level, dict):
+        for key, value in raw_by_level.items():
+            level = None
+            k = str(key).strip().lower()
+            if k.startswith("h"):
+                k = k[1:]
+            if k.isdigit():
+                parsed = int(k)
+                if 1 <= parsed <= MAX_CONFIG_HEADING_LEVEL:
+                    level = parsed
+            if level is None:
+                continue
+            v = str(value).strip().lower()
+            v = mode_aliases.get(v, v)
+            if v not in allowed_level_modes:
+                continue
+            normalized_by_level[level] = v
+    by_level: Dict[int, str] = {lvl: normalized_by_level.get(lvl, default) for lvl, default in default_by_level.items()}
+    preserve_proper_name_case = bool(mandatory.get("preserve_proper_name_case", True))
+    return mode, by_level, preserve_proper_name_case
 
 
 # Function: Get force local spelling.
@@ -2303,9 +2362,131 @@ def _apply_word_case_pattern(word: str, pattern: str) -> str:
     return word
 
 
+# Function: Detect likely proper-name token indices in heading text.
+def _detect_proper_name_indices(text: str) -> set[int]:
+    word_re = re.compile(r"[A-Za-z][A-Za-z']*")
+    matches = list(word_re.finditer(text))
+    if not matches:
+        return set()
+    stopwords = {
+        "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into", "near", "nor",
+        "of", "on", "or", "per", "the", "to", "vs", "via", "with", "without", "over", "under",
+        "has", "have", "had", "is", "are", "was", "were", "be", "being", "been"
+    }
+    indices: set[int] = set()
+    for idx, m in enumerate(matches):
+        w = m.group(0)
+        lower = w.lower()
+        if lower in stopwords:
+            continue
+        if w.isupper() and len(w) > 1:
+            indices.add(idx)
+            continue
+        if _word_case_pattern(w) == "mixed":
+            indices.add(idx)
+            continue
+        if w[:1].isupper() and w[1:].islower():
+            if idx > 0:
+                indices.add(idx)
+                continue
+            # First token is treated as proper name if followed by another capitalized token.
+            if idx + 1 < len(matches):
+                nxt = matches[idx + 1].group(0)
+                if nxt[:1].isupper() and nxt[1:].islower() and nxt.lower() not in stopwords:
+                    indices.add(idx)
+    return indices
+
+
+# Function: Preserve source proper-name casing when rewriting heading case.
+def _preserve_proper_name_case(source_heading: str, transformed_heading: str) -> str:
+    word_re = re.compile(r"[A-Za-z][A-Za-z']*")
+    src_matches = list(word_re.finditer(source_heading))
+    dst_matches = list(word_re.finditer(transformed_heading))
+    if not src_matches or not dst_matches:
+        return transformed_heading
+    name_indices = _detect_proper_name_indices(source_heading)
+    if not name_indices:
+        return transformed_heading
+    out = transformed_heading
+    for idx in sorted(name_indices):
+        if idx >= len(src_matches) or idx >= len(dst_matches):
+            break
+        src_word = src_matches[idx].group(0)
+        dst_match = dst_matches[idx]
+        out = out[:dst_match.start()] + src_word + out[dst_match.end():]
+        # Refresh matches because replacement may shift offsets.
+        dst_matches = list(word_re.finditer(out))
+    return out
+
+
+# Function: Apply an explicit case style to a heading.
+def apply_heading_case_style(
+    heading_text: str,
+    mode: str,
+    source_heading: str | None = None,
+    preserve_proper_name_case: bool = True,
+) -> str:
+    mode = str(mode).strip().lower()
+    if mode in {"upper", "uppercase"}:
+        mode = "caps"
+    elif mode == "title":
+        mode = "title-case"
+    elif mode == "sentence":
+        mode = "sentence-case"
+    if mode in {"automatic"}:
+        return heading_text
+    if mode in {"identical", "unchanged"}:
+        if isinstance(source_heading, str):
+            return transfer_heading_casing(source_heading, heading_text, preserve_proper_name_case)
+        return heading_text
+
+    word_re = re.compile(r"[A-Za-z][A-Za-z']*")
+    if mode == "caps":
+        transformed = heading_text.upper()
+    elif mode == "lower":
+        transformed = heading_text.lower()
+    elif mode == "sentence-case":
+        transformed = heading_text.lower()
+        m = word_re.search(transformed)
+        if m:
+            transformed = transformed[:m.start()] + transformed[m.start():m.start() + 1].upper() + transformed[m.start() + 1:]
+    elif mode == "title-case":
+        small_words = {
+            "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "nor", "of",
+            "on", "or", "per", "the", "to", "vs", "via", "with"
+        }
+        matches = list(word_re.finditer(heading_text))
+        total = len(matches)
+        idx = 0
+
+        # Function: Apply title casing to lexical tokens.
+        def repl_title(match: re.Match[str]) -> str:
+            nonlocal idx
+            idx += 1
+            word = match.group(0)
+            lower = word.lower()
+            if word.isupper() and len(word) > 1:
+                return word
+            if 1 < idx < total and lower in small_words:
+                return lower
+            return word[:1].upper() + word[1:].lower()
+
+        transformed = word_re.sub(repl_title, heading_text)
+    else:
+        transformed = heading_text
+
+    if preserve_proper_name_case and isinstance(source_heading, str):
+        transformed = _preserve_proper_name_case(source_heading, transformed)
+    return transformed
+
+
 # Function: Transfer heading casing from source heading to rewritten heading text.
-def transfer_heading_casing(source_heading: str, rewritten_heading: str) -> str:
-    # Prefer token-position case transfer; fallback to coarse style transfer when token counts differ.
+def transfer_heading_casing(
+    source_heading: str,
+    rewritten_heading: str,
+    preserve_proper_name_case: bool = True
+) -> str:
+    # Prefer token-position case transfer; fallback to aligned-prefix transfer when token counts differ.
     word_re = re.compile(r"[A-Za-z][A-Za-z']*")
     src_matches = list(word_re.finditer(source_heading))
     dst_matches = list(word_re.finditer(rewritten_heading))
@@ -2323,7 +2504,10 @@ def transfer_heading_casing(source_heading: str, rewritten_heading: str) -> str:
             idx += 1
             return _apply_word_case_pattern(match.group(0), pattern)
 
-        return word_re.sub(repl, rewritten_heading)
+        out = word_re.sub(repl, rewritten_heading)
+        if preserve_proper_name_case:
+            out = _preserve_proper_name_case(source_heading, out)
+        return out
 
     if src_matches:
         # If token counts differ (e.g., qualifier removed), preserve case pattern for aligned prefix tokens.
@@ -2341,56 +2525,29 @@ def transfer_heading_casing(source_heading: str, rewritten_heading: str) -> str:
             idx += 1
             return out
 
-        return word_re.sub(repl_prefix, rewritten_heading)
-
-    src_words = [m.group(0) for m in src_matches]
-    if src_words and all(w.isupper() for w in src_words):
-        return rewritten_heading.upper()
-    if src_words and all(w.islower() for w in src_words):
-        return rewritten_heading.lower()
-
-    cap_count = sum(1 for w in src_words if w[:1].isupper())
-    title_like = bool(src_words) and cap_count / max(1, len(src_words)) >= 0.6
-    if title_like:
-        small_words = {
-            "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "nor", "of",
-            "on", "or", "per", "the", "to", "vs", "via", "with"
-        }
-        all_words = list(word_re.finditer(rewritten_heading))
-        total = len(all_words)
-        idx = 0
-
-        # Function: Apply title-like casing while preserving acronyms.
-        def repl_title(match: re.Match[str]) -> str:
-            nonlocal idx
-            idx += 1
-            word = match.group(0)
-            lower = word.lower()
-            if word.isupper() and len(word) > 1:
-                return word
-            if 1 < idx < total and lower in small_words:
-                return lower
-            return word[:1].upper() + word[1:].lower()
-
-        return word_re.sub(repl_title, rewritten_heading)
-
-    # Sentence-like fallback: preserve acronyms, lower others, capitalize first alpha word.
-    alpha_words = list(word_re.finditer(rewritten_heading))
-    if not alpha_words:
-        return rewritten_heading
-    first_idx = alpha_words[0].start()
-    out = rewritten_heading.lower()
-    out = out[:first_idx] + out[first_idx:first_idx + 1].upper() + out[first_idx + 1:]
-    for match in alpha_words:
-        word = rewritten_heading[match.start():match.end()]
-        if word.isupper() and len(word) > 1:
-            out = out[:match.start()] + word + out[match.end():]
-    return out
+        out = word_re.sub(repl_prefix, rewritten_heading)
+        if preserve_proper_name_case:
+            out = _preserve_proper_name_case(source_heading, out)
+        return out
+    return rewritten_heading
 
 
-# Function: Enforce source heading casing in rewritten markdown.
-def enforce_heading_casing_from_source(source_markdown: str, rewritten_markdown: str) -> tuple[str, int]:
-    # Keep rewritten heading wording but transfer original case style by heading order.
+# Function: Resolve heading case mode for a specific level.
+def _resolve_heading_case_mode_for_level(global_mode: str, by_level: Dict[int, str], level: int) -> str:
+    mode = str(global_mode).strip().lower()
+    if mode == "by-level":
+        return str(by_level.get(level, "automatic")).strip().lower()
+    return mode
+
+
+# Function: Enforce heading case normalization policy from source markdown.
+def enforce_heading_case_normalization_from_source(
+    source_markdown: str,
+    rewritten_markdown: str,
+    global_mode: str,
+    by_level: Dict[int, str],
+    preserve_proper_name_case: bool = True,
+) -> tuple[str, int]:
     src_lines = source_markdown.splitlines()
     out_lines = rewritten_markdown.splitlines()
     src_headings: List[tuple[int, str]] = []
@@ -2423,7 +2580,13 @@ def enforce_heading_casing_from_source(source_markdown: str, rewritten_markdown:
         out_idx, out_level, out_text, _out_span = out_headings[idx]
         if src_level != out_level:
             continue
-        recased = transfer_heading_casing(src_text, out_text)
+        mode = _resolve_heading_case_mode_for_level(global_mode, by_level, out_level)
+        recased = apply_heading_case_style(
+            out_text,
+            mode,
+            source_heading=src_text,
+            preserve_proper_name_case=preserve_proper_name_case,
+        )
         if recased == out_text:
             continue
         m = ATX_HEADING_RE.match(out_lines[out_idx])
@@ -2435,8 +2598,23 @@ def enforce_heading_casing_from_source(source_markdown: str, rewritten_markdown:
         prefix = prefix_match.group(1) if prefix_match else ""
         out_lines[out_idx] = f"{prefix}{recased}"
         edits += 1
-
     return "\n".join(out_lines), edits
+
+
+# Function: Enforce source heading casing in rewritten markdown.
+def enforce_heading_casing_from_source(
+    source_markdown: str,
+    rewritten_markdown: str,
+    preserve_proper_name_case: bool = True
+) -> tuple[str, int]:
+    # Backward-compatible wrapper for the old boolean behaviour ("identical").
+    return enforce_heading_case_normalization_from_source(
+        source_markdown,
+        rewritten_markdown,
+        "identical",
+        {},
+        preserve_proper_name_case=preserve_proper_name_case,
+    )
 
 
 # Function: Check whether reference heading.
@@ -3135,13 +3313,24 @@ def filter_humanizer_rules(
 
     em_dash_forbidden = False
     emoji_policy = None
-    heading_case_changes_allowed = False
+    heading_case_mode = "by-level"
+    heading_case_by_level: Dict[int, str] = {}
     if isinstance(tunables, dict):
         mandatory = tunables.get("humanizer_mandatory", {})
         if isinstance(mandatory, dict):
             em_dash_forbidden = bool(mandatory.get("avoid_em_dashes", False))
             emoji_policy = mandatory.get("emoji_policy")
-            heading_case_changes_allowed = bool(mandatory.get("allow_heading_case_changes", False))
+    heading_case_mode, heading_case_by_level, _preserve_name_case = get_heading_case_normalization_conf(tunables)
+    deterministic_heading_case = (
+        heading_case_mode == "identical"
+        or (
+            heading_case_mode == "by-level"
+            and any(
+                str(heading_case_by_level.get(level, "automatic")).lower() not in {"automatic"}
+                for level in range(1, MAX_CONFIG_HEADING_LEVEL + 1)
+            )
+        )
+    )
 
     # Function: Collect style context.
     def collect_style_context() -> str:
@@ -3225,8 +3414,8 @@ def filter_humanizer_rules(
             title_case_rate = float(input_style.get("heading_title_case_rate", 0.0))
             bold_rate = float(input_style.get("boldface_per_1000w", 0.0))
             inline_header_rate = float(input_style.get("inline_header_list_rate", 0.0))
-            if "title case" in title and not heading_case_changes_allowed:
-                drop_reason = "Heading case changes disabled by humanizer_mandatory."
+            if "title case" in title and deterministic_heading_case:
+                drop_reason = "Heading case normalization is deterministic via humanizer_mandatory."
             elif "title case" in title and title_case_rate >= heading_title_case_keep_rate:
                 drop_reason = "Input headings use Title Case."
             if "boldface" in title and bold_rate >= boldface_keep_per_1000w:
@@ -5134,7 +5323,7 @@ def main() -> int:
     normalize_double_quotes = should_normalize_double_quotes(tunables)
     sanitize_heading_qualifiers, heading_allowlist_raw = get_heading_qualifier_sanitize_conf(tunables)
     heading_allowlist = compile_heading_allowlist(heading_allowlist_raw) if sanitize_heading_qualifiers else []
-    heading_case_changes_allowed = allow_heading_case_changes(tunables)
+    heading_case_mode, heading_case_by_level, preserve_proper_name_case = get_heading_case_normalization_conf(tunables)
     force_local_spelling = args.local_spelling or get_force_local_spelling(tunables)
     if args.local_spelling and args.verbose:
         vprint(f"Local spelling override: {force_local_spelling} (CLI)")
@@ -5198,8 +5387,17 @@ def main() -> int:
                     "Hard constraint active: heading qualifiers will be sanitized (humanizer_mandatory)."
                     + allowlist_note
                 )
-            if not heading_case_changes_allowed:
-                vprint("Hard constraint active: original heading casing will be preserved (humanizer_mandatory).")
+            if heading_case_mode == "identical":
+                vprint("Hard constraint active: heading casing mode = identical (humanizer_mandatory).")
+            elif heading_case_mode == "by-level":
+                by_level_render = ", ".join(
+                    f"H{lvl}={heading_case_by_level.get(lvl, 'automatic')}" for lvl in range(1, MAX_CONFIG_HEADING_LEVEL + 1)
+                )
+                preserve_note = "on" if preserve_proper_name_case else "off"
+                vprint(
+                    "Hard constraint active: heading casing mode = by-level "
+                    f"({by_level_render}; preserve proper names={preserve_note})."
+                )
             if force_local_spelling != "none":
                 vprint(f"Hard constraint active: {force_local_spelling} spelling enforced (humanizer_mandatory).")
             if emoji_policy and str(emoji_policy) != "none":
@@ -6440,12 +6638,27 @@ def main() -> int:
                 "reason": f"Re-applied {force_local_spelling} spelling after section restoration.",
                 "count": post_restore_replacements,
             })
-    if not heading_case_changes_allowed:
-        final_md, heading_case_edits = enforce_heading_casing_from_source(original_input_md, final_md)
+    if (
+        heading_case_mode == "identical"
+        or (
+            heading_case_mode == "by-level"
+            and any(
+                str(heading_case_by_level.get(lvl, "automatic")).lower() != "automatic"
+                for lvl in range(1, MAX_CONFIG_HEADING_LEVEL + 1)
+            )
+        )
+    ):
+        final_md, heading_case_edits = enforce_heading_case_normalization_from_source(
+            original_input_md,
+            final_md,
+            heading_case_mode,
+            heading_case_by_level,
+            preserve_proper_name_case=preserve_proper_name_case,
+        )
         if heading_case_edits:
             all_deviations.append({
                 "rule_or_field": "structure.heading_case",
-                "reason": "Restored source heading case style (humanizer_mandatory).",
+                "reason": f"Applied heading case normalization mode '{heading_case_mode}' (humanizer_mandatory).",
                 "count": heading_case_edits,
             })
     line_count_in = len(original_input_md.splitlines())

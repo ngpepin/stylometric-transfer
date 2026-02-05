@@ -25,7 +25,22 @@
         "avoid_em_dashes": { "type": "boolean" },
         "emoji_policy": { "type": "string", "enum": ["remove", "replace", "none"] },
         "normalize_double_quotes": { "type": "boolean" },
-        "allow_heading_case_changes": { "type": "boolean" },
+        "heading_case_normalization": { "type": "string", "enum": ["automatic", "identical", "by-level"] },
+        "heading_case_by_level": {
+          "type": "object",
+          "properties": {
+            "h1": { "type": "string", "enum": ["automatic", "identical", "unchanged", "title-case", "sentence-case", "caps", "upper", "lower"] },
+            "h2": { "type": "string", "enum": ["automatic", "identical", "unchanged", "title-case", "sentence-case", "caps", "upper", "lower"] },
+            "h3": { "type": "string", "enum": ["automatic", "identical", "unchanged", "title-case", "sentence-case", "caps", "upper", "lower"] },
+            "h4": { "type": "string", "enum": ["automatic", "identical", "unchanged", "title-case", "sentence-case", "caps", "upper", "lower"] },
+            "h5": { "type": "string", "enum": ["automatic", "identical", "unchanged", "title-case", "sentence-case", "caps", "upper", "lower"] },
+            "h6": { "type": "string", "enum": ["automatic", "identical", "unchanged", "title-case", "sentence-case", "caps", "upper", "lower"] },
+            "h7": { "type": "string", "enum": ["automatic", "identical", "unchanged", "title-case", "sentence-case", "caps", "upper", "lower"] },
+            "h8": { "type": "string", "enum": ["automatic", "identical", "unchanged", "title-case", "sentence-case", "caps", "upper", "lower"] }
+          },
+          "additionalProperties": false
+        },
+        "preserve_proper_name_case": { "type": "boolean" },
         "sanitize_heading_qualifiers": {
           "oneOf": [
             { "type": "boolean" },

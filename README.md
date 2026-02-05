@@ -254,7 +254,18 @@ Example (defaults shown):
     "avoid_em_dashes": true,
     "emoji_policy": "replace",
     "normalize_double_quotes": true,
-    "allow_heading_case_changes": false,
+    "heading_case_normalization": "by-level",
+    "heading_case_by_level": {
+      "h1": "title-case",
+      "h2": "sentence-case",
+      "h3": "identical",
+      "h4": "automatic",
+      "h5": "caps",
+      "h6": "lower",
+      "h7": "automatic",
+      "h8": "automatic"
+    },
+    "preserve_proper_name_case": true,
     "sanitize_heading_qualifiers": {
       "enabled": true,
       "allowlist": []
@@ -434,7 +445,16 @@ Example (defaults shown):
 - `avoid_em_dashes` (boolean): when true, em‑dashes are always removed in the output regardless of other signals.
 - `emoji_policy` (`remove`, `replace`, or `none`): remove emojis, replace common ones with conventional monochrome symbols, or disable emoji handling.
 - `normalize_double_quotes` (boolean): when true, curly double quotes are normalized to straight quotes.
-- `allow_heading_case_changes` (boolean): when false (default), heading case style from the source document is restored during finalization. This deterministically prevents LLM drift between sentence case/title case/all caps. When false, heading-case humanizer rules (for example “Title Case in Headings”) are dropped and reported in the dropped-rules log.
+- `heading_case_normalization` (`automatic`, `identical`, `by-level`):
+  - `automatic`: do not apply deterministic heading-case normalization.
+  - `identical`: restore heading case from the source heading.
+  - `by-level`: apply per-level heading case policy from `heading_case_by_level`.
+- `heading_case_by_level` (object, used when mode is `by-level`): per-level policy with keys `h1`..`h8`. Allowed values:
+  - `automatic` (no deterministic rewrite)
+  - `identical` / `unchanged` (restore source casing for that level)
+  - `title-case`, `sentence-case`, `caps` (or alias `upper`), `lower`
+- `preserve_proper_name_case` (boolean): when true, deterministic heading-case transforms preserve detected proper-name casing from the source heading (for example, `John Black` remains `John Black` even if the level policy is `caps`).
+- Deterministic heading-case handling (either `identical`, or `by-level` with at least one non-`automatic` level) causes heading-style humanizer rules (for example, “Title Case in Headings”) to be dropped and logged as deterministic conflicts.
 - `sanitize_heading_qualifiers` (boolean or object): when true (or enabled), trailing parenthetical/comma qualifiers in headings are removed if the remaining title still has at least two words.
   - `enabled` (boolean): turn the sanitizer on/off.
   - `allowlist` (array of regex strings): headings that match any pattern are exempt from qualifier stripping.

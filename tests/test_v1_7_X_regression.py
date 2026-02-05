@@ -264,10 +264,103 @@ class TestV17XRegression(unittest.TestCase):
             rules,
             {},
             input_style={"heading_title_case_rate": 0.1, "boldface_per_1000w": 0.0, "inline_header_list_rate": 0.0},
-            tunables={"humanizer_mandatory": {"allow_heading_case_changes": False}},
+            tunables={"humanizer_mandatory": {"heading_case_normalization": "identical"}},
         )
         self.assertEqual(len(dropped), 1)
-        self.assertIn("Heading case changes disabled", dropped[0].get("drop_reason", ""))
+        self.assertIn("Heading case normalization is deterministic", dropped[0].get("drop_reason", ""))
+
+    def test_heading_case_by_level_modes(self) -> None:
+        source_md = (
+            "# alpha beta gamma\n"
+            "## alpha beta gamma\n"
+            "### Alpha Beta gamma\n"
+            "#### Alpha Beta GammA\n"
+            "##### Alpha Beta GammA\n"
+            "###### Alpha Beta GammA\n"
+        )
+        rewritten_md = (
+            "# random case\n"
+            "## RANDOM CASE\n"
+            "### alpha BETA gamma\n"
+            "#### rAnDom cASe\n"
+            "##### random case\n"
+            "###### RANDOM CASE\n"
+        )
+        by_level = {
+            1: "title-case",
+            2: "sentence-case",
+            3: "identical",
+            4: "automatic",
+            5: "caps",
+            6: "lower",
+        }
+        updated, edits = af.enforce_heading_case_normalization_from_source(
+            source_md,
+            rewritten_md,
+            "by-level",
+            by_level,
+            preserve_proper_name_case=False,
+        )
+        self.assertGreaterEqual(edits, 5)
+        self.assertIn("# Random Case", updated)
+        self.assertIn("## Random case", updated)
+        self.assertIn("### Alpha Beta gamma", updated)
+        self.assertIn("#### rAnDom cASe", updated)
+        self.assertIn("##### RANDOM CASE", updated)
+        self.assertIn("###### random case", updated)
+
+    def test_heading_case_config_accepts_h7_h8(self) -> None:
+        mode, by_level, preserve = af.get_heading_case_normalization_conf(
+            {
+                "humanizer_mandatory": {
+                    "heading_case_normalization": "by-level",
+                    "heading_case_by_level": {
+                        "h7": "caps",
+                        "h8": "upper",
+                    },
+                    "preserve_proper_name_case": False,
+                }
+            }
+        )
+        self.assertEqual(mode, "by-level")
+        self.assertEqual(by_level.get(7), "caps")
+        self.assertEqual(by_level.get(8), "caps")
+        self.assertFalse(preserve)
+
+    def test_heading_case_by_level_h7_supported(self) -> None:
+        source_md = "####### Alpha Beta\n"
+        rewritten_md = "####### mixed CASE\n"
+        updated, edits = af.enforce_heading_case_normalization_from_source(
+            source_md,
+            rewritten_md,
+            "by-level",
+            {7: "lower"},
+            preserve_proper_name_case=False,
+        )
+        self.assertEqual(edits, 1)
+        self.assertIn("####### mixed case", updated)
+
+    def test_heading_case_caps_preserves_proper_names_when_enabled(self) -> None:
+        source_heading = "John Black and mary"
+        rewritten_heading = "john black and mary"
+        updated = af.apply_heading_case_style(
+            rewritten_heading,
+            "caps",
+            source_heading=source_heading,
+            preserve_proper_name_case=True,
+        )
+        self.assertEqual(updated, "John Black AND MARY")
+
+    def test_heading_case_caps_does_not_preserve_proper_names_when_disabled(self) -> None:
+        source_heading = "John Black and mary"
+        rewritten_heading = "john black and mary"
+        updated = af.apply_heading_case_style(
+            rewritten_heading,
+            "caps",
+            source_heading=source_heading,
+            preserve_proper_name_case=False,
+        )
+        self.assertEqual(updated, "JOHN BLACK AND MARY")
 
     def test_heading_case_lock_with_spelling_forced_qualifier_retained(self) -> None:
         rules = af.load_local_spelling_rules()

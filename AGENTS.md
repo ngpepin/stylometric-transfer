@@ -80,6 +80,11 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Apply `general-guidelines.md` humanizer rules when available, using an LLM parser by default then deterministically filtering out conflicts (disable with `--no-humanizer-llm-parse` or `--no-humanizer-guidelines`)
     - Cache parsed humanizer rules in `humanizer_rules.cache.json` (script directory) and re-parse only when guidelines change
     - Sanitize trailing parenthetical/comma qualifiers in headings when enabled (humanizer_mandatory)
+    - Apply heading-case normalization according to `humanizer_mandatory.heading_case_normalization`:
+      - `automatic` (no deterministic heading-case transform)
+      - `identical` (restore source heading case)
+      - `by-level` (per-level policy via `heading_case_by_level`)
+    - Optionally preserve source proper-name casing in deterministic heading transforms (`preserve_proper_name_case`)
     - Normalize verbose/duplicative `controls.rewrite_policy` clauses and filter `priority_order` when loading a fingerprint
     - Normalize lexical avoidance checks to US spelling for matching, then apply local spelling to final output
     - Return rewritten text and deviations
@@ -107,7 +112,7 @@ Avoid ambiguous terms like “clone” in public documentation.
 - `config.tunables.json`
   - Overrides humanizer conflict thresholds for `apply_fingerprint.py`
   - See README for per‑field explanations and defaults
-  - Includes mandatory humanizer controls (em‑dash ban, emoji policy, heading qualifier sanitization, optional heading-case lock)
+  - Includes mandatory humanizer controls (em‑dash ban, emoji policy, heading qualifier sanitization, heading-case normalization mode)
   - Includes bounded stochastic variance controls (seeded micro‑operations)
   - Includes style retry controls (delta‑feedback retries) with separate voice/style caps in forced-person mode
   - `style_retry.max_retries` caps style-loop retries; `style_retry.voice_max_retries` (optional) independently caps voice-loop retries in forced-person mode
