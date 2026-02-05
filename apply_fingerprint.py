@@ -1137,6 +1137,37 @@ def words(text: str) -> List[str]:
     return WORD_RE.findall(text)
 
 
+META_SUMMARY_PATTERNS = [
+    "as an ai",
+    "as a language model",
+    "i have rewritten",
+    "i rewrote",
+    "i have rewritten",
+    "i have re-written",
+    "i have summarized",
+    "i summarised",
+    "this summary",
+    "this chunk",
+    "the chunk",
+    "the prompt",
+    "the task",
+    "rewrite",
+    "rewritten",
+    "re-write",
+    "output",
+    "final_markdown",
+    "instructions",
+    "followed",
+    "preserving meaning",
+    "narrative voice",
+]
+
+
+def summary_is_meta(text: str) -> bool:
+    lowered = text.lower()
+    return any(pat in lowered for pat in META_SUMMARY_PATTERNS)
+
+
 def normalize_summary(summary: str, max_words: int | None) -> str:
     if not isinstance(summary, str):
         return ""
@@ -1160,6 +1191,46 @@ def build_fallback_summary(text: str, max_words: int | None) -> str:
     if isinstance(max_words, int) and max_words > 0:
         tokens = tokens[:max_words]
     return " ".join(tokens)
+
+
+def build_semantic_fallback_summary(text: str, max_words: int | None) -> str:
+    cleaned = filter_author_voice_text(text)
+    sents = [s.strip() for s in split_sentences(cleaned) if s.strip()]
+    if not sents:
+        return build_fallback_summary(text, max_words)
+    stopwords = {
+        "the", "and", "or", "but", "as", "if", "when", "than", "then",
+        "a", "an", "of", "to", "in", "on", "for", "with", "at", "by",
+        "from", "into", "over", "under", "between", "about", "after",
+        "before", "during", "through", "without", "within", "is", "are",
+        "was", "were", "be", "been", "being", "it", "this", "that",
+        "these", "those", "he", "she", "they", "we", "you", "i", "me",
+        "my", "our", "your", "their", "his", "her", "its", "not", "no",
+        "so", "do", "does", "did", "have", "has", "had", "will", "would",
+        "can", "could", "may", "might", "must", "should"
+    }
+    freq: Dict[str, int] = {}
+    for tok in words(cleaned.lower()):
+        if len(tok) < 4 or tok in stopwords:
+            continue
+        freq[tok] = freq.get(tok, 0) + 1
+    if not freq:
+        return build_fallback_summary(text, max_words)
+    scored: List[tuple[int, int, str]] = []
+    for idx, sent in enumerate(sents):
+        score = 0
+        for tok in words(sent.lower()):
+            if tok in freq:
+                score += freq[tok]
+        scored.append((score, idx, sent))
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    top = scored[:2]
+    top_sorted = [s for _score, _idx, s in sorted(top, key=lambda x: x[1])]
+    summary = " ".join(top_sorted)
+    summary = normalize_summary(summary, max_words)
+    if not summary:
+        return build_fallback_summary(text, max_words)
+    return summary
 
 
 def _quote_spans(text: str) -> List[tuple[int, int, str]]:
@@ -3385,6 +3456,8 @@ def build_apply_prompt(
                 "context continuity between chunks and must NOT appear in final_markdown. "
                 f"Keep it to {summary_clause}. Synthesize the prior summary with the current "
                 "chunk in your own words (do not copy previous_summary verbatim). "
+                "Describe the content (events, topics, claims) rather than describing the task. "
+                "Do not mention rewriting, the prompt, or the model. "
                 "Do not introduce new facts."
             )
 
@@ -4102,10 +4175,28 @@ def main() -> int:
                     continue
 
             if summary_enabled:
-                summary = out_obj.get("chunk_summary") if isinstance(out_obj, dict) else None
-                if not isinstance(summary, str) or not summary.strip():
-                    summary = build_fallback_summary(final_md, summary_words)
-                summary = normalize_summary(summary, summary_words)
+                llm_summary = out_obj.get("chunk_summary") if isinstance(out_obj, dict) else None
+                summary = llm_summary if isinstance(llm_summary, str) else ""
+                if not summary.strip():
+                    fallback = build_semantic_fallback_summary(final_md, summary_words)
+                    summary = normalize_summary(fallback, summary_words)
+                    if args.verbose and chunk_index is not None and chunk_total is not None:
+                        vprint(
+                            f"Chunk {chunk_index}/{chunk_total} summary fallback (LLM empty)."
+                        )
+                        vprint(f"  LLM summary: (empty)")
+                        vprint(f"  Fallback summary: {summary}")
+                else:
+                    summary = normalize_summary(summary, summary_words)
+                    if summary and summary_is_meta(summary):
+                        fallback = build_semantic_fallback_summary(final_md, summary_words)
+                        summary = normalize_summary(fallback, summary_words)
+                        if args.verbose and chunk_index is not None and chunk_total is not None:
+                            vprint(
+                                f"Chunk {chunk_index}/{chunk_total} summary fallback (LLM meta/task-focused)."
+                            )
+                            vprint(f"  LLM summary: {normalize_summary(llm_summary, summary_words)}")
+                            vprint(f"  Fallback summary: {summary}")
                 out_obj["chunk_summary"] = summary
                 if args.verbose and chunk_index is not None and chunk_total is not None:
                     vprint(

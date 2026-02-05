@@ -139,7 +139,7 @@
     "max_input_tokens": 6000,
     "chunk_split_on": "sentence",
     "chunk_summary": {
-      "enabled": false,
+      "enabled": true,
       "summary_words": 25
     },
     "min_chunks_when_perturbing": 2,
