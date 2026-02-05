@@ -909,6 +909,19 @@ def should_forbid_em_dashes(tunables: Dict[str, Any] | None) -> bool:
     return bool(mandatory.get("avoid_em_dashes", False))
 
 
+def should_normalize_double_quotes(tunables: Dict[str, Any] | None) -> bool:
+    mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
+    return bool(mandatory.get("normalize_double_quotes", False))
+
+
+def get_force_local_spelling(tunables: Dict[str, Any] | None) -> str:
+    mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
+    value = str(mandatory.get("force_local_spelling", "none")).lower()
+    if value not in ("none", "canadian", "british", "australian", "us"):
+        return "none"
+    return value
+
+
 def enforce_no_em_dashes(text: str) -> tuple[str, int]:
     # Replace em dashes with a spaced hyphen to preserve readability without em-dash glyphs.
     if EM_DASH_CHAR not in text:
@@ -916,6 +929,428 @@ def enforce_no_em_dashes(text: str) -> tuple[str, int]:
     count = text.count(EM_DASH_CHAR)
     text = re.sub(r"\s*—\s*", " - ", text)
     return text, count
+
+
+DOUBLE_QUOTE_CHARS = ("“", "”", "„", "‟", "«", "»")
+LOCAL_SPELLING_RULES_FILENAME = "config.local_spelling_rules.json"
+
+
+def enforce_straight_double_quotes(text: str) -> tuple[str, int]:
+    if not text:
+        return text, 0
+    count = sum(text.count(ch) for ch in DOUBLE_QUOTE_CHARS)
+    if count == 0:
+        return text, 0
+    trans = {ord(ch): ord('"') for ch in DOUBLE_QUOTE_CHARS}
+    return text.translate(trans), count
+
+
+def load_local_spelling_rules() -> Dict[str, Any]:
+    rules_path = Path(__file__).resolve().parent / LOCAL_SPELLING_RULES_FILENAME
+    if rules_path.exists():
+        try:
+            data = json.loads(rules_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            return {}
+    return {}
+
+
+LOCAL_SPELLING_NOUN_VERB_LOCALES = {"canadian", "british", "australian"}
+
+
+def _normalize_lexicon_token(token: str) -> str:
+    token = re.sub(r"[\"“”'’()\\[\\]{}]", "", str(token).lower()).strip()
+    return re.sub(r"\\s+", " ", token)
+
+
+def build_local_spelling_map(rules: Dict[str, Any], locale: str) -> Dict[str, str]:
+    if not isinstance(rules, dict):
+        return {}
+    locale = locale.lower()
+    rules_conf = rules.get("rules", {}) if isinstance(rules.get("rules", {}), dict) else {}
+    direct_variants = rules_conf.get("direct_variants", []) if isinstance(rules_conf.get("direct_variants", []), list) else []
+    suffix_variants = rules_conf.get("suffix_variants", []) if isinstance(rules_conf.get("suffix_variants", []), list) else []
+    context_variants = rules_conf.get("context_variants", []) if isinstance(rules_conf.get("context_variants", []), list) else []
+    mapping: Dict[str, str] = {}
+    for entry in direct_variants:
+        variants = entry.get("variants") if isinstance(entry, dict) else None
+        if not isinstance(variants, dict):
+            continue
+        target = variants.get(locale)
+        if not isinstance(target, str):
+            continue
+        for _, variant in variants.items():
+            if isinstance(variant, str):
+                mapping[variant.lower()] = target
+    for entry in suffix_variants:
+        variants = entry.get("variants") if isinstance(entry, dict) else None
+        suffixes = entry.get("suffixes") if isinstance(entry, dict) else None
+        if not isinstance(variants, dict) or not isinstance(suffixes, list):
+            continue
+        target_base = variants.get(locale)
+        if not isinstance(target_base, str):
+            continue
+        for _, variant_base in variants.items():
+            if not isinstance(variant_base, str):
+                continue
+            for suffix in suffixes:
+                if isinstance(suffix, str):
+                    mapping[(variant_base + suffix).lower()] = target_base + suffix
+    for entry in context_variants:
+        variants = entry.get("variants") if isinstance(entry, dict) else None
+        if not isinstance(variants, dict):
+            continue
+        target = variants.get(locale)
+        if not isinstance(target, str):
+            continue
+        for _, variant in variants.items():
+            if isinstance(variant, str):
+                mapping[variant.lower()] = target
+    return mapping
+
+
+def normalize_tokens_for_avoidance(tokens: set[str], rules: Dict[str, Any]) -> set[str]:
+    if not tokens:
+        return set()
+    us_map = build_local_spelling_map(rules, "us")
+    if not us_map:
+        return set(_normalize_lexicon_token(t) for t in tokens if t)
+    normalized: set[str] = set()
+    for token in tokens:
+        base = _normalize_lexicon_token(token)
+        if not base:
+            continue
+        normalized.add(us_map.get(base, base))
+    return normalized
+
+
+def _apply_case(template: str, replacement: str) -> str:
+    if template.isupper():
+        return replacement.upper()
+    if template[:1].isupper() and template[1:].islower():
+        return replacement.capitalize()
+    if template.islower():
+        return replacement.lower()
+    return replacement
+
+
+def _context_has(tokens: list[str], idx: int, keywords: list[str], window: int) -> bool:
+    if not keywords:
+        return False
+    start = max(0, idx - window)
+    end = min(len(tokens), idx + window + 1)
+    window_tokens = set(tokens[start:end])
+    return any(k in window_tokens for k in keywords)
+
+
+def _replace_with_suffix(word: str, base_us: str, base_ca: str, suffixes: list[str]) -> tuple[str, bool]:
+    lower = word.lower()
+    for suffix in suffixes:
+        if lower == base_us + suffix:
+            return _apply_case(word, base_ca + suffix), True
+    return word, False
+
+
+def _probable_verb(prev_word: str, next_word: str) -> bool:
+    prev = prev_word.lower()
+    nextw = next_word.lower()
+    aux = {
+        "to", "can", "could", "may", "might", "must", "shall", "should",
+        "will", "would", "do", "does", "did", "don't", "doesn't", "didn't",
+        "cannot", "can't", "won't", "shalln't", "shouldn't", "wouldn't", "couldn't"
+    }
+    return prev in aux or nextw in {"to", "me", "him", "her", "them", "it"}
+
+
+def _probable_noun(prev_word: str, next_word: str) -> bool:
+    prev = prev_word.lower()
+    det = {
+        "a", "an", "the", "this", "that", "these", "those", "my", "your",
+        "his", "her", "our", "their", "its"
+    }
+    if prev in det or prev.endswith("'s"):
+        return True
+    if next_word.lower() in {"of", "for", "in", "on"}:
+        return True
+    return False
+
+
+def _normalize_practise_license(word: str, prev_word: str, next_word: str) -> tuple[str, bool]:
+    lower = word.lower()
+    if lower in {"practice", "practise"}:
+        if _probable_verb(prev_word, next_word):
+            return _apply_case(word, "practise"), lower != "practise"
+        if _probable_noun(prev_word, next_word):
+            return _apply_case(word, "practice"), lower != "practice"
+        return word, False
+    if lower in {"license", "licence"}:
+        if _probable_verb(prev_word, next_word):
+            return _apply_case(word, "license"), lower != "license"
+        if _probable_noun(prev_word, next_word):
+            return _apply_case(word, "licence"), lower != "licence"
+        return word, False
+    return word, False
+
+
+def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tuple[str, int]:
+    if not text:
+        return text, 0
+    locale = locale.lower()
+    if locale == "none":
+        return text, 0
+    rules_conf = rules.get("rules", {}) if isinstance(rules, dict) else {}
+    direct_variants = rules_conf.get("direct_variants", []) if isinstance(rules_conf.get("direct_variants", []), list) else []
+    suffix_variants = rules_conf.get("suffix_variants", []) if isinstance(rules_conf.get("suffix_variants", []), list) else []
+    context_variants = rules_conf.get("context_variants", []) if isinstance(rules_conf.get("context_variants", []), list) else []
+    double_l_conf = rules_conf.get("double_l_inflection", {}) if isinstance(rules_conf.get("double_l_inflection", {}), dict) else {}
+    double_l_bases = double_l_conf.get("bases", []) if isinstance(double_l_conf.get("bases", []), list) else []
+    double_l_suffixes = double_l_conf.get("suffixes", []) if isinstance(double_l_conf.get("suffixes", []), list) else []
+
+    direct_map: Dict[str, str] = {}
+    for entry in direct_variants:
+        variants = entry.get("variants") if isinstance(entry, dict) else None
+        if not isinstance(variants, dict):
+            continue
+        target = variants.get(locale)
+        if not isinstance(target, str):
+            continue
+        for _, variant in variants.items():
+            if isinstance(variant, str):
+                direct_map[variant.lower()] = target
+
+    suffix_map: Dict[str, str] = {}
+    for entry in suffix_variants:
+        variants = entry.get("variants") if isinstance(entry, dict) else None
+        suffixes = entry.get("suffixes") if isinstance(entry, dict) else None
+        if not isinstance(variants, dict) or not isinstance(suffixes, list):
+            continue
+        target_base = variants.get(locale)
+        if not isinstance(target_base, str):
+            continue
+        for _, variant_base in variants.items():
+            if not isinstance(variant_base, str):
+                continue
+            for suffix in suffixes:
+                if not isinstance(suffix, str):
+                    continue
+                suffix_map[(variant_base + suffix).lower()] = target_base + suffix
+
+    word_re = re.compile(r"[A-Za-z][A-Za-z']+")
+    matches = list(word_re.finditer(text))
+    if not matches:
+        return text, 0
+    tokens = [m.group(0).lower() for m in matches]
+    parts: list[str] = []
+    last = 0
+    replacements = 0
+
+    def _prev_non_space(idx: int) -> str:
+        j = idx - 1
+        while j >= 0 and text[j].isspace():
+            j -= 1
+        return text[j] if j >= 0 else ""
+
+    def _is_sentence_start(idx: int) -> bool:
+        prev = _prev_non_space(idx)
+        return prev == "" or prev in ".!?\n"
+
+    def _is_mixed_case(word: str) -> bool:
+        if word.islower() or word.isupper():
+            return False
+        return not (word[:1].isupper() and word[1:].islower())
+
+    def _looks_like_path(start: int, end: int) -> bool:
+        window = text[max(0, start - 6):min(len(text), end + 6)]
+        if "://" in window or window.startswith(("./", "../", "~/")):
+            return True
+        if any(ch in window for ch in ("/", "\\")):
+            return True
+        prev = _prev_non_space(start)
+        if prev == ".":
+            back = text[max(0, start - 16):start]
+            if "/" in back or "\\" in back:
+                return True
+        # Windows drive letter like C:\path
+        back = text[max(0, start - 3):start]
+        if len(back) >= 2 and back[-2].isalpha() and back[-1] == ":":
+            return True
+        return False
+
+    def _split_possessive(word: str) -> tuple[str, str] | None:
+        lowered = word.lower()
+        if lowered.endswith(("'s", "’s")):
+            return word[:-2], word[-2:]
+        if lowered.endswith(("s'", "s’")) and len(word) > 2:
+            return word[:-2], word[-2:]
+        return None
+
+    def _attach_possessive(replaced: str, suffix: str) -> str:
+        return f"{replaced}{suffix}"
+    # Build context-sensitive rules.
+    context_rules: list[dict[str, Any]] = []
+    for entry in context_variants:
+        if not isinstance(entry, dict):
+            continue
+        variants = entry.get("variants")
+        if not isinstance(variants, dict):
+            continue
+        target = variants.get(locale)
+        if not isinstance(target, str):
+            continue
+        rule = {
+            "variants": {k: v for k, v in variants.items() if isinstance(v, str)},
+            "target": target,
+            "apply_if": entry.get("apply_if", {}),
+            "avoid_if": entry.get("avoid_if", {}),
+            "block_if": entry.get("block_if", {}),
+            "window": int(entry.get("window", 6))
+        }
+        context_rules.append(rule)
+    for idx, match in enumerate(matches):
+        start, end = match.start(), match.end()
+        word = match.group(0)
+        parts.append(text[last:start])
+        last = end
+        # Skip placeholders, acronyms, or URL-like tokens.
+        window = text[max(0, start - 3):min(len(text), end + 3)]
+        if "__" in window or word.isupper() and len(word) > 2:
+            parts.append(word)
+            continue
+        if any(ch in window for ch in ("/", "\\", "@")) or "http" in text[max(0, start - 8):start].lower():
+            parts.append(word)
+            continue
+        if _looks_like_path(start, end):
+            parts.append(word)
+            continue
+        if _is_mixed_case(word):
+            parts.append(word)
+            continue
+        if word[:1].isupper() and not _is_sentence_start(start):
+            parts.append(word)
+            continue
+        # Avoid changing a word that is part of a larger alnum token.
+        prev_ch = text[start - 1] if start > 0 else ""
+        next_ch = text[end] if end < len(text) else ""
+        if (prev_ch.isalnum() or prev_ch == "_") or (next_ch.isalnum() or next_ch == "_"):
+            parts.append(word)
+            continue
+        prev_word = matches[idx - 1].group(0) if idx > 0 else ""
+        next_word = matches[idx + 1].group(0) if idx + 1 < len(matches) else ""
+        if locale in LOCAL_SPELLING_NOUN_VERB_LOCALES:
+            updated, changed = _normalize_practise_license(word, prev_word, next_word)
+            if changed:
+                replacements += 1
+                parts.append(updated)
+                continue
+        elif locale == "us":
+            lower = word.lower()
+            if lower in {"licence", "licences"}:
+                updated = _apply_case(word, lower.replace("ce", "se"))
+                replacements += 1
+                parts.append(updated)
+                continue
+            if lower in {"practise", "practises", "practised", "practising"}:
+                updated = _apply_case(word, lower.replace("se", "ce"))
+                replacements += 1
+                parts.append(updated)
+                continue
+        poss = _split_possessive(word)
+        base = poss[0] if poss else word
+        suffix = poss[1] if poss else ""
+        lower = base.lower()
+        # Context-sensitive rules first (for ambiguous words).
+        applied_context = False
+        blocked_context = False
+        for rule in context_rules:
+            variants = rule.get("variants", {})
+            target = rule.get("target")
+            if not isinstance(variants, dict) or not isinstance(target, str):
+                continue
+            variant_values = [v.lower() for v in variants.values() if isinstance(v, str)]
+            if lower not in variant_values:
+                continue
+            apply_conf = rule.get("apply_if", {})
+            avoid_conf = rule.get("avoid_if", {})
+            block_conf = rule.get("block_if", {})
+            window = int(rule.get("window", 6))
+            apply_any = apply_conf.get("any", []) if isinstance(apply_conf, dict) else []
+            avoid_any = avoid_conf.get("any", []) if isinstance(avoid_conf, dict) else []
+            block_any = block_conf.get("any", []) if isinstance(block_conf, dict) else []
+            apply_any = [str(k).lower() for k in apply_any if isinstance(k, (str, int, float))]
+            avoid_any = [str(k).lower() for k in avoid_any if isinstance(k, (str, int, float))]
+            block_any = [str(k).lower() for k in block_any if isinstance(k, (str, int, float))]
+            if block_any and _context_has(tokens, idx, block_any, window):
+                blocked_context = True
+                break
+            if apply_any and not _context_has(tokens, idx, apply_any, window):
+                blocked_context = True
+                continue
+            if avoid_any and _context_has(tokens, idx, avoid_any, window):
+                blocked_context = True
+                break
+            if lower != target.lower():
+                updated = _apply_case(base, target)
+                if suffix:
+                    updated = _attach_possessive(updated, suffix)
+                replacements += 1
+                parts.append(updated)
+                applied_context = True
+            else:
+                parts.append(word)
+                applied_context = True
+            break
+        if blocked_context:
+            parts.append(word)
+            continue
+        if applied_context:
+            continue
+        if lower in direct_map:
+            updated = _apply_case(base, direct_map[lower])
+            if suffix:
+                updated = _attach_possessive(updated, suffix)
+            replacements += 1
+            parts.append(updated)
+            continue
+        if lower in suffix_map:
+            updated = _apply_case(base, suffix_map[lower])
+            if suffix:
+                updated = _attach_possessive(updated, suffix)
+            replacements += 1
+            parts.append(updated)
+            continue
+        # double-l inflection handling
+        converted = False
+        if double_l_bases and double_l_suffixes:
+            for base in double_l_bases:
+                if not isinstance(base, str):
+                    continue
+                base_lower = base.lower()
+                for suffix in double_l_suffixes:
+                    if not isinstance(suffix, str) or not suffix:
+                        continue
+                    us_form = base_lower + suffix
+                    double_form = base_lower[:-1] + "ll" + suffix
+                    if lower == us_form and locale in LOCAL_SPELLING_NOUN_VERB_LOCALES:
+                        updated = _apply_case(word, double_form)
+                        replacements += 1
+                        parts.append(updated)
+                        converted = True
+                        break
+                    if lower == double_form and locale == "us":
+                        updated = _apply_case(word, us_form)
+                        replacements += 1
+                        parts.append(updated)
+                        converted = True
+                        break
+                if converted:
+                    break
+        if converted:
+            continue
+        parts.append(word)
+    parts.append(text[last:])
+    return "".join(parts), replacements
 
 
 def is_heading_or_list_line(text: str) -> bool:
@@ -1180,20 +1615,43 @@ def normalize_summary(summary: str, max_words: int | None) -> str:
         "report", "excerpt", "chapter", "part", "segment", "portion", "appendix",
         "material", "content", "discussion", "analysis", "overview", "summary"
     )
-    for noun in context_nouns:
-        summary = re.sub(
-            rf"\bthis\s+{noun}\b",
-            f"the previous {noun}",
-            summary,
-            flags=re.IGNORECASE
-        )
-        summary = re.sub(
-            rf"\bthe\s+{noun}\b",
-            f"the previous {noun}",
-            summary,
-            flags=re.IGNORECASE
-        )
-    summary = re.sub(r"\bin\s+this\s+summary\b", "in the previous summary", summary, flags=re.IGNORECASE)
+    noun_pattern = "|".join(context_nouns)
+    # Replace prepositional references like "in this section".
+    summary = re.sub(
+        rf"\b(in|within|from|of|for|about)\s+(this|that|the current|the following|the above|the preceding)\s+({noun_pattern})\b",
+        r"\1 the previous passage",
+        summary,
+        flags=re.IGNORECASE
+    )
+    # Replace sentence-start references like "This section ..." or "The section ...".
+    summary = re.sub(
+        rf"(^|[.!?]\s+)(this|that|the current|the following|the above|the preceding|the)\s+({noun_pattern})\b",
+        lambda m: f"{m.group(1)}the previous passage",
+        summary,
+        flags=re.IGNORECASE
+    )
+    # Replace mid-sentence references like "the passage" or "this section".
+    summary = re.sub(
+        rf"\b(this|that|the current|the following|the above|the preceding)\s+({noun_pattern})\b",
+        "the previous passage",
+        summary,
+        flags=re.IGNORECASE
+    )
+    summary = re.sub(
+        rf"\bthe\s+(?!previous\b)({noun_pattern})\b",
+        "the previous passage",
+        summary,
+        flags=re.IGNORECASE
+    )
+    # Normalize any lingering "the previous <noun>" to "the previous passage".
+    summary = re.sub(
+        rf"\bthe previous\s+({noun_pattern})\b",
+        "the previous passage",
+        summary,
+        flags=re.IGNORECASE
+    )
+    summary = re.sub(r"\bin\s+this\s+summary\b", "in the previous passage", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"^the previous passage\b", "The previous passage", summary, flags=re.IGNORECASE)
     # Prefer past tense when referring to prior content.
     verb_map = {
         "introduces": "introduced",
@@ -1224,6 +1682,13 @@ def normalize_summary(summary: str, max_words: int | None) -> str:
         "examines": "examined",
         "explores": "explored",
         "covers": "covered",
+        "includes": "included",
+        "provides": "provided",
+        "offers": "offered",
+        "lays out": "laid out",
+        "sets out": "set out",
+        "summons": "summoned",
+        "calls out": "called out",
         "lists": "listed",
         "catalogs": "catalogued",
         "catalogues": "catalogued",
@@ -1235,13 +1700,14 @@ def normalize_summary(summary: str, max_words: int | None) -> str:
         "focuses": "focused",
         "considers": "considered",
         "identifies": "identified",
-        "summons": "summoned",
-        "calls out": "called out",
-        "calls": "called"
+        "calls": "called",
+        "surveys": "surveyed",
+        "reviews": "reviewed",
+        "articulates": "articulated"
     }
     verb_pattern = "|".join(re.escape(k) for k in verb_map.keys())
     summary = re.sub(
-        rf"\b(the previous (?:{'|'.join(context_nouns)}))\s+({verb_pattern})\b",
+        rf"\b(the previous passage)\s+({verb_pattern})\b",
         lambda m: f"{m.group(1)} {verb_map.get(m.group(2).lower(), m.group(2))}",
         summary,
         flags=re.IGNORECASE
@@ -2039,7 +2505,9 @@ def filter_humanizer_rules(
     rules: List[Dict[str, Any]],
     fingerprint: Dict[str, Any],
     input_style: Dict[str, Any] | None = None,
-    tunables: Dict[str, Any] | None = None
+    tunables: Dict[str, Any] | None = None,
+    local_spelling_rules: Dict[str, Any] | None = None,
+    avoid_list: List[str] | None = None
 ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     # Drop rules that deterministically conflict with the fingerprint signals.
     kept: List[Dict[str, Any]] = []
@@ -2132,10 +2600,6 @@ def filter_humanizer_rules(
     style_context = collect_style_context()
     formal_style = any(tag in style_context for tag in ("formal", "academic", "technical", "scholarly"))
 
-    def normalize_word(token: str) -> str:
-        token = re.sub(r"[\"“”'’()\\[\\]{}]", "", token.lower()).strip()
-        return re.sub(r"\\s+", " ", token)
-
     def expand_words(words: List[str]) -> set[str]:
         out: set[str] = set()
         for w in words:
@@ -2143,10 +2607,18 @@ def filter_humanizer_rules(
                 continue
             parts = re.split(r"/|\\bor\\b", w)
             for part in parts:
-                part = normalize_word(part)
+                part = _normalize_lexicon_token(part)
                 if part:
                     out.add(part)
         return out
+
+    avoid_literal = {
+        _normalize_lexicon_token(w)
+        for w in (avoid_list or [])
+        if isinstance(w, str)
+    }
+    avoid_words_norm = {w for w in avoid_words if w not in avoid_literal}
+    avoid_words_us = normalize_tokens_for_avoidance(avoid_words_norm, local_spelling_rules or {})
 
     for rule in rules:
         title = str(rule.get("title", "")).lower()
@@ -2172,9 +2644,13 @@ def filter_humanizer_rules(
                 drop_reason = "Author uses contractions frequently."
             if "use" in title and contractions_rate < contractions_use_threshold:
                 drop_reason = "Author rarely uses contractions."
-        if tokens and avoid_words:
-            if any(t in avoid_words for t in tokens):
+        if tokens:
+            if avoid_literal and any(t in avoid_literal for t in tokens):
                 drop_reason = "Rule conflicts with global avoid words."
+            elif avoid_words_us:
+                tokens_us = normalize_tokens_for_avoidance(tokens, local_spelling_rules or {})
+                if any(t in avoid_words_us for t in tokens_us):
+                    drop_reason = "Rule conflicts with global avoid words."
         if tokens and preferred_set:
             if any(t in preferred_set for t in tokens):
                 drop_reason = "Rule conflicts with preferred lexicon/phrases in fingerprint."
@@ -3684,6 +4160,13 @@ def main() -> int:
         help="Path to config.tunables.json (default: ./config.tunables.json if present; else next to script)"
     )
     ap.add_argument(
+        "--local-spelling",
+        dest="local_spelling",
+        choices=["none", "canadian", "australian", "british", "us"],
+        default=None,
+        help="Override tunables humanizer_mandatory.force_local_spelling for this run"
+    )
+    ap.add_argument(
         "--no-style-retry",
         action="store_true",
         help="Disable the style compliance retry pass"
@@ -3822,6 +4305,11 @@ def main() -> int:
         controls["priority_order"] = normalize_priority_order(controls.get("priority_order"), priority_conf)
     apply_pronoun_override(fingerprint, args.force_person)
     forbid_em_dashes = should_forbid_em_dashes(tunables)
+    normalize_double_quotes = should_normalize_double_quotes(tunables)
+    force_local_spelling = args.local_spelling or get_force_local_spelling(tunables)
+    if args.local_spelling and args.verbose:
+        vprint(f"Local spelling override: {force_local_spelling} (CLI)")
+    local_spelling_rules = load_local_spelling_rules() if force_local_spelling != "none" else {}
     emoji_policy = None
     if isinstance(tunables, dict):
         mandatory = tunables.get("humanizer_mandatory", {})
@@ -3873,6 +4361,10 @@ def main() -> int:
         if raw_guidelines:
             if forbid_em_dashes:
                 vprint("Hard constraint active: em dashes are forbidden (humanizer_mandatory).")
+            if normalize_double_quotes:
+                vprint("Hard constraint active: double quotes will be normalized to straight quotes (humanizer_mandatory).")
+            if force_local_spelling != "none":
+                vprint(f"Hard constraint active: {force_local_spelling} spelling enforced (humanizer_mandatory).")
             if emoji_policy and str(emoji_policy) != "none":
                 vprint(f"Hard constraint active: emoji policy = {emoji_policy}.")
             parsed_rules: List[Dict[str, Any]] = []
@@ -3912,7 +4404,14 @@ def main() -> int:
                     pass
             input_style = analyze_markdown_style(input_md)
             input_style_signals = input_style
-            humanizer_rules, dropped_rules = filter_humanizer_rules(parsed_rules, fingerprint, input_style, tunables)
+            humanizer_rules, dropped_rules = filter_humanizer_rules(
+                parsed_rules,
+                fingerprint,
+                input_style,
+                tunables,
+                local_spelling_rules,
+                avoid_list
+            )
             humanizer_debug = {
                 "rule_or_field": "humanizer_guidelines",
                 "parser": parser_used,
@@ -4256,6 +4755,23 @@ def main() -> int:
                         "policy": emoji_policy,
                         "removed": removed_emoji,
                         "replaced": replaced_emoji
+                    })
+
+            if normalize_double_quotes:
+                final_md, replaced_quotes = enforce_straight_double_quotes(final_md)
+                if replaced_quotes:
+                    out_obj.setdefault("deviations", []).append({
+                        "rule_or_field": "punctuation.double_quotes",
+                        "reason": "Curly double quotes normalized to straight quotes (humanizer_mandatory).",
+                        "count": replaced_quotes
+                    })
+            if force_local_spelling != "none":
+                final_md, replacements = enforce_local_spelling(final_md, force_local_spelling, local_spelling_rules)
+                if replacements:
+                    out_obj.setdefault("deviations", []).append({
+                        "rule_or_field": "orthography.local_spelling",
+                        "reason": f"Enforced {force_local_spelling} spelling regardless of fingerprint.",
+                        "count": replacements
                     })
 
             if args.force_person and not args.no_style_retry and attempts < args.max_style_retries:

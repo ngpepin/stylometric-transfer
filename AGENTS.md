@@ -61,6 +61,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Validate common phrases via a separate LLM pass to remove OCR/citation noise (with deterministic prefilters for proper names, entity blacklist matches, and date patterns; disable with `--no-phrase-validation`)
     - Repair invalid JSON if necessary
     - Normalize verbose/duplicative `controls.rewrite_policy` clauses and filter `priority_order` to short tokens before writing the fingerprint
+    - Normalize lexicon spelling to a US baseline (except literal hard avoids)
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-a` (archive), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
   - Defaults: if `--profile-id` or `--author-name` are omitted, both default to the output filename without the `.json` extension
@@ -79,6 +80,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Apply `general-guidelines.md` humanizer rules when available, using an LLM parser by default then deterministically filtering out conflicts (disable with `--no-humanizer-llm-parse` or `--no-humanizer-guidelines`)
     - Cache parsed humanizer rules in `humanizer_rules.cache.json` (script directory) and re-parse only when guidelines change
     - Normalize verbose/duplicative `controls.rewrite_policy` clauses and filter `priority_order` when loading a fingerprint
+    - Normalize lexical avoidance checks to US spelling for matching, then apply local spelling to final output
     - Return rewritten text and deviations
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
@@ -123,6 +125,7 @@ Avoid ambiguous terms like “clone” in public documentation.
 - `config.avoid.txt`
   - Optional global avoid list (one word/phrase per line)
   - Applied during fingerprinting (via lexicon hints) and merged into `lexicon.avoid_words` (hard avoids) during application
+  - Entries are literal (no spelling normalization); include any local spelling variants you need
 - `config.common_words.txt`
   - Optional common-word list (one word per line)
   - Used to derive `measurements.lexical_avoidance.rare_words` (common words absent from the corpus)

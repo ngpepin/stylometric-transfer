@@ -108,6 +108,7 @@ LEXICON_HINTS_FILENAME = "lexicon_hints.json"
 AVOID_LIST_FILENAME = "config.avoid.txt"
 COMMON_WORDS_FILENAME = "config.common_words.txt"
 ENTITY_BLACKLIST_FILENAME = "config.entity_blacklist.txt"
+LOCAL_SPELLING_RULES_FILENAME = "config.local_spelling_rules.json"
 QUOTE_MODE: str | None = None
 DEFAULT_COMMON_WORDS = {
     "ability","account","action","activity","address","agreement","answer","area","argument","article",
@@ -318,6 +319,164 @@ def build_entity_matcher(entities: List[str]) -> tuple[set[str], set[tuple[str, 
             if len(parts) > max_len:
                 max_len = len(parts)
     return singles, phrases, max_len
+
+
+def _apply_case(template: str, replacement: str) -> str:
+    if template.isupper():
+        return replacement.upper()
+    if template[:1].isupper() and template[1:].islower():
+        return replacement.capitalize()
+    if template.islower():
+        return replacement.lower()
+    return replacement
+
+
+def load_local_spelling_rules() -> Dict[str, Any]:
+    rules_path = Path(__file__).resolve().parent / LOCAL_SPELLING_RULES_FILENAME
+    if rules_path.exists():
+        try:
+            data = json.loads(rules_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            return {}
+    return {}
+
+
+def build_local_spelling_map(rules: Dict[str, Any], locale: str) -> Dict[str, str]:
+    if not isinstance(rules, dict):
+        return {}
+    locale = locale.lower()
+    rules_conf = rules.get("rules", {}) if isinstance(rules.get("rules", {}), dict) else {}
+    direct_variants = rules_conf.get("direct_variants", []) if isinstance(rules_conf.get("direct_variants", []), list) else []
+    suffix_variants = rules_conf.get("suffix_variants", []) if isinstance(rules_conf.get("suffix_variants", []), list) else []
+    context_variants = rules_conf.get("context_variants", []) if isinstance(rules_conf.get("context_variants", []), list) else []
+    mapping: Dict[str, str] = {}
+    for entry in direct_variants:
+        variants = entry.get("variants") if isinstance(entry, dict) else None
+        if not isinstance(variants, dict):
+            continue
+        target = variants.get(locale)
+        if not isinstance(target, str):
+            continue
+        for _, variant in variants.items():
+            if isinstance(variant, str):
+                mapping[variant.lower()] = target
+    for entry in suffix_variants:
+        variants = entry.get("variants") if isinstance(entry, dict) else None
+        suffixes = entry.get("suffixes") if isinstance(entry, dict) else None
+        if not isinstance(variants, dict) or not isinstance(suffixes, list):
+            continue
+        target_base = variants.get(locale)
+        if not isinstance(target_base, str):
+            continue
+        for _, variant_base in variants.items():
+            if not isinstance(variant_base, str):
+                continue
+            for suffix in suffixes:
+                if isinstance(suffix, str):
+                    mapping[(variant_base + suffix).lower()] = target_base + suffix
+    for entry in context_variants:
+        variants = entry.get("variants") if isinstance(entry, dict) else None
+        if not isinstance(variants, dict):
+            continue
+        target = variants.get(locale)
+        if not isinstance(target, str):
+            continue
+        for _, variant in variants.items():
+            if isinstance(variant, str):
+                mapping[variant.lower()] = target
+    return mapping
+
+
+def normalize_text_spelling(text: str, mapping: Dict[str, str]) -> str:
+    if not text or not mapping:
+        return text
+    word_re = re.compile(r"[A-Za-z][A-Za-z']+")
+    parts: list[str] = []
+    last = 0
+    for match in word_re.finditer(text):
+        start, end = match.start(), match.end()
+        word = match.group(0)
+        parts.append(text[last:start])
+        last = end
+        replacement = mapping.get(word.lower())
+        if replacement:
+            parts.append(_apply_case(word, replacement))
+        else:
+            parts.append(word)
+    parts.append(text[last:])
+    return "".join(parts)
+
+
+def normalize_lexicon_spelling(
+    fingerprint: Dict[str, Any],
+    rules: Dict[str, Any],
+    avoid_list: List[str]
+) -> None:
+    if not isinstance(fingerprint, dict):
+        return
+    lexicon = fingerprint.get("lexicon")
+    if not isinstance(lexicon, dict):
+        return
+    mapping = build_local_spelling_map(rules, "us")
+    if not mapping:
+        return
+    avoid_literal = {str(item).lower().strip() for item in avoid_list if isinstance(item, str)}
+
+    def normalize_list(items: Any, skip_literal: bool = False) -> list[str]:
+        if not isinstance(items, list):
+            return []
+        seen: set[str] = set()
+        out: list[str] = []
+        for item in items:
+            if not isinstance(item, str):
+                continue
+            raw = item.strip()
+            if not raw:
+                continue
+            if skip_literal and raw.lower() in avoid_literal:
+                norm = raw
+            else:
+                norm = normalize_text_spelling(raw, mapping)
+            key = norm.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(norm)
+        return out
+
+    if "preferred_words" in lexicon:
+        lexicon["preferred_words"] = normalize_list(lexicon.get("preferred_words"))
+    if "preferred_phrases" in lexicon:
+        lexicon["preferred_phrases"] = normalize_list(lexicon.get("preferred_phrases"))
+    if "avoid_words" in lexicon:
+        lexicon["avoid_words"] = normalize_list(lexicon.get("avoid_words"), skip_literal=True)
+    if "avoid_words_soft" in lexicon:
+        lexicon["avoid_words_soft"] = normalize_list(lexicon.get("avoid_words_soft"))
+
+    synonym_prefs = lexicon.get("synonym_preferences")
+    if isinstance(synonym_prefs, dict):
+        updated: Dict[str, Any] = {}
+        for key, val in synonym_prefs.items():
+            if not isinstance(key, str):
+                continue
+            norm_key = normalize_text_spelling(key, mapping)
+            if isinstance(val, list):
+                norm_vals = normalize_list(val)
+            elif isinstance(val, str):
+                norm_vals = normalize_list([val])
+            else:
+                norm_vals = []
+            if norm_key in updated:
+                existing = updated[norm_key]
+                if isinstance(existing, list):
+                    for v in norm_vals:
+                        if v not in existing:
+                            existing.append(v)
+            else:
+                updated[norm_key] = norm_vals if norm_vals else val
+        lexicon["synonym_preferences"] = updated
 
 
 def normalize_lexicon_avoids(
@@ -2851,6 +3010,7 @@ def main() -> int:
     avoid_list = load_avoid_list()
     common_words = load_common_words()
     entity_blacklist = load_entity_blacklist()
+    local_spelling_rules = load_local_spelling_rules()
     if avoid_list:
         lexicon_hints = merge_avoid_list_into_hints(lexicon_hints, avoid_list)
     if args.max_prompt_tokens is not None:
@@ -3177,6 +3337,7 @@ def main() -> int:
         if isinstance(fingerprint.get("measurements"), dict):
             fingerprint["measurements"]["humanization_baseline"] = baseline
         normalize_lexicon_avoids(fingerprint, measurements, lexicon_hints, avoid_list)
+        normalize_lexicon_spelling(fingerprint, local_spelling_rules, avoid_list)
         controls = fingerprint.get("controls")
         controls_norm = {}
         if isinstance(tunables_snapshot, dict):

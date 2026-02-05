@@ -1,0 +1,1545 @@
+{
+  "version": 1,
+  "locales": [
+    "none",
+    "canadian",
+    "australian",
+    "british",
+    "us"
+  ],
+  "rules": {
+    "suffix_variants": [
+      {
+        "id": "our_or",
+        "variants": {
+          "us": "color",
+          "canadian": "colour",
+          "british": "colour",
+          "australian": "colour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "er",
+          "ers",
+          "ful",
+          "fully",
+          "less",
+          "lessly",
+          "ize",
+          "izes",
+          "ized",
+          "izing",
+          "ization",
+          "ise",
+          "ises",
+          "ised",
+          "ising"
+        ]
+      },
+      {
+        "id": "our_or_favor",
+        "variants": {
+          "us": "favor",
+          "canadian": "favour",
+          "british": "favour",
+          "australian": "favour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "er",
+          "ers",
+          "able",
+          "ably",
+          "ite",
+          "ites",
+          "ism",
+          "isms"
+        ]
+      },
+      {
+        "id": "our_or_honor",
+        "variants": {
+          "us": "honor",
+          "canadian": "honour",
+          "british": "honour",
+          "australian": "honour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "able",
+          "ably",
+          "ary",
+          "aries"
+        ]
+      },
+      {
+        "id": "our_or_labor",
+        "variants": {
+          "us": "labor",
+          "canadian": "labour",
+          "british": "labour",
+          "australian": "labour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "er",
+          "ers"
+        ]
+      },
+      {
+        "id": "our_or_neighbor",
+        "variants": {
+          "us": "neighbor",
+          "canadian": "neighbour",
+          "british": "neighbour",
+          "australian": "neighbour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "hood",
+          "hoods"
+        ]
+      },
+      {
+        "id": "our_or_behavior",
+        "variants": {
+          "us": "behavior",
+          "canadian": "behaviour",
+          "british": "behaviour",
+          "australian": "behaviour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "al"
+        ]
+      },
+      {
+        "id": "our_or_rumor",
+        "variants": {
+          "us": "rumor",
+          "canadian": "rumour",
+          "british": "rumour",
+          "australian": "rumour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing"
+        ]
+      },
+      {
+        "id": "our_or_savor",
+        "variants": {
+          "us": "savor",
+          "canadian": "savour",
+          "british": "savour",
+          "australian": "savour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "y",
+          "ies"
+        ]
+      },
+      {
+        "id": "our_or_odour",
+        "variants": {
+          "us": "odor",
+          "canadian": "odour",
+          "british": "odour",
+          "australian": "odour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "less",
+          "lessly"
+        ]
+      },
+      {
+        "id": "our_or_valor",
+        "variants": {
+          "us": "valor",
+          "canadian": "valour",
+          "british": "valour",
+          "australian": "valour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ous"
+        ]
+      },
+      {
+        "id": "our_or_vigor",
+        "variants": {
+          "us": "vigor",
+          "canadian": "vigour",
+          "british": "vigour",
+          "australian": "vigour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ous",
+          "ously"
+        ]
+      },
+      {
+        "id": "our_or_humor",
+        "variants": {
+          "us": "humor",
+          "canadian": "humour",
+          "british": "humour",
+          "australian": "humour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ous",
+          "ously"
+        ]
+      },
+      {
+        "id": "our_or_armor",
+        "variants": {
+          "us": "armor",
+          "canadian": "armour",
+          "british": "armour",
+          "australian": "armour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing"
+        ]
+      },
+      {
+        "id": "our_or_glamor",
+        "variants": {
+          "us": "glamor",
+          "canadian": "glamour",
+          "british": "glamour",
+          "australian": "glamour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ous",
+          "ously"
+        ]
+      },
+      {
+        "id": "our_or_flavor",
+        "variants": {
+          "us": "flavor",
+          "canadian": "flavour",
+          "british": "flavour",
+          "australian": "flavour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "ful",
+          "fully"
+        ]
+      },
+      {
+        "id": "our_or_fervor",
+        "variants": {
+          "us": "fervor",
+          "canadian": "fervour",
+          "british": "fervour",
+          "australian": "fervour"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "our_or_harbor",
+        "variants": {
+          "us": "harbor",
+          "canadian": "harbour",
+          "british": "harbour",
+          "australian": "harbour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "master",
+          "masters"
+        ]
+      },
+      {
+        "id": "our_or_tumor",
+        "variants": {
+          "us": "tumor",
+          "canadian": "tumour",
+          "british": "tumour",
+          "australian": "tumour"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "our_or_candor",
+        "variants": {
+          "us": "candor",
+          "canadian": "candour",
+          "british": "candour",
+          "australian": "candour"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "our_or_splendor",
+        "variants": {
+          "us": "splendor",
+          "canadian": "splendour",
+          "british": "splendour",
+          "australian": "splendour"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "our_or_mold",
+        "variants": {
+          "us": "mold",
+          "canadian": "mould",
+          "british": "mould",
+          "australian": "mould"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "y",
+          "ier"
+        ]
+      },
+      {
+        "id": "our_or_favorite",
+        "variants": {
+          "us": "favorite",
+          "canadian": "favourite",
+          "british": "favourite",
+          "australian": "favourite"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "our_or_parlor",
+        "variants": {
+          "us": "parlor",
+          "canadian": "parlour",
+          "british": "parlour",
+          "australian": "parlour"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "our_or_endeavor",
+        "variants": {
+          "us": "endeavor",
+          "canadian": "endeavour",
+          "british": "endeavour",
+          "australian": "endeavour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "er",
+          "ers"
+        ]
+      },
+      {
+        "id": "our_or_savior",
+        "variants": {
+          "us": "savior",
+          "canadian": "saviour",
+          "british": "saviour",
+          "australian": "saviour"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "our_or_rigor",
+        "variants": {
+          "us": "rigor",
+          "canadian": "rigour",
+          "british": "rigour",
+          "australian": "rigour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ous",
+          "ously"
+        ]
+      },
+      {
+        "id": "our_or_ardor",
+        "variants": {
+          "us": "ardor",
+          "canadian": "ardour",
+          "british": "ardour",
+          "australian": "ardour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ous"
+        ]
+      },
+      {
+        "id": "our_or_clamor",
+        "variants": {
+          "us": "clamor",
+          "canadian": "clamour",
+          "british": "clamour",
+          "australian": "clamour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "ous",
+          "ously"
+        ]
+      },
+      {
+        "id": "our_or_demeanor",
+        "variants": {
+          "us": "demeanor",
+          "canadian": "demeanour",
+          "british": "demeanour",
+          "australian": "demeanour"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "our_or_vapor",
+        "variants": {
+          "us": "vapor",
+          "canadian": "vapour",
+          "british": "vapour",
+          "australian": "vapour"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "y",
+          "ies"
+        ]
+      },
+      {
+        "id": "our_or_splendor",
+        "variants": {
+          "us": "splendor",
+          "canadian": "splendour",
+          "british": "splendour",
+          "australian": "splendour"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "our_or_smolder",
+        "variants": {
+          "us": "smolder",
+          "canadian": "smoulder",
+          "british": "smoulder",
+          "australian": "smoulder"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing"
+        ]
+      },
+      {
+        "id": "re_er",
+        "variants": {
+          "us": "center",
+          "canadian": "centre",
+          "british": "centre",
+          "australian": "centre"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "er",
+          "ers"
+        ]
+      },
+      {
+        "id": "re_er_meter",
+        "variants": {
+          "us": "meter",
+          "canadian": "metre",
+          "british": "metre",
+          "australian": "metre"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "er",
+          "ers"
+        ]
+      },
+      {
+        "id": "re_er_liter",
+        "variants": {
+          "us": "liter",
+          "canadian": "litre",
+          "british": "litre",
+          "australian": "litre"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing",
+          "er",
+          "ers"
+        ]
+      },
+      {
+        "id": "re_er_theater",
+        "variants": {
+          "us": "theater",
+          "canadian": "theatre",
+          "british": "theatre",
+          "australian": "theatre"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing"
+        ]
+      },
+      {
+        "id": "re_er_fiber",
+        "variants": {
+          "us": "fiber",
+          "canadian": "fibre",
+          "british": "fibre",
+          "australian": "fibre"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "re_er_saber",
+        "variants": {
+          "us": "saber",
+          "canadian": "sabre",
+          "british": "sabre",
+          "australian": "sabre"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "re_er_specter",
+        "variants": {
+          "us": "specter",
+          "canadian": "spectre",
+          "british": "spectre",
+          "australian": "spectre"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "re_er_scepter",
+        "variants": {
+          "us": "scepter",
+          "canadian": "sceptre",
+          "british": "sceptre",
+          "australian": "sceptre"
+        },
+        "suffixes": [
+          "",
+          "s"
+        ]
+      },
+      {
+        "id": "re_er_luster",
+        "variants": {
+          "us": "luster",
+          "canadian": "lustre",
+          "british": "lustre",
+          "australian": "lustre"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "less",
+          "less"
+        ]
+      },
+      {
+        "id": "gue_g_dialog",
+        "variants": {
+          "us": "dialog",
+          "british": "dialogue",
+          "australian": "dialogue"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing"
+        ]
+      },
+      {
+        "id": "gue_g_catalog",
+        "variants": {
+          "us": "catalog",
+          "british": "catalogue",
+          "australian": "catalogue"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing"
+        ]
+      },
+      {
+        "id": "gue_g_monolog",
+        "variants": {
+          "us": "monolog",
+          "british": "monologue",
+          "australian": "monologue"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing"
+        ]
+      },
+      {
+        "id": "gue_g_epilog",
+        "variants": {
+          "us": "epilog",
+          "british": "epilogue",
+          "australian": "epilogue"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing"
+        ]
+      },
+      {
+        "id": "gue_g_prolog",
+        "variants": {
+          "us": "prolog",
+          "british": "prologue",
+          "australian": "prologue"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "ed",
+          "ing"
+        ]
+      },
+      {
+        "id": "ise_ize",
+        "variants": {
+          "us": "organize",
+          "canadian": "organize",
+          "british": "organise",
+          "australian": "organise"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed",
+          "ation",
+          "ations"
+        ]
+      },
+      {
+        "id": "ise_ize_recognize",
+        "variants": {
+          "us": "recognize",
+          "canadian": "recognize",
+          "british": "recognise",
+          "australian": "recognise"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed",
+          "ation",
+          "ations"
+        ]
+      },
+      {
+        "id": "ise_ize_realize",
+        "variants": {
+          "us": "realize",
+          "canadian": "realize",
+          "british": "realise",
+          "australian": "realise"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed",
+          "ation",
+          "ations"
+        ]
+      },
+      {
+        "id": "yse_yze_analyze",
+        "variants": {
+          "us": "analyze",
+          "canadian": "analyze",
+          "british": "analyse",
+          "australian": "analyse"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed"
+        ]
+      },
+      {
+        "id": "yse_yze_paralyze",
+        "variants": {
+          "us": "paralyze",
+          "canadian": "paralyze",
+          "british": "paralyse",
+          "australian": "paralyse"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed"
+        ]
+      },
+      {
+        "id": "yse_yze_catalyze",
+        "variants": {
+          "us": "catalyze",
+          "canadian": "catalyze",
+          "british": "catalyse",
+          "australian": "catalyse"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed"
+        ]
+      },
+      {
+        "id": "yse_yze_dialyze",
+        "variants": {
+          "us": "dialyze",
+          "canadian": "dialyze",
+          "british": "dialyse",
+          "australian": "dialyse"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed"
+        ]
+      }
+    ],
+    "direct_variants": [
+      {
+        "id": "aluminium",
+        "variants": {
+          "us": "aluminum",
+          "canadian": "aluminium",
+          "british": "aluminium",
+          "australian": "aluminium"
+        }
+      },
+      {
+        "id": "grey",
+        "variants": {
+          "us": "gray",
+          "canadian": "grey",
+          "british": "grey",
+          "australian": "grey"
+        }
+      },
+      {
+        "id": "moustache",
+        "variants": {
+          "us": "mustache",
+          "canadian": "moustache",
+          "british": "moustache",
+          "australian": "moustache"
+        }
+      },
+      {
+        "id": "jewellery",
+        "variants": {
+          "us": "jewelry",
+          "canadian": "jewellery",
+          "british": "jewellery",
+          "australian": "jewellery"
+        }
+      },
+      {
+        "id": "jeweller",
+        "variants": {
+          "us": "jeweler",
+          "canadian": "jeweller",
+          "british": "jeweller",
+          "australian": "jeweller"
+        }
+      },
+      {
+        "id": "counsellor",
+        "variants": {
+          "us": "counselor",
+          "canadian": "counsellor",
+          "british": "counsellor",
+          "australian": "counsellor"
+        }
+      },
+      {
+        "id": "cheque",
+        "variants": {
+          "us": "check",
+          "canadian": "cheque",
+          "british": "cheque",
+          "australian": "cheque"
+        }
+      },
+      {
+        "id": "paycheque",
+        "variants": {
+          "us": "paycheck",
+          "canadian": "paycheque",
+          "british": "paycheque",
+          "australian": "paycheque"
+        }
+      },
+      {
+        "id": "manoeuvre",
+        "variants": {
+          "us": "maneuver",
+          "canadian": "manoeuvre",
+          "british": "manoeuvre",
+          "australian": "manoeuvre"
+        }
+      },
+      {
+        "id": "defence",
+        "variants": {
+          "us": "defense",
+          "canadian": "defence",
+          "british": "defence",
+          "australian": "defence"
+        }
+      },
+      {
+        "id": "offence",
+        "variants": {
+          "us": "offense",
+          "canadian": "offence",
+          "british": "offence",
+          "australian": "offence"
+        }
+      },
+      {
+        "id": "programme",
+        "variants": {
+          "us": "program",
+          "canadian": "program",
+          "british": "programme",
+          "australian": "programme"
+        }
+      },
+      {
+        "id": "licorice",
+        "variants": {
+          "us": "licorice",
+          "canadian": "liquorice",
+          "british": "liquorice",
+          "australian": "liquorice"
+        }
+      },
+      {
+        "id": "plough",
+        "variants": {
+          "us": "plow",
+          "canadian": "plough",
+          "british": "plough",
+          "australian": "plough"
+        }
+      },
+      {
+        "id": "tyre",
+        "variants": {
+          "us": "tire",
+          "canadian": "tire",
+          "british": "tyre",
+          "australian": "tyre"
+        }
+      },
+      {
+        "id": "whilst",
+        "variants": {
+          "us": "while",
+          "canadian": "while",
+          "british": "whilst",
+          "australian": "whilst"
+        }
+      },
+      {
+        "id": "amongst",
+        "variants": {
+          "us": "among",
+          "canadian": "amongst",
+          "british": "amongst",
+          "australian": "amongst"
+        }
+      },
+      {
+        "id": "towards",
+        "variants": {
+          "us": "toward",
+          "canadian": "towards",
+          "british": "towards",
+          "australian": "towards"
+        }
+      },
+      {
+        "id": "learnt",
+        "variants": {
+          "us": "learned",
+          "canadian": "learnt",
+          "british": "learnt",
+          "australian": "learnt"
+        }
+      },
+      {
+        "id": "dreamt",
+        "variants": {
+          "us": "dreamed",
+          "canadian": "dreamt",
+          "british": "dreamt",
+          "australian": "dreamt"
+        }
+      },
+      {
+        "id": "burnt",
+        "variants": {
+          "us": "burned",
+          "canadian": "burnt",
+          "british": "burnt",
+          "australian": "burnt"
+        }
+      },
+      {
+        "id": "spelt",
+        "variants": {
+          "us": "spelled",
+          "canadian": "spelled",
+          "british": "spelt",
+          "australian": "spelt"
+        }
+      },
+      {
+        "id": "smelt",
+        "variants": {
+          "us": "smelled",
+          "canadian": "smelt",
+          "british": "smelt",
+          "australian": "smelt"
+        }
+      },
+      {
+        "id": "spoilt",
+        "variants": {
+          "us": "spoiled",
+          "canadian": "spoilt",
+          "british": "spoilt",
+          "australian": "spoilt"
+        }
+      },
+      {
+        "id": "spilt",
+        "variants": {
+          "us": "spilled",
+          "canadian": "spilt",
+          "british": "spilt",
+          "australian": "spilt"
+        }
+      },
+      {
+        "id": "leapt",
+        "variants": {
+          "us": "leaped",
+          "canadian": "leapt",
+          "british": "leapt",
+          "australian": "leapt"
+        }
+      },
+      {
+        "id": "ageing",
+        "variants": {
+          "us": "aging",
+          "canadian": "ageing",
+          "british": "ageing",
+          "australian": "ageing"
+        }
+      },
+      {
+        "id": "omelette",
+        "variants": {
+          "us": "omelet",
+          "canadian": "omelette",
+          "british": "omelette",
+          "australian": "omelette"
+        }
+      },
+      {
+        "id": "sulphur",
+        "variants": {
+          "us": "sulfur",
+          "canadian": "sulphur",
+          "british": "sulphur",
+          "australian": "sulphur"
+        }
+      },
+      {
+        "id": "anaemia",
+        "variants": {
+          "us": "anemia",
+          "canadian": "anaemia",
+          "british": "anaemia",
+          "australian": "anaemia"
+        }
+      },
+      {
+        "id": "leukaemia",
+        "variants": {
+          "us": "leukemia",
+          "canadian": "leukaemia",
+          "british": "leukaemia",
+          "australian": "leukaemia"
+        }
+      },
+      {
+        "id": "paediatric",
+        "variants": {
+          "us": "pediatric",
+          "canadian": "paediatric",
+          "british": "paediatric",
+          "australian": "paediatric"
+        }
+      },
+      {
+        "id": "orthopaedic",
+        "variants": {
+          "us": "orthopedic",
+          "canadian": "orthopaedic",
+          "british": "orthopaedic",
+          "australian": "orthopaedic"
+        }
+      },
+      {
+        "id": "oestrogen",
+        "variants": {
+          "us": "estrogen",
+          "canadian": "oestrogen",
+          "british": "oestrogen",
+          "australian": "oestrogen"
+        }
+      },
+      {
+        "id": "foetus",
+        "variants": {
+          "us": "fetus",
+          "canadian": "foetus",
+          "british": "foetus",
+          "australian": "foetus"
+        }
+      },
+      {
+        "id": "oesophagus",
+        "variants": {
+          "us": "esophagus",
+          "canadian": "oesophagus",
+          "british": "oesophagus",
+          "australian": "oesophagus"
+        }
+      },
+      {
+        "id": "haemoglobin",
+        "variants": {
+          "us": "hemoglobin",
+          "canadian": "haemoglobin",
+          "british": "haemoglobin",
+          "australian": "haemoglobin"
+        }
+      },
+      {
+        "id": "gynaecology",
+        "variants": {
+          "us": "gynecology",
+          "canadian": "gynaecology",
+          "british": "gynaecology",
+          "australian": "gynaecology"
+        }
+      },
+      {
+        "id": "anaesthesia",
+        "variants": {
+          "us": "anesthesia",
+          "canadian": "anaesthesia",
+          "british": "anaesthesia",
+          "australian": "anaesthesia"
+        }
+      },
+      {
+        "id": "paediatrics",
+        "variants": {
+          "us": "pediatrics",
+          "canadian": "paediatrics",
+          "british": "paediatrics",
+          "australian": "paediatrics"
+        }
+      },
+      {
+        "id": "encyclopaedia",
+        "variants": {
+          "us": "encyclopedia",
+          "canadian": "encyclopaedia",
+          "british": "encyclopaedia",
+          "australian": "encyclopaedia"
+        }
+      },
+      {
+        "id": "diarrhoea",
+        "variants": {
+          "us": "diarrhea",
+          "canadian": "diarrhoea",
+          "british": "diarrhoea",
+          "australian": "diarrhoea"
+        }
+      }
+    ],
+    "context_variants": [
+      {
+        "id": "tire_tyre",
+        "variants": {
+          "us": "tire",
+          "british": "tyre",
+          "australian": "tyre"
+        },
+        "apply_if": {
+          "any": [
+            "wheel",
+            "wheels",
+            "rim",
+            "rims",
+            "axle",
+            "axles",
+            "tread",
+            "treads",
+            "inflate",
+            "inflated",
+            "inflating",
+            "pressure",
+            "puncture",
+            "punctured",
+            "flat",
+            "spare",
+            "rubber",
+            "car",
+            "cars",
+            "truck",
+            "trucks",
+            "vehicle",
+            "vehicles",
+            "bike",
+            "bikes",
+            "bicycle",
+            "bicycles",
+            "motorcycle",
+            "motorcycles"
+          ]
+        },
+        "avoid_if": {
+          "any": [
+            "tired",
+            "tiring",
+            "fatigue",
+            "fatigued",
+            "exhausted",
+            "weary",
+            "sleep",
+            "sleepy",
+            "weariness"
+          ]
+        },
+        "window": 6
+      },
+      {
+        "id": "check_cheque",
+        "variants": {
+          "us": "check",
+          "canadian": "cheque",
+          "british": "cheque",
+          "australian": "cheque"
+        },
+        "apply_if": {
+          "any": [
+            "bank",
+            "banks",
+            "banking",
+            "deposit",
+            "deposited",
+            "cash",
+            "pay",
+            "paid",
+            "payment",
+            "payments",
+            "funds",
+            "account",
+            "accounts",
+            "issued",
+            "bounced",
+            "cleared",
+            "chequebook",
+            "chequing",
+            "money"
+          ]
+        },
+        "avoid_if": {
+          "any": [
+            "checklist",
+            "checking",
+            "double-check",
+            "verify",
+            "verification",
+            "inspect",
+            "inspection",
+            "ensure"
+          ]
+        },
+        "window": 6
+      },
+      {
+        "id": "program_programme",
+        "variants": {
+          "us": "program",
+          "canadian": "program",
+          "british": "programme",
+          "australian": "programme"
+        },
+        "avoid_if": {
+          "any": [
+            "algorithm",
+            "api",
+            "apis",
+            "app",
+            "application",
+            "binary",
+            "code",
+            "coding",
+            "compile",
+            "compiled",
+            "compiler",
+            "debug",
+            "debugging",
+            "developer",
+            "development",
+            "execute",
+            "programming",
+            "runtime",
+            "script",
+            "software",
+            "source"
+          ]
+        },
+        "window": 6,
+        "apply_if": {
+          "any": [
+            "arts",
+            "benefit",
+            "benefits",
+            "broadcast",
+            "camp",
+            "camps",
+            "charities",
+            "charity",
+            "college",
+            "colleges",
+            "community",
+            "conference",
+            "course",
+            "courses",
+            "curriculum",
+            "education",
+            "educational",
+            "episode",
+            "event",
+            "events",
+            "federal",
+            "festival",
+            "funding",
+            "government",
+            "grant",
+            "grants",
+            "health",
+            "initiative",
+            "initiatives",
+            "listing",
+            "listings",
+            "municipal",
+            "national",
+            "outreach",
+            "policy",
+            "programme",
+            "programmes",
+            "provincial",
+            "public",
+            "radio",
+            "schedule",
+            "scheduling",
+            "scheme",
+            "schemes",
+            "school",
+            "schools",
+            "series",
+            "services",
+            "social",
+            "state",
+            "summit",
+            "support",
+            "television",
+            "theater",
+            "theatre",
+            "training",
+            "tv",
+            "universities",
+            "university",
+            "workshop",
+            "workshops"
+          ]
+        }
+      },
+      {
+        "id": "meter_metre",
+        "variants": {
+          "us": "meter",
+          "canadian": "metre",
+          "british": "metre",
+          "australian": "metre"
+        },
+        "avoid_if": {
+          "any": [
+            "parking",
+            "parked",
+            "gas",
+            "electric",
+            "electricity",
+            "water",
+            "utility",
+            "speed",
+            "speedometer",
+            "metered",
+            "metering",
+            "parking-lot"
+          ]
+        },
+        "window": 6,
+        "apply_if": {
+          "any": [
+            "area",
+            "centimeter",
+            "centimetre",
+            "cubic",
+            "depth",
+            "diameter",
+            "distance",
+            "height",
+            "kilometer",
+            "kilometre",
+            "length",
+            "measured",
+            "measurement",
+            "measurements",
+            "measuring",
+            "meter",
+            "meters",
+            "metre",
+            "metres",
+            "millimeter",
+            "millimetre",
+            "per",
+            "radius",
+            "scale",
+            "square",
+            "unit",
+            "units",
+            "volume",
+            "width"
+          ]
+        }
+      },
+      {
+        "id": "spelt_spelled",
+        "variants": {
+          "us": "spelled",
+          "british": "spelt",
+          "australian": "spelt"
+        },
+        "block_if": {
+          "any": [
+            "grain",
+            "flour",
+            "bread",
+            "wheat",
+            "cereal",
+            "loaf",
+            "bake",
+            "baked",
+            "bakery",
+            "malt",
+            "barley",
+            "rye",
+            "oat",
+            "oats",
+            "spelted"
+          ]
+        },
+        "window": 6
+      }
+    ],
+    "double_l_inflection": {
+      "bases": [
+        "travel",
+        "cancel",
+        "level",
+        "label",
+        "model",
+        "signal",
+        "counsel",
+        "marvel",
+        "fuel",
+        "quarrel"
+      ],
+      "suffixes": [
+        "ed",
+        "ing",
+        "er",
+        "ers",
+        "ation",
+        "ations"
+      ]
+    }
+  }
+}

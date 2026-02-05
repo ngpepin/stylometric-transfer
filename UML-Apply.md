@@ -132,6 +132,7 @@ if (Humanizer guidelines enabled?) then (yes)
     :Fallback to regex parser;
   endif
   :Filter rules by fingerprint + input style;
+  :Normalize avoid-word matching to US spelling (local spelling rules);
 endif
 
 :Build apply prompt;
@@ -187,6 +188,7 @@ AF -> LLM : parse humanizer guidelines (optional; retry on transient errors)
 LLM --> AF : rules JSON
 AF -> AF : fallback regex parse if needed
 AF -> AF : filter humanizer rules
+AF -> AF : normalize avoid-word matching to US spelling
 AF -> LLM : rewrite request (fingerprint + measurements + rules; retry on transient errors)
 LLM --> AF : JSON with final_markdown
 AF -> AF : recovery split if output invalid after retries (optional)

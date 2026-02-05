@@ -129,6 +129,7 @@ endif
 :Embed humanization baseline under measurements.humanization_baseline;
 :Include targets for rhetoric/cadence/epistemic/syntax/repetition;
 :Normalize rewrite_policy clauses + filter priority_order tokens;
+:Normalize lexicon spelling to US baseline (except literal hard avoids);
 :Write style_fingerprint.json;
 stop
 @enduml
@@ -161,6 +162,7 @@ LLM --> FS : validation decisions
 FS -> FS : pick excerpts
 FS -> LLM : synthesize fingerprint JSON (retry on transient errors)
 LLM --> FS : fingerprint JSON (maybe repaired)
+FS -> FS : normalize lexicon spelling to US baseline (except literal hard avoids)
 FS -> FSYS : write style_fingerprint.json
 FS --> User : done
 @enduml

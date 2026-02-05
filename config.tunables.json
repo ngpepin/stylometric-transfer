@@ -11,7 +11,9 @@
   },
   "humanizer_mandatory": {
     "avoid_em_dashes": true,
-    "emoji_policy": "replace"
+    "emoji_policy": "replace",
+    "normalize_double_quotes": true,
+    "force_local_spelling": "canadian"
   },
   "humanizer_variance": {
     "enabled": true,

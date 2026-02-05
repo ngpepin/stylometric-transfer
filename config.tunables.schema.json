@@ -23,7 +23,9 @@
       "type": "object",
       "properties": {
         "avoid_em_dashes": { "type": "boolean" },
-        "emoji_policy": { "type": "string", "enum": ["remove", "replace", "none"] }
+        "emoji_policy": { "type": "string", "enum": ["remove", "replace", "none"] },
+        "normalize_double_quotes": { "type": "boolean" },
+        "force_local_spelling": { "type": "string", "enum": ["none", "canadian", "australian", "british", "us"] }
       },
       "additionalProperties": false
     },

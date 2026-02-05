@@ -212,6 +212,109 @@ class TestV17XRegression(unittest.TestCase):
         chunks = af.enforce_min_chunks(text, [text], 2)
         self.assertGreaterEqual(len(chunks), 2)
 
+    def test_humanizer_mandatory_normalizes_double_quotes(self) -> None:
+        text = 'He said “Hello”, then wrote «Oui», and „No”.'
+        updated, count = af.enforce_straight_double_quotes(text)
+        self.assertEqual(count, 6)
+        for ch in ("“", "”", "„", "«", "»"):
+            self.assertNotIn(ch, updated)
+        self.assertIn('"', updated)
+
+    def test_force_local_spelling_canadian(self) -> None:
+        rules = af.load_local_spelling_rules()
+        text = "The color of the center meter is gray. She will license the program."
+        updated, count = af.enforce_local_spelling(text, "canadian", rules)
+        self.assertGreater(count, 0)
+        self.assertIn("colour", updated)
+        self.assertIn("centre", updated)
+        self.assertIn("metre", updated)
+        self.assertIn("grey", updated)
+        self.assertIn("license", updated)
+
+    def test_force_local_spelling_tyre_context(self) -> None:
+        rules = af.load_local_spelling_rules()
+        automotive = "The tire pressure dropped near the wheel and axle."
+        fatigue = "I tire easily after a long day."
+        updated_auto, _ = af.enforce_local_spelling(automotive, "british", rules)
+        updated_fatigue, _ = af.enforce_local_spelling(fatigue, "british", rules)
+        self.assertIn("tyre", updated_auto.lower())
+        self.assertIn("tire", updated_fatigue.lower())
+
+    def test_force_local_spelling_spelt_grain_context(self) -> None:
+        rules = af.load_local_spelling_rules()
+        grain = "We baked spelt bread with whole grain flour."
+        verb = "She spelt the name correctly."
+        updated_grain, _ = af.enforce_local_spelling(grain, "us", rules)
+        updated_verb, _ = af.enforce_local_spelling(verb, "us", rules)
+        self.assertIn("spelt", updated_grain.lower())
+        self.assertIn("spelled", updated_verb.lower())
+
+    def test_force_local_spelling_gue_rules_skip_canadian(self) -> None:
+        rules = af.load_local_spelling_rules()
+        text = "The dialog was short. The catalogue was updated."
+        updated, _ = af.enforce_local_spelling(text, "canadian", rules)
+        # Canadian locale should not force -gue conversions.
+        self.assertIn("dialog", updated.lower())
+        self.assertIn("catalogue", updated.lower())
+
+    def test_avoidance_normalizes_to_us(self) -> None:
+        rules = af.load_local_spelling_rules()
+        tokens = {"colour", "centre"}
+        normalized = af.normalize_tokens_for_avoidance(tokens, rules)
+        self.assertIn("color", normalized)
+        self.assertIn("center", normalized)
+
+    def test_fingerprint_lexicon_us_normalization(self) -> None:
+        rules = fs.load_local_spelling_rules()
+        fingerprint = {
+            "lexicon": {
+                "preferred_words": ["colour", "favourite"],
+                "preferred_phrases": ["colour scheme"],
+                "avoid_words": ["colour", "armor"],
+                "avoid_words_soft": ["centre"],
+                "synonym_preferences": {
+                    "favourite": ["colour"]
+                }
+            }
+        }
+        avoid_list = ["colour"]
+        fs.normalize_lexicon_spelling(fingerprint, rules, avoid_list)
+        lexicon = fingerprint["lexicon"]
+        self.assertIn("color", lexicon["preferred_words"])
+        self.assertIn("favorite", lexicon["preferred_words"])
+        self.assertIn("color scheme", lexicon["preferred_phrases"])
+        self.assertIn("colour", lexicon["avoid_words"])
+        self.assertIn("center", lexicon["avoid_words_soft"])
+        self.assertIn("favorite", lexicon["synonym_preferences"])
+        self.assertIn("color", lexicon["synonym_preferences"]["favorite"])
+
+    def test_summary_normalizes_previous_passage(self) -> None:
+        summary = "The passage introduces a system for stylometric profiling."
+        normalized = af.normalize_summary(summary, 50)
+        self.assertTrue(normalized.startswith("The previous passage"))
+
+    def test_force_local_spelling_canadian_exceptions(self) -> None:
+        rules = af.load_local_spelling_rules()
+        text = "He replaced the tyre whilst he spelled the word."
+        updated, _ = af.enforce_local_spelling(text, "canadian", rules)
+        self.assertIn("tire", updated.lower())
+        self.assertIn("while", updated.lower())
+        self.assertIn("spelled", updated.lower())
+
+    def test_local_spelling_skips_proper_noun_and_path(self) -> None:
+        rules = af.load_local_spelling_rules()
+        text = "The ColorGuard brand filed C:\\Program Files\\ColorGuard\\readme.txt."
+        updated, _ = af.enforce_local_spelling(text, "british", rules)
+        self.assertIn("ColorGuard", updated)
+        self.assertIn("C:\\Program Files\\ColorGuard\\readme.txt", updated)
+
+    def test_local_spelling_possessive_and_hyphen(self) -> None:
+        rules = af.load_local_spelling_rules()
+        text = "The colour's hue and colour-grade were noted."
+        updated, _ = af.enforce_local_spelling(text, "us", rules)
+        self.assertIn("color's", updated.lower())
+        self.assertIn("color-grade", updated.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

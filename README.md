@@ -250,7 +250,9 @@ Example (defaults shown):
   },
   "humanizer_mandatory": {
     "avoid_em_dashes": true,
-    "emoji_policy": "replace"
+    "emoji_policy": "replace",
+    "normalize_double_quotes": true,
+    "force_local_spelling": "canadian"
   },
   "humanizer_variance": {
     "enabled": true,
@@ -490,7 +492,7 @@ All thresholds are conservative defaults. Lowering a threshold increases the lik
 
 ### Global avoid list: `config.avoid.txt`
 
-If present, `config.avoid.txt` provides a hard “never use” list. Each non-empty line is treated as a word or short phrase to avoid. Lines may include comments after `#`, and blank lines are ignored. The list is:
+If present, `config.avoid.txt` provides a hard “never use” list. Each non-empty line is treated as a word or short phrase to avoid. Lines may include comments after `#`, and blank lines are ignored. **Entries are treated literally (no spelling normalization)**, so include any local spelling variants you need. The list is:
 
 - Injected into fingerprinting as hard lexicon avoids
 - Merged into `lexicon.avoid_words` during application (even if the fingerprint does not include them)
@@ -576,6 +578,72 @@ Style compliance is scored locally. If the score falls below the threshold, the 
 If `general-guidelines.md` is present in the repository root or next to the scripts, its humanization rules (adapted from softaworks/agent-toolkit by @leonardocouy) are parsed with an LLM by default. Deterministically conflicting guidance (based on fingerprint signals such as em-dash rate, hedging or first-person use) is dropped before prompting. This introduces one additional LLM call when enabled. Parsed rules are cached in `humanizer_rules.cache.json` next to the scripts and are only re-parsed when `general-guidelines.md` changes. LLM parsing can be disabled via `--no-humanizer-llm-parse`, or the guidelines can be disabled entirely via `--no-humanizer-guidelines`.
 
 Pronoun override flags let you force the narrative voice regardless of the fingerprint: `--1st-person`, `--2nd-person`, or `--3rd-person`.
+
+`--local-spelling {none|canadian|australian|british|us}` overrides `humanizer_mandatory.force_local_spelling` for a single run.
+
+Example (British spelling with mixed contexts):
+
+Input:
+
+```
+The program compiled quickly. The program airs tonight on the public broadcaster.
+```
+
+Output with `--local-spelling british`:
+
+```
+The program compiled quickly. The programme airs tonight on the public broadcaster.
+```
+
+Rules used for the example (from `config.local_spelling_rules.json`):
+
+```json
+{
+  "id": "program_programme",
+  "variants": {
+    "us": "program",
+    "canadian": "program",
+    "british": "programme",
+    "australian": "programme"
+  },
+  "avoid_if": {
+    "any": [
+      "algorithm",
+      "api",
+      "application",
+      "binary",
+      "code",
+      "compile",
+      "compiler",
+      "debug",
+      "programming",
+      "software"
+    ]
+  },
+  "apply_if": {
+    "any": [
+      "broadcast",
+      "episode",
+      "public",
+      "radio",
+      "television",
+      "tv"
+    ]
+  },
+  "window": 6
+}
+```
+
+Rule precedence (local spelling):
+- **Context rules first** (`context_variants`): evaluated before any direct/suffix rules.  
+  - `block_if` wins (no change).  
+  - `apply_if` must be satisfied (otherwise the rule is skipped).  
+  - `avoid_if` blocks the rule if matched.  
+- **Direct variants** next (`direct_variants`), then **suffix variants** (`suffix_variants`), then **double‑L inflections**.
+
+So in the example, the first “program” sees `compile` nearby and is blocked by `avoid_if`, but the second “program” sees `broadcast/public` and is converted to “programme.”
+
+Lexical avoidance vs. local spelling: avoidance checks are normalized to **US spelling** for matching, then the **output** is normalized to the selected local spelling. This avoids missing soft avoids when the output uses local variants (for example, “colour” vs “color”). Fingerprints store lexicon entries in a **US‑normalized baseline** so cross‑profile comparisons are consistent, and local spelling is applied only at rewrite time.
 
 Embedded BASE64 images are removed from prompts to avoid excessive token usage and re-inserted into the rewritten output.
 Blockquotes, reference sections, footnotes, boilerplate notices, and inline citations are preserved verbatim and excluded from style transfer.
