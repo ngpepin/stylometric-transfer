@@ -433,7 +433,10 @@ Example (defaults shown):
 }
 ```
 
-**Explanation of each tunable**
+**Explanation of each tunable (grouped by theme)**
+
+**Humanizer Conflict Thresholds (`humanizer_conflicts`)**
+*These thresholds decide when humanizer guidance is considered contradictory to measured author style and should be dropped.*
 - `em_dash_keep_rate` (per 1000 words): if the fingerprint’s em-dash rate is **at or above** this value, the “avoid em dashes” guideline is considered conflicting and removed.
 - `hedge_keep_rate` (per 1000 words): if the fingerprint’s hedging rate is **at or above** this value, “avoid hedging” guidance is dropped.
 - `first_person_keep_rate` (per 1000 words): if the fingerprint’s first-person rate is **below** this value (or pronoun preferences avoid first-person), “use I/first-person” guidance is dropped.
@@ -442,9 +445,19 @@ Example (defaults shown):
 - `heading_title_case_keep_rate` (0–1): if the input Markdown’s headings are **mostly Title Case** (ratio at or above this value), the “avoid Title Case” guideline is dropped.
 - `boldface_keep_per_1000w` (per 1000 words): if the input uses boldface **at or above** this density, “avoid boldface” guidance is dropped.
 - `inline_header_list_keep_rate` (0–1): if the input uses inline-header list style (e.g., `- **Label:** text`) **at or above** this ratio, the “avoid inline-header lists” guideline is dropped.
+
+**Mandatory Deterministic Guards (`humanizer_mandatory`)**
+*These are hard post-processing rules that apply regardless of stylistic variability.*
 - `avoid_em_dashes` (boolean): when true, em‑dashes are always removed in the output regardless of other signals.
 - `emoji_policy` (`remove`, `replace`, or `none`): remove emojis, replace common ones with conventional monochrome symbols, or disable emoji handling.
 - `normalize_double_quotes` (boolean): when true, curly double quotes are normalized to straight quotes.
+- `sanitize_heading_qualifiers` (boolean or object): when true (or enabled), trailing parenthetical/comma qualifiers in headings are removed if the remaining title still has at least two words.
+- `sanitize_heading_qualifiers.enabled` (boolean): turn the qualifier sanitizer on/off.
+- `sanitize_heading_qualifiers.allowlist` (array of regex strings): headings that match any pattern are exempt from qualifier stripping.
+- `force_local_spelling` (`none`, `canadian`, `australian`, `british`, `us`): force a locale-specific spelling pass on the final output.
+
+**Heading Case Normalization (`humanizer_mandatory.*`)**
+*These settings define deterministic heading-case policy, either globally or by heading level.*
 - `heading_case_normalization` (`automatic`, `identical`, `by-level`):
   - `automatic`: do not apply deterministic heading-case normalization.
   - `identical`: restore heading case from the source heading.
@@ -455,22 +468,30 @@ Example (defaults shown):
   - `title-case`, `sentence-case`, `caps` (or alias `upper`), `lower`
 - `preserve_proper_name_case` (boolean): when true, deterministic heading-case transforms preserve detected proper-name casing from the source heading (for example, `John Black` remains `John Black` even if the level policy is `caps`).
 - Deterministic heading-case handling (either `identical`, or `by-level` with at least one non-`automatic` level) causes heading-style humanizer rules (for example, “Title Case in Headings”) to be dropped and logged as deterministic conflicts.
-- `sanitize_heading_qualifiers` (boolean or object): when true (or enabled), trailing parenthetical/comma qualifiers in headings are removed if the remaining title still has at least two words.
-  - `enabled` (boolean): turn the sanitizer on/off.
-  - `allowlist` (array of regex strings): headings that match any pattern are exempt from qualifier stripping.
-- `force_local_spelling` (`none`, `canadian`, `australian`, `british`, `us`): force a locale-specific spelling pass on the final output.
+
+**Stochastic Humanizer Perturbations (`humanizer_variance`)**
+*These controls bound randomness so variation is deliberate, reproducible, and limited.*
 - `humanizer_variance.enabled` (boolean): enables bounded stochastic micro‑variation during application.
 - `humanizer_variance.seed` (integer): RNG seed for deterministic runs.
 - `humanizer_variance.max_ops_per_1000w` (float): maximum number of micro‑operations per 1000 words. **Recommendation:** start at `0.5`; `0.5–1.5` is usually safe. Values above `2.0` can begin to feel noisy unless the input is highly repetitive.
 - `humanizer_variance.allowed_ops` (array): allowed micro‑operations (e.g., `swap_transition`, `drop_filler`). **Recommendation:** begin with `["swap_transition", "drop_filler"]`, add ops gradually, and keep the list short to avoid compounding randomness.
-  - `swap_transition`: swaps a transition phrase with another compatible transition to vary surface rhythm without changing meaning.
-  - `drop_filler`: removes low‑information filler words/phrases when safe (bounded by the ops budget).
+- `swap_transition`: swaps a transition phrase with another compatible transition to vary surface rhythm without changing meaning.
+- `drop_filler`: removes low‑information filler words/phrases when safe (bounded by the ops budget).
+
+**Humanization Scoring (`humanization_metrics`)**
+*These weights control how individual humanization metrics contribute to the aggregate score.*
 - `humanization_metrics.weights` (object): optional weighting for the 0–100 aggregate humanization score. Any metric with a weight of 0 is excluded.
+
+**Baseline Extraction (`humanization_baseline`)**
+*These parameters govern rolling-window extraction of corpus-native variability baselines.*
 - `humanization_baseline.enabled` (boolean): when true, fingerprinting computes rolling “within-author variability” baselines (stored under `measurements.humanization_baseline`). These baselines are for auditability/controller logic and are stripped from what the LLM sees during rewriting.
 - `humanization_baseline.window_words` (integer): rolling window size (in words) used to compute baseline variability stats.
 - `humanization_baseline.stride_words` (integer): stride size (in words) between windows.
 - `humanization_baseline.min_window_words` (integer): minimum usable window size; if a window is smaller, baseline computation stops early.
 - `humanization_baseline.max_windows` (integer): cap on how many windows are computed (keeps runtime bounded on very large corpora).
+
+**Controller Overlay (`humanization_controller`)**
+*These settings shape per-chunk target overlays that nudge output toward baseline variation bands.*
 - `humanization_controller.enabled` (boolean): enables per‑chunk target overlays derived from the baseline (embedded in fingerprint, stripped from LLM prompt except as derived overlay targets).
 - `humanization_controller.seed` (integer): deterministic seed for overlay sampling.
 - `humanization_controller.quantiles` (array of 0–1): which baseline quantiles are eligible when sampling per‑chunk targets (e.g., `[0.25, 0.5, 0.75]`).
@@ -481,8 +502,14 @@ Example (defaults shown):
 - `humanization_controller.feedback_enabled` (boolean): when true, style retry feedback includes overlay‑mismatch guidance.
 - `humanization_controller.feedback_tolerance` (float): how far outside the overlay range the output must be before controller feedback is added (fraction of range).
 - `humanization_controller.max_feedback_retries` (integer): cap on how many style-retry passes include controller-overlay feedback. This does not create extra retries by itself.
+
+**Lexical Lists (`lexical_signals`, `lexical_avoidance`)**
+*These limits control how many lexical signals and avoidance candidates are retained.*
 - `lexical_signals.rare_words_limit` (integer): maximum number of rare words to include in `measurements.lexical_signals.rare_words`.
 - `lexical_avoidance.rare_words_limit` (integer): maximum number of absent common words (from `config.common_words.txt`) to include in `measurements.lexical_avoidance.rare_words`.
+
+**Control Normalization (`controls_normalization`)**
+*These options compress and de-duplicate control text to reduce prompt noise while preserving intent.*
 - `controls_normalization.rewrite_policy.jaccard_threshold` (0–1): similarity threshold for considering two rewrite-policy clauses duplicates (lower = more aggressive de‑dup).
 - `controls_normalization.rewrite_policy.dedupe_on_subset` (boolean): treat clauses as duplicates when one clause is a strict subset of another.
 - `controls_normalization.rewrite_policy.prefer_more_specific` (boolean): when near-duplicates are found, keep the clause with more unique tokens.
@@ -492,10 +519,16 @@ Example (defaults shown):
 - `controls_normalization.priority_order.token_pattern` (regex string): which items are allowed to survive normalization (default keeps short token‑like priorities only).
 - `controls_normalization.priority_order.dedupe_case_insensitive` (boolean): de‑dup priorities ignoring case.
 - `controls_normalization.priority_order.exclude_tokens` (array): drop these token‑like entries even if they match the regex (the pipeline also drops generic `lexical`, `syntactic`, and `rhetorical` tokens by default).
+
+**Genre Detection (`fiction_detection`)**
+*These heuristics determine fiction vs non-fiction handling, especially for quotation treatment.*
 - `fiction_detection.quote_span_min` (integer): minimum multi‑word quote spans required before classifying as fiction (lower = more likely fiction).
 - `fiction_detection.quoted_ratio_min` (float 0–1): minimum fraction of words inside multi‑word quotes to classify as fiction (lower = more likely fiction).
 - `fiction_detection.quote_para_ratio_min` (float 0–1): minimum fraction of paragraphs starting with a quote to classify as fiction (lower = more likely fiction).
 - `fiction_detection.quoted_ratio_force` (float 0–1): if quoted word ratio exceeds this, force fiction regardless of other signals.
+
+**Chunking, Continuity, and Recovery (`chunking`)**
+*These settings define chunk size/splitting, continuity summaries, and fallback behavior on invalid outputs.*
 - `chunking.max_input_tokens` (integer): hard cap on input tokens per chunk (after prompt overhead). Lower values increase chunk count but reduce per‑request latency and timeouts.
 - `chunking.chunk_split_on` (`word`, `sentence`, or `paragraph`): primary unit for chunking. `sentence` is default. If a paragraph exceeds the token budget, it falls back to sentence splitting for that chunk; if a single sentence is still too long, it falls back to word splitting just for that chunk. Bullet/numbered list lines are treated as sentence units even without terminal punctuation.
 - `chunking.chunk_summary.enabled` (boolean): when true, each chunk asks the LLM for a short rolling summary of the “gist so far” to carry into the next chunk. This helps maintain narrative/topic continuity across many chunks and is excluded from the final output.
@@ -504,20 +537,29 @@ Example (defaults shown):
 - `chunking.min_chunks_when_perturbing` (integer): enforce a minimum number of chunks when perturbations are enabled (humanizer variance or controller overlays), so variability has room to express.
 - `chunking.recovery_split_max_depth` (integer): when the LLM repeatedly returns invalid output for a chunk, this controls how many recursive recovery splits may be attempted.
 - `chunking.recovery_split_min_chars` (integer): minimum chunk size (in characters) before attempting recovery splitting; smaller chunks are preserved verbatim instead.
-- `chunking.variance_aware.enabled` (boolean): when true, chunk sizes are scaled based on baseline variability (higher variance → smaller chunks).
+- `chunking.variance_aware.enabled` (boolean): when true, chunk sizes are scaled based on baseline variability (higher variance -> smaller chunks).
 - `chunking.variance_aware.sentence_stdev_ref` (float): reference sentence-length stdev for scaling.
 - `chunking.variance_aware.paragraph_burst_ref` (float): reference paragraph burstiness for scaling.
 - `chunking.variance_aware.min_factor` (float): minimum multiplier applied to `max_input_tokens` when variance is high.
 - `chunking.variance_aware.max_factor` (float): maximum multiplier applied to `max_input_tokens` when variance is low.
+
+**Style/Voice Retry Budgets (`style_retry`)**
+*These budgets cap compliance retries and forced-person voice retries for each chunk.*
 - `style_retry.enabled` (boolean): enable/disable the delta‑feedback retry pass after measuring style compliance.
 - `style_retry.threshold` (0–1): retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold-based retries, while `1.0` retries unless the output is nearly perfect.
 - `style_retry.max_retries` (integer): maximum retry passes for the style loop.
 - `style_retry.voice_max_retries` (integer): maximum retry passes for the forced-person voice loop (`--1st-person` / `--2nd-person` / `--3rd-person`). If omitted, it inherits `style_retry.max_retries`.
+
+**Section Restoration (`section_restore`)**
+*These thresholds control recovery of missing sections after rewriting.*
 - `section_restore.enabled` (boolean): enable/disable restoration of missing sections detected after rewriting.
 - `section_restore.max_restore_sections` (integer): maximum number of missing sections to restore (0 disables restoration).
 - `section_restore.heading_similarity_threshold` (0–1): fuzzy heading match threshold for considering a rewritten heading “present”.
 - `section_restore.signature_similarity_threshold` (0–1): content‑signature similarity threshold for matching a section by its opening content.
 - `section_restore.signature_min_overlap` (integer): minimum number of overlapping signature tokens required for a content match.
+
+**Sanity Check Warnings (`sanity_checks`)**
+*These percentage thresholds trigger review warnings when output size drifts materially from input.*
 - `line_count_warn_pct` (%): if the output line count changes by this percentage or more, a console warning is emitted to review for missing or expanded content.
 - `word_count_warn_pct` (%): if the output word count changes by this percentage or more, a console warning is emitted to review for missing or expanded content.
 - `paragraph_count_warn_pct` (%): if the output paragraph count changes by this percentage or more, a console warning is emitted to review for missing or expanded content.

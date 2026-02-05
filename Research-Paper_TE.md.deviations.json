@@ -1,0 +1,1427 @@
+[
+  {
+    "rule_or_field": "/input_markdown/orthography_signals/spelling_variant",
+    "reason": "All American spellings were replaced with Canadian spellings where contextually appropriate, as required by the style fingerprint.",
+    "chunk_index": 1,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "/input_markdown/punctuation",
+    "reason": "Em dashes were introduced in place of hyphens for parenthetical clauses, in line with the style fingerprint's punctuation profile.",
+    "chunk_index": 1,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "punctuation.em_dashes",
+    "reason": "Em dashes removed to satisfy humanizer_mandatory constraint.",
+    "count": 6,
+    "chunk_index": 1,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "orthography.local_spelling",
+    "reason": "Enforced canadian spelling regardless of fingerprint.",
+    "count": 44,
+    "chunk_index": 1,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "style_compliance",
+    "score": 0.6512739013561339,
+    "deltas": [
+      {
+        "metric": "sentence_length_histogram",
+        "diff": 0.1747892023051259
+      },
+      {
+        "metric": "paragraph_length_histogram",
+        "diff": 0.21853408557618853
+      },
+      {
+        "metric": "punctuation.colons",
+        "diff": 7.721141861877217
+      },
+      {
+        "metric": "punctuation.questions",
+        "diff": 1.0564056094767305
+      },
+      {
+        "metric": "punctuation.parentheses_open",
+        "diff": 1.6054100113613583
+      },
+      {
+        "metric": "punctuation.parentheses_close",
+        "diff": 2.123966690203329
+      },
+      {
+        "metric": "punctuation.em_dashes",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.en_dashes",
+        "diff": 1.7457048897393277
+      },
+      {
+        "metric": "stance.second_person_rate",
+        "diff": 0.9875656506710957
+      },
+      {
+        "metric": "stance.third_person_rate",
+        "diff": 0.6651301006033452
+      },
+      {
+        "metric": "rhetoric_moves.evidence_rate",
+        "diff": 0.8665672370701626
+      },
+      {
+        "metric": "rhetoric_moves.counterpoint_rate",
+        "diff": 0.652636471542943
+      },
+      {
+        "metric": "rhetoric_moves.concession_rate",
+        "diff": 0.9886120179555195
+      },
+      {
+        "metric": "epistemic_profile.speculative_rate",
+        "diff": 0.7872266976673107
+      },
+      {
+        "metric": "syntax_texture.parenthetical_rate",
+        "diff": 1.8636706861269616
+      }
+    ],
+    "chunk_index": 1,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "/input_markdown/orthography_signals/spelling_variant",
+    "reason": "Converted American spelling to Canadian spelling where relevant, in accordance with the fingerprint.",
+    "chunk_index": 2,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "/input_markdown/templates_signals/transition_marker_positions",
+    "reason": "Ensured mid-sentence transition markers are used, not paragraph-initial, as required by the fingerprint.",
+    "chunk_index": 2,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "/input_markdown/lexicon/avoid_words",
+    "reason": "No forbidden words detected; no deviation required.",
+    "chunk_index": 2,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "punctuation.em_dashes",
+    "reason": "Em dashes removed to satisfy humanizer_mandatory constraint.",
+    "count": 2,
+    "chunk_index": 2,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "orthography.local_spelling",
+    "reason": "Enforced canadian spelling regardless of fingerprint.",
+    "count": 7,
+    "chunk_index": 2,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "style_compliance",
+    "score": 0.6604836539210462,
+    "deltas": [
+      {
+        "metric": "paragraph_length_histogram",
+        "diff": 0.20251477462600206
+      },
+      {
+        "metric": "punctuation.semicolons",
+        "diff": 0.8388199011293029
+      },
+      {
+        "metric": "punctuation.colons",
+        "diff": 4.311388963719178
+      },
+      {
+        "metric": "punctuation.questions",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.parentheses_open",
+        "diff": 2.2904098678565186
+      },
+      {
+        "metric": "punctuation.parentheses_close",
+        "diff": 2.6848236601506645
+      },
+      {
+        "metric": "punctuation.em_dashes",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.en_dashes",
+        "diff": 3.996870096531578
+      },
+      {
+        "metric": "stance.first_person_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "stance.second_person_rate",
+        "diff": 0.9875656506710957
+      },
+      {
+        "metric": "stance.third_person_rate",
+        "diff": 0.8702174740965932
+      },
+      {
+        "metric": "syntax_texture.parenthetical_rate",
+        "diff": 2.4868427290863107
+      },
+      {
+        "metric": "lexical_avoidance.intensifiers",
+        "diff": 0.6296307047774753
+      }
+    ],
+    "chunk_index": 2,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "punctuation.em_dashes",
+    "reason": "Em dashes removed to satisfy humanizer_mandatory constraint.",
+    "count": 4,
+    "chunk_index": 3,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "orthography.local_spelling",
+    "reason": "Enforced canadian spelling regardless of fingerprint.",
+    "count": 14,
+    "chunk_index": 3,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "style_compliance",
+    "score": 0.5928172618297495,
+    "deltas": [
+      {
+        "metric": "paragraph_length_histogram",
+        "diff": 0.25910104549798724
+      },
+      {
+        "metric": "punctuation.semicolons",
+        "diff": 0.808149667751862
+      },
+      {
+        "metric": "punctuation.colons",
+        "diff": 5.6471983460757365
+      },
+      {
+        "metric": "punctuation.parentheses_open",
+        "diff": 2.132812947702133
+      },
+      {
+        "metric": "punctuation.parentheses_close",
+        "diff": 2.1575023667295583
+      },
+      {
+        "metric": "punctuation.em_dashes",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.ellipses_three_dots",
+        "diff": 0.6234820704491858
+      },
+      {
+        "metric": "stance.first_person_rate",
+        "diff": 0.8276601011898315
+      },
+      {
+        "metric": "stance.second_person_rate",
+        "diff": 0.9875656506710957
+      },
+      {
+        "metric": "stance.third_person_rate",
+        "diff": 0.8723821561055963
+      },
+      {
+        "metric": "rhetoric_moves.claim_rate",
+        "diff": 0.7339430236666336
+      },
+      {
+        "metric": "rhetoric_moves.evidence_rate",
+        "diff": 1.9876396898427047
+      },
+      {
+        "metric": "epistemic_profile.probabilistic_rate",
+        "diff": 0.7502933839514169
+      },
+      {
+        "metric": "syntax_texture.parenthetical_rate",
+        "diff": 2.1451092043655953
+      },
+      {
+        "metric": "lexical_avoidance.intensifiers",
+        "diff": 0.6439000886030856
+      }
+    ],
+    "chunk_index": 3,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "json.pointer",
+    "reason": "No deviations from meaning. Minor adjustments to paragraph structure and transitions were made to align with The Economist's style, including reducing one-sentence paragraphs, redistributing colons, and increasing mid-sentence transitions. Canadian spelling was used throughout. No content was added or removed.",
+    "chunk_index": 4,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "orthography.local_spelling",
+    "reason": "Enforced canadian spelling regardless of fingerprint.",
+    "count": 10,
+    "chunk_index": 4,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "style_compliance",
+    "score": 0.5802533387071729,
+    "deltas": [
+      {
+        "metric": "sentence_length_histogram",
+        "diff": 0.1904761904761905
+      },
+      {
+        "metric": "paragraph_length_histogram",
+        "diff": 0.39985900204122576
+      },
+      {
+        "metric": "one_sentence_paragraph_rate",
+        "diff": 0.3998590020412257
+      },
+      {
+        "metric": "punctuation.colons",
+        "diff": 11.098879418317246
+      },
+      {
+        "metric": "punctuation.questions",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.parentheses_open",
+        "diff": 4.110151006644356
+      },
+      {
+        "metric": "punctuation.parentheses_close",
+        "diff": 4.150423650304425
+      },
+      {
+        "metric": "punctuation.em_dashes",
+        "diff": 1.0
+      },
+      {
+        "metric": "stance.second_person_rate",
+        "diff": 0.9875656506710957
+      },
+      {
+        "metric": "stance.third_person_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "rhetoric_moves.claim_rate",
+        "diff": 0.7823572037784006
+      },
+      {
+        "metric": "epistemic_profile.speculative_rate",
+        "diff": 0.606424851373572
+      },
+      {
+        "metric": "syntax_texture.parenthetical_rate",
+        "diff": 4.130208293630749
+      }
+    ],
+    "chunk_index": 4,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "input_markdown.sentence_length",
+    "reason": "Paragraphs and sentences have been restructured to reduce average sentence length and variance, aligning with the target style fingerprint.",
+    "chunk_index": 5,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "input_markdown.punctuation.semicolons",
+    "reason": "Excessive use of semicolons replaced with commas or full stops to match target punctuation rates.",
+    "chunk_index": 5,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "input_markdown.punctuation.commas",
+    "reason": "Comma usage reduced to fall within target density per 100 words.",
+    "chunk_index": 5,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "input_markdown.syntax_texture.parenthetical_rate",
+    "reason": "Parentheticals have been retained but not overused, in line with the style fingerprint.",
+    "chunk_index": 5,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "input_markdown.templates.transition_marker_positions",
+    "reason": "Transition markers have been placed mid-sentence rather than at paragraph openings, as required.",
+    "chunk_index": 5,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "input_markdown.lexicon.spelling_variant",
+    "reason": "Canadian spelling has been used where applicable.",
+    "chunk_index": 5,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "punctuation.em_dashes",
+    "reason": "Em dashes removed to satisfy humanizer_mandatory constraint.",
+    "count": 1,
+    "chunk_index": 5,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "orthography.local_spelling",
+    "reason": "Enforced canadian spelling regardless of fingerprint.",
+    "count": 6,
+    "chunk_index": 5,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "style_compliance",
+    "score": 0.5700588219172175,
+    "deltas": [
+      {
+        "metric": "sentence_length_histogram",
+        "diff": 0.1910828025477707
+      },
+      {
+        "metric": "paragraph_length_histogram",
+        "diff": 0.22122225761919934
+      },
+      {
+        "metric": "punctuation.commas",
+        "diff": 0.8273316380936757
+      },
+      {
+        "metric": "punctuation.semicolons",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.questions",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.parentheses_open",
+        "diff": 0.6496964455499618
+      },
+      {
+        "metric": "punctuation.parentheses_close",
+        "diff": 0.6626975558914238
+      },
+      {
+        "metric": "punctuation.em_dashes",
+        "diff": 1.0
+      },
+      {
+        "metric": "stance.hedge_rate",
+        "diff": 1.8065042782508534
+      },
+      {
+        "metric": "stance.first_person_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "stance.second_person_rate",
+        "diff": 0.9875656506710957
+      },
+      {
+        "metric": "stance.third_person_rate",
+        "diff": 0.8975172382972795
+      },
+      {
+        "metric": "rhetoric_moves.claim_rate",
+        "diff": 0.7823572037784006
+      },
+      {
+        "metric": "rhetoric_moves.evidence_rate",
+        "diff": 0.7137189610361064
+      },
+      {
+        "metric": "rhetoric_moves.counterpoint_rate",
+        "diff": 0.7290524245393828
+      },
+      {
+        "metric": "rhetoric_moves.concession_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "epistemic_profile.speculative_rate",
+        "diff": 1.2790816635452746
+      },
+      {
+        "metric": "epistemic_profile.probabilistic_rate",
+        "diff": 0.7502933839514169
+      },
+      {
+        "metric": "paragraph_cadence.opening_sentence_length_mean",
+        "diff": 1.4165492909123547
+      },
+      {
+        "metric": "paragraph_cadence.opening_sentence_length_stdev",
+        "diff": 3.3210866927897857
+      },
+      {
+        "metric": "paragraph_cadence.closing_sentence_length_mean",
+        "diff": 1.3917079862488428
+      },
+      {
+        "metric": "paragraph_cadence.closing_sentence_length_stdev",
+        "diff": 3.51099557304723
+      },
+      {
+        "metric": "syntax_texture.subordinate_clause_rate",
+        "diff": 0.8932928478161769
+      },
+      {
+        "metric": "syntax_texture.parenthetical_rate",
+        "diff": 0.6561714861125214
+      }
+    ],
+    "chunk_index": 5,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "inline_code",
+    "reason": "Inline code placeholder missing from output; re-embedded at end of chunk.",
+    "placeholder": "[[INLINE_CODE_45]]",
+    "chunk_index": 6,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "inline_code",
+    "reason": "Inline code placeholder missing from output; re-embedded at end of chunk.",
+    "placeholder": "[[INLINE_CODE_46]]",
+    "chunk_index": 6,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "orthography.local_spelling",
+    "reason": "Enforced canadian spelling regardless of fingerprint.",
+    "count": 1,
+    "chunk_index": 6,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "style_compliance",
+    "score": 0.39913527376536106,
+    "deltas": [
+      {
+        "metric": "sentence_length_histogram",
+        "diff": 0.6058538064907493
+      },
+      {
+        "metric": "paragraph_length_histogram",
+        "diff": 0.4509928852076033
+      },
+      {
+        "metric": "one_sentence_paragraph_rate",
+        "diff": 0.14643729425507063
+      },
+      {
+        "metric": "punctuation.semicolons",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.colons",
+        "diff": 4.39880210497161
+      },
+      {
+        "metric": "punctuation.questions",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.parentheses_open",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.parentheses_close",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.em_dashes",
+        "diff": 1.0
+      },
+      {
+        "metric": "stance.hedge_rate",
+        "diff": 3.541559878844361
+      },
+      {
+        "metric": "stance.directive_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "stance.first_person_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "stance.second_person_rate",
+        "diff": 0.9875656506710957
+      },
+      {
+        "metric": "stance.third_person_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "rhetoric_moves.claim_rate",
+        "diff": 0.7823572037784006
+      },
+      {
+        "metric": "rhetoric_moves.evidence_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "rhetoric_moves.counterpoint_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "rhetoric_moves.concession_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "epistemic_profile.speculative_rate",
+        "diff": 2.6880705737666144
+      },
+      {
+        "metric": "epistemic_profile.probabilistic_rate",
+        "diff": 0.7502933839514169
+      },
+      {
+        "metric": "epistemic_profile.directive_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "paragraph_cadence.closing_sentence_length_mean",
+        "diff": 0.7717241835250562
+      },
+      {
+        "metric": "paragraph_cadence.closing_sentence_length_stdev",
+        "diff": 0.8041867418901237
+      },
+      {
+        "metric": "syntax_texture.subordinate_clause_rate",
+        "diff": 0.9496761771398561
+      },
+      {
+        "metric": "syntax_texture.parenthetical_rate",
+        "diff": 1.0
+      },
+      {
+        "metric": "syntax_texture.appositive_rate",
+        "diff": 0.7828935333394308
+      },
+      {
+        "metric": "lexical_avoidance.intensifiers",
+        "diff": 1.0
+      },
+      {
+        "metric": "discourse_markers.mid_rate_per_1000w",
+        "diff": 1.0
+      }
+    ],
+    "chunk_index": 6,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "/paragraph_cadence/opening_sentence_length_mean",
+    "reason": "Paragraph opening sentences were shortened in some cases to better match the target mean and reduce initial verbosity.",
+    "chunk_index": 7,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "/punctuation/colons_per_1000w",
+    "reason": "Colons were reduced in frequency to align with the measured target range.",
+    "chunk_index": 7,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "/syntax_texture/parenthetical_rate",
+    "reason": "Parentheticals were reduced to match the target rate, as the input used them at a much higher frequency.",
+    "chunk_index": 7,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "/syntax_texture/subordinate_clause_rate",
+    "reason": "Subordinate clauses were reduced to avoid excessive syntactic complexity and to fit the target distribution.",
+    "chunk_index": 7,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "punctuation.em_dashes",
+    "reason": "Em dashes removed to satisfy humanizer_mandatory constraint.",
+    "count": 1,
+    "chunk_index": 7,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "orthography.local_spelling",
+    "reason": "Enforced canadian spelling regardless of fingerprint.",
+    "count": 16,
+    "chunk_index": 7,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "style_compliance",
+    "score": 0.6585453041458096,
+    "deltas": [
+      {
+        "metric": "sentence_length_histogram",
+        "diff": 0.17821028875762762
+      },
+      {
+        "metric": "paragraph_length_histogram",
+        "diff": 0.3457520832984022
+      },
+      {
+        "metric": "one_sentence_paragraph_rate",
+        "diff": 0.19029694337787761
+      },
+      {
+        "metric": "punctuation.semicolons",
+        "diff": 0.5432819941856868
+      },
+      {
+        "metric": "punctuation.colons",
+        "diff": 7.890141005663031
+      },
+      {
+        "metric": "punctuation.questions",
+        "diff": 3.1925096788069975
+      },
+      {
+        "metric": "punctuation.parentheses_open",
+        "diff": 1.778008150915265
+      },
+      {
+        "metric": "punctuation.parentheses_close",
+        "diff": 1.7999013850293084
+      },
+      {
+        "metric": "punctuation.em_dashes",
+        "diff": 1.0
+      },
+      {
+        "metric": "punctuation.en_dashes",
+        "diff": 0.8078396801456289
+      },
+      {
+        "metric": "stance.third_person_rate",
+        "diff": 0.8583992125369351
+      },
+      {
+        "metric": "epistemic_profile.probabilistic_rate",
+        "diff": 0.7502933839514169
+      },
+      {
+        "metric": "paragraph_cadence.opening_sentence_length_stdev",
+        "diff": 0.7646451260755874
+      },
+      {
+        "metric": "syntax_texture.subordinate_clause_rate",
+        "diff": 1.615969297613519
+      },
+      {
+        "metric": "syntax_texture.parenthetical_rate",
+        "diff": 1.7889118026196857
+      }
+    ],
+    "chunk_index": 7,
+    "chunk_total": 7
+  },
+  {
+    "rule_or_field": "orthography.local_spelling",
+    "reason": "Re-applied canadian spelling after section restoration.",
+    "count": 98
+  },
+  {
+    "rule_or_field": "structure.heading_case",
+    "reason": "Applied heading case normalization mode 'by-level' (humanizer_mandatory).",
+    "count": 27
+  },
+  {
+    "rule_or_field": "line_count_change",
+    "input_lines": 2570,
+    "output_lines": 2563,
+    "percent_change": -0.2723735408560311
+  },
+  {
+    "rule_or_field": "word_count_change",
+    "input_words": 18855,
+    "output_words": 18875,
+    "percent_change": 0.10607265977194379
+  },
+  {
+    "rule_or_field": "paragraph_count_change",
+    "input_paragraphs": 772,
+    "output_paragraphs": 775,
+    "percent_change": 0.38860103626943004
+  },
+  {
+    "rule_or_field": "humanization_metrics",
+    "metrics": {
+      "input": {
+        "token_count": 13381,
+        "type_token_ratio": 0.20170390852701592,
+        "herdan_c": 0.8315066977088829,
+        "guiraud_r": 23.332356270090166,
+        "maas_ttr": 0.017733167115077907,
+        "yules_k": 53.02026497331676,
+        "simpson_d": 0.0053024227623912675,
+        "sentence_length_mean": 29.935123042505595,
+        "sentence_length_stdev": 33.74742076707568,
+        "sentence_burstiness": 1.1273519978239914,
+        "paragraph_length_mean": 1.532824427480916,
+        "paragraph_length_stdev": 1.0708092643532143,
+        "paragraph_burstiness": 0.698585725250354,
+        "bigram_repeat_rate": 0.1619765871229176,
+        "trigram_repeat_rate": 0.039068729070323716,
+        "punctuation_variety": 8,
+        "punctuation_entropy": 2.2033428591065323,
+        "function_word_entropy": 4.578958394306811,
+        "function_word_kl": 0.29149401215752213,
+        "sentence_length_js": 0.013572263263784454,
+        "char_trigram_entropy": 10.562911242294636,
+        "avg_word_length": 5.745609446229729,
+        "scores": {
+          "lexical_diversity": 0.40340781705403184,
+          "herdan_c": 0.9238963307876475,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 0.8817788858994806,
+          "yules_k_inverse": 0.46979735026683234,
+          "simpson_d_inverse": 0.9734878861880437,
+          "repetition_inverse": 0.4973867095168968,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 0.698585725250354,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 0.7344476197021774,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 0.41701197568495574,
+          "sentence_length_js_inverse": 0.9547591224540518,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 0.7514635179234238
+        },
+        "notes": [
+          "Scores are heuristic and intended for comparative inspection, not absolute judgment."
+        ],
+        "aggregate_score_100": 79.41,
+        "weights": {
+          "lexical_diversity": 1.0,
+          "herdan_c": 1.0,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 1.0,
+          "yules_k_inverse": 1.0,
+          "simpson_d_inverse": 1.0,
+          "repetition_inverse": 1.0,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 1.0,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 1.0,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 1.0,
+          "sentence_length_js_inverse": 1.0,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 1.0
+        },
+        "weighted_scores": {
+          "lexical_diversity": 0.40340781705403184,
+          "herdan_c": 0.9238963307876475,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 0.8817788858994806,
+          "yules_k_inverse": 0.46979735026683234,
+          "simpson_d_inverse": 0.9734878861880437,
+          "repetition_inverse": 0.4973867095168968,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 0.698585725250354,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 0.7344476197021774,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 0.41701197568495574,
+          "sentence_length_js_inverse": 0.9547591224540518,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 0.7514635179234238
+        }
+      },
+      "output": {
+        "token_count": 13401,
+        "type_token_ratio": 0.20102977389747034,
+        "herdan_c": 0.8311808934797537,
+        "guiraud_r": 23.271747052591152,
+        "maas_ttr": 0.017764664153599178,
+        "yules_k": 53.23564953974541,
+        "simpson_d": 0.0053239622349412555,
+        "sentence_length_mean": 29.912946428571427,
+        "sentence_length_stdev": 33.909267226210574,
+        "sentence_burstiness": 1.1335983670877052,
+        "paragraph_length_mean": 1.5320121951219512,
+        "paragraph_length_stdev": 1.065912914507885,
+        "paragraph_burstiness": 0.6957600715593757,
+        "bigram_repeat_rate": 0.16308626701158474,
+        "trigram_repeat_rate": 0.0390096329910039,
+        "punctuation_variety": 8,
+        "punctuation_entropy": 2.1112170823108434,
+        "function_word_entropy": 4.572832307931612,
+        "function_word_kl": 0.29790724296221327,
+        "sentence_length_js": 0.013464908308483084,
+        "char_trigram_entropy": 10.555565623968606,
+        "avg_word_length": 5.760092530408179,
+        "scores": {
+          "lexical_diversity": 0.4020595477949407,
+          "herdan_c": 0.9235343260886152,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 0.8815689056426721,
+          "yules_k_inverse": 0.4676435046025459,
+          "simpson_d_inverse": 0.9733801888252938,
+          "repetition_inverse": 0.4947602499935284,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 0.6957600715593757,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 0.7037390274369478,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 0.40418551407557346,
+          "sentence_length_js_inverse": 0.9551169723050564,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 0.7466358231972736
+        },
+        "notes": [
+          "Scores are heuristic and intended for comparative inspection, not absolute judgment."
+        ],
+        "aggregate_score_100": 79.05,
+        "weights": {
+          "lexical_diversity": 1.0,
+          "herdan_c": 1.0,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 1.0,
+          "yules_k_inverse": 1.0,
+          "simpson_d_inverse": 1.0,
+          "repetition_inverse": 1.0,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 1.0,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 1.0,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 1.0,
+          "sentence_length_js_inverse": 1.0,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 1.0
+        },
+        "weighted_scores": {
+          "lexical_diversity": 0.4020595477949407,
+          "herdan_c": 0.9235343260886152,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 0.8815689056426721,
+          "yules_k_inverse": 0.4676435046025459,
+          "simpson_d_inverse": 0.9733801888252938,
+          "repetition_inverse": 0.4947602499935284,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 0.6957600715593757,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 0.7037390274369478,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 0.40418551407557346,
+          "sentence_length_js_inverse": 0.9551169723050564,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 0.7466358231972736
+        }
+      },
+      "aggregate_score_100": 0.0,
+      "weights": {},
+      "weighted_scores": {}
+    }
+  },
+  {
+    "rule_or_field": "humanizer_guidelines",
+    "parser": "llm",
+    "kept": [
+      {
+        "title": "Soulless Writing",
+        "problem": "Sterile, voiceless writing lacks human personality, even if technically clean.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Personality and Soul"
+      },
+      {
+        "title": "Undue Emphasis on Significance, Legacy, and Broader Trends",
+        "problem": "LLM writing puffs up importance by adding statements about how arbitrary aspects represent or contribute to a broader topic.",
+        "words_to_watch": [
+          "stands/serves as",
+          "is a testament/reminder",
+          "a vital/significant/crucial/pivotal/key role/moment",
+          "underscores/highlights its importance/significance",
+          "reflects broader",
+          "symbolizing its ongoing/enduring/lasting",
+          "contributing to the",
+          "setting the stage for",
+          "marking/shaping the",
+          "represents/marks a shift",
+          "key turning point",
+          "evolving landscape",
+          "focal point",
+          "indelible mark",
+          "deeply rooted"
+        ],
+        "source": "cache",
+        "category": "Content Patterns"
+      },
+      {
+        "title": "Undue Emphasis on Notability and Media Coverage",
+        "problem": "LLMs hit readers over the head with claims of notability, often listing sources without context.",
+        "words_to_watch": [
+          "independent coverage",
+          "local/regional/national media outlets",
+          "written by a leading expert",
+          "active social media presence"
+        ],
+        "source": "cache",
+        "category": "Content Patterns"
+      },
+      {
+        "title": "Superficial Analyses with -ing Endings",
+        "problem": "AI chatbots tack present participle (\"-ing\") phrases onto sentences to add fake depth.",
+        "words_to_watch": [
+          "highlighting/underscoring/emphasizing...",
+          "ensuring...",
+          "reflecting/symbolizing...",
+          "contributing to...",
+          "cultivating/fostering...",
+          "encompassing...",
+          "showcasing..."
+        ],
+        "source": "cache",
+        "category": "Content Patterns"
+      },
+      {
+        "title": "Promotional and Advertisement-like Language",
+        "problem": "LLMs have serious problems keeping a neutral tone, especially for \"cultural heritage\" topics.",
+        "words_to_watch": [
+          "boasts a",
+          "vibrant",
+          "rich (figurative)",
+          "profound",
+          "enhancing its",
+          "showcasing",
+          "exemplifies",
+          "commitment to",
+          "natural beauty",
+          "nestled",
+          "in the heart of",
+          "groundbreaking (figurative)",
+          "renowned",
+          "breathtaking",
+          "must-visit",
+          "stunning"
+        ],
+        "source": "cache",
+        "category": "Content Patterns"
+      },
+      {
+        "title": "Vague Attributions and Weasel Words",
+        "problem": "AI chatbots attribute opinions to vague authorities without specific sources.",
+        "words_to_watch": [
+          "Industry reports",
+          "Observers have cited",
+          "Experts argue",
+          "Some critics argue",
+          "several sources/publications"
+        ],
+        "source": "cache",
+        "category": "Content Patterns"
+      },
+      {
+        "title": "Outline-like \"Challenges and Future Prospects\" Sections",
+        "problem": "Many LLM-generated articles include formulaic \"Challenges\" sections.",
+        "words_to_watch": [
+          "Despite its... faces several challenges...",
+          "Despite these challenges",
+          "Challenges and Legacy",
+          "Future Outlook"
+        ],
+        "source": "cache",
+        "category": "Content Patterns"
+      },
+      {
+        "title": "Heading Qualifiers and Parenthetical Asides",
+        "problem": "LLMs add explanatory qualifiers in headings instead of integrating them into the title.",
+        "words_to_watch": [
+          "(why this matters)",
+          "(quick fix)",
+          "(defined carefully)",
+          ", explained",
+          ", in brief"
+        ],
+        "source": "cache",
+        "category": "Content Patterns"
+      },
+      {
+        "title": "Overused \"AI Vocabulary\" Words",
+        "problem": "These words appear far more frequently in post-2023 text. They often co-occur.",
+        "words_to_watch": [
+          "Additionally",
+          "align with",
+          "crucial",
+          "delve",
+          "emphasizing",
+          "enduring",
+          "enhance",
+          "fostering",
+          "garner",
+          "highlight (verb)",
+          "interplay",
+          "intricate/intricacies",
+          "key (adjective)",
+          "landscape (abstract noun)",
+          "pivotal",
+          "showcase",
+          "tapestry (abstract noun)",
+          "testament",
+          "underscore (verb)",
+          "valuable",
+          "vibrant"
+        ],
+        "source": "cache",
+        "category": "Language and Grammar Patterns"
+      },
+      {
+        "title": "Avoidance of \"is\"/\"are\" (Copula Avoidance)",
+        "problem": "LLMs substitute elaborate constructions for simple copulas.",
+        "words_to_watch": [
+          "serves as/stands as/marks/represents [a]",
+          "boasts/features/offers [a]"
+        ],
+        "source": "cache",
+        "category": "Language and Grammar Patterns"
+      },
+      {
+        "title": "Negative Parallelisms",
+        "problem": "Constructions like \"Not only...but...\" or \"It's not just about..., it's...\" are overused.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Language and Grammar Patterns"
+      },
+      {
+        "title": "Rule of Three Overuse",
+        "problem": "LLMs force ideas into groups of three to appear comprehensive.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Language and Grammar Patterns"
+      },
+      {
+        "title": "Elegant Variation (Synonym Cycling)",
+        "problem": "AI has repetition-penalty code causing excessive synonym substitution.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Language and Grammar Patterns"
+      },
+      {
+        "title": "False Ranges",
+        "problem": "LLMs use \"from X to Y\" constructions where X and Y aren't on a meaningful scale.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Language and Grammar Patterns"
+      },
+      {
+        "title": "Inline-Header Vertical Lists",
+        "problem": "AI outputs lists where items start with bolded headers followed by colons.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Style Patterns"
+      },
+      {
+        "title": "Curly Quotation Marks",
+        "problem": "ChatGPT uses curly quotes (“...”) instead of straight quotes (\"...\").",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Style Patterns"
+      },
+      {
+        "title": "Collaborative Communication Artifacts",
+        "problem": "Text meant as chatbot correspondence gets pasted as content.",
+        "words_to_watch": [
+          "I hope this helps",
+          "Of course!",
+          "Certainly!",
+          "You're absolutely right!",
+          "Would you like...",
+          "let me know",
+          "here is a..."
+        ],
+        "source": "cache",
+        "category": "Communication Patterns"
+      },
+      {
+        "title": "Knowledge-Cutoff Disclaimers",
+        "problem": "AI disclaimers about incomplete information get left in text.",
+        "words_to_watch": [
+          "as of [date]",
+          "Up to my last training update",
+          "While specific details are limited/scarce...",
+          "based on available information..."
+        ],
+        "source": "cache",
+        "category": "Communication Patterns"
+      },
+      {
+        "title": "Sycophantic/Servile Tone",
+        "problem": "Overly positive, people-pleasing language.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Communication Patterns"
+      },
+      {
+        "title": "Filler Phrases",
+        "problem": null,
+        "words_to_watch": [
+          "In order to achieve this goal",
+          "Due to the fact that it was raining",
+          "At this point in time",
+          "In the event that you need help",
+          "The system has the ability to process",
+          "It is important to note that the data shows"
+        ],
+        "source": "cache",
+        "category": "Filler and Hedging"
+      },
+      {
+        "title": "Generic Positive Conclusions",
+        "problem": "Vague upbeat endings.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Filler and Hedging"
+      }
+    ],
+    "dropped": [
+      {
+        "title": "Em Dash Overuse",
+        "problem": "LLMs use em dashes (—) more than humans, mimicking \"punchy\" sales writing.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Style Patterns",
+        "drop_reason": "Em dashes forbidden by humanizer_mandatory."
+      },
+      {
+        "title": "Overuse of Boldface",
+        "problem": "AI chatbots emphasize phrases in boldface mechanically.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Style Patterns",
+        "drop_reason": "Input uses boldface frequently."
+      },
+      {
+        "title": "Title Case in Headings",
+        "problem": "AI chatbots capitalize all main words in headings.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Style Patterns",
+        "drop_reason": "Heading case normalization is deterministic via humanizer_mandatory."
+      },
+      {
+        "title": "Emojis",
+        "problem": "AI chatbots often decorate headings or bullet points with emojis. These should be removed entirely or replaced with more conventional black and white symbols used in publications.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Style Patterns",
+        "drop_reason": "Emoji handling is deterministic via humanizer_mandatory."
+      },
+      {
+        "title": "Excessive Hedging",
+        "problem": "Over-qualifying statements.",
+        "words_to_watch": [],
+        "source": "cache",
+        "category": "Filler and Hedging",
+        "drop_reason": "Author uses hedging at a high rate."
+      }
+    ]
+  },
+  {
+    "rule_or_field": "input_style_signals",
+    "signals": {
+      "heading_title_case_rate": 0.8,
+      "boldface_per_1000w": 69.82690794649882,
+      "inline_header_list_rate": 0.0
+    }
+  },
+  {
+    "rule_or_field": "humanization_metrics",
+    "metrics": {
+      "input": {
+        "token_count": 13381,
+        "type_token_ratio": 0.20170390852701592,
+        "herdan_c": 0.8315066977088829,
+        "guiraud_r": 23.332356270090166,
+        "maas_ttr": 0.017733167115077907,
+        "yules_k": 53.02026497331676,
+        "simpson_d": 0.0053024227623912675,
+        "sentence_length_mean": 29.935123042505595,
+        "sentence_length_stdev": 33.74742076707568,
+        "sentence_burstiness": 1.1273519978239914,
+        "paragraph_length_mean": 1.532824427480916,
+        "paragraph_length_stdev": 1.0708092643532143,
+        "paragraph_burstiness": 0.698585725250354,
+        "bigram_repeat_rate": 0.1619765871229176,
+        "trigram_repeat_rate": 0.039068729070323716,
+        "punctuation_variety": 8,
+        "punctuation_entropy": 2.2033428591065323,
+        "function_word_entropy": 4.578958394306811,
+        "function_word_kl": 0.29149401215752213,
+        "sentence_length_js": 0.013572263263784454,
+        "char_trigram_entropy": 10.562911242294636,
+        "avg_word_length": 5.745609446229729,
+        "scores": {
+          "lexical_diversity": 0.40340781705403184,
+          "herdan_c": 0.9238963307876475,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 0.8817788858994806,
+          "yules_k_inverse": 0.46979735026683234,
+          "simpson_d_inverse": 0.9734878861880437,
+          "repetition_inverse": 0.4973867095168968,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 0.698585725250354,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 0.7344476197021774,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 0.41701197568495574,
+          "sentence_length_js_inverse": 0.9547591224540518,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 0.7514635179234238
+        },
+        "notes": [
+          "Scores are heuristic and intended for comparative inspection, not absolute judgment."
+        ],
+        "aggregate_score_100": 79.41,
+        "weights": {
+          "lexical_diversity": 1.0,
+          "herdan_c": 1.0,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 1.0,
+          "yules_k_inverse": 1.0,
+          "simpson_d_inverse": 1.0,
+          "repetition_inverse": 1.0,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 1.0,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 1.0,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 1.0,
+          "sentence_length_js_inverse": 1.0,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 1.0
+        },
+        "weighted_scores": {
+          "lexical_diversity": 0.40340781705403184,
+          "herdan_c": 0.9238963307876475,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 0.8817788858994806,
+          "yules_k_inverse": 0.46979735026683234,
+          "simpson_d_inverse": 0.9734878861880437,
+          "repetition_inverse": 0.4973867095168968,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 0.698585725250354,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 0.7344476197021774,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 0.41701197568495574,
+          "sentence_length_js_inverse": 0.9547591224540518,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 0.7514635179234238
+        }
+      },
+      "output": {
+        "token_count": 13401,
+        "type_token_ratio": 0.20102977389747034,
+        "herdan_c": 0.8311808934797537,
+        "guiraud_r": 23.271747052591152,
+        "maas_ttr": 0.017764664153599178,
+        "yules_k": 53.23564953974541,
+        "simpson_d": 0.0053239622349412555,
+        "sentence_length_mean": 29.912946428571427,
+        "sentence_length_stdev": 33.909267226210574,
+        "sentence_burstiness": 1.1335983670877052,
+        "paragraph_length_mean": 1.5320121951219512,
+        "paragraph_length_stdev": 1.065912914507885,
+        "paragraph_burstiness": 0.6957600715593757,
+        "bigram_repeat_rate": 0.16308626701158474,
+        "trigram_repeat_rate": 0.0390096329910039,
+        "punctuation_variety": 8,
+        "punctuation_entropy": 2.1112170823108434,
+        "function_word_entropy": 4.572832307931612,
+        "function_word_kl": 0.29790724296221327,
+        "sentence_length_js": 0.013464908308483084,
+        "char_trigram_entropy": 10.555565623968606,
+        "avg_word_length": 5.760092530408179,
+        "scores": {
+          "lexical_diversity": 0.4020595477949407,
+          "herdan_c": 0.9235343260886152,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 0.8815689056426721,
+          "yules_k_inverse": 0.4676435046025459,
+          "simpson_d_inverse": 0.9733801888252938,
+          "repetition_inverse": 0.4947602499935284,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 0.6957600715593757,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 0.7037390274369478,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 0.40418551407557346,
+          "sentence_length_js_inverse": 0.9551169723050564,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 0.7466358231972736
+        },
+        "notes": [
+          "Scores are heuristic and intended for comparative inspection, not absolute judgment."
+        ],
+        "aggregate_score_100": 79.05,
+        "weights": {
+          "lexical_diversity": 1.0,
+          "herdan_c": 1.0,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 1.0,
+          "yules_k_inverse": 1.0,
+          "simpson_d_inverse": 1.0,
+          "repetition_inverse": 1.0,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 1.0,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 1.0,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 1.0,
+          "sentence_length_js_inverse": 1.0,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 1.0
+        },
+        "weighted_scores": {
+          "lexical_diversity": 0.4020595477949407,
+          "herdan_c": 0.9235343260886152,
+          "guiraud_r": 1.0,
+          "maas_ttr_inverse": 0.8815689056426721,
+          "yules_k_inverse": 0.4676435046025459,
+          "simpson_d_inverse": 0.9733801888252938,
+          "repetition_inverse": 0.4947602499935284,
+          "sentence_burstiness": 1.0,
+          "paragraph_burstiness": 0.6957600715593757,
+          "punctuation_variety": 1.0,
+          "punctuation_entropy": 0.7037390274369478,
+          "function_word_entropy": 1.0,
+          "function_word_kl_inverse": 0.40418551407557346,
+          "sentence_length_js_inverse": 0.9551169723050564,
+          "char_trigram_entropy": 1.0,
+          "avg_word_length": 0.7466358231972736
+        }
+      },
+      "aggregate_score_100": 0.0,
+      "weights": {},
+      "weighted_scores": {}
+    }
+  }
+]
