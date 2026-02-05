@@ -109,8 +109,8 @@ Avoid ambiguous terms like “clone” in public documentation.
   - See README for per‑field explanations and defaults
   - Includes mandatory humanizer controls (em‑dash ban, emoji policy, heading qualifier sanitization)
   - Includes bounded stochastic variance controls (seeded micro‑operations)
-  - Includes style retry controls (delta‑feedback retries)
-  - `style_retry.max_retries` is applied per retry loop (voice and style loops are separate counters when forced-person mode is used)
+  - Includes style retry controls (delta‑feedback retries) with separate voice/style caps in forced-person mode
+  - `style_retry.max_retries` caps style-loop retries; `style_retry.voice_max_retries` (optional) independently caps voice-loop retries in forced-person mode
   - `humanization_controller.max_feedback_retries` only caps how many style retries include controller-overlay feedback; it does not increase retry count
   - Includes humanization metric weights for the aggregate 0–100 score
   - Includes corpus-derived humanization baseline settings (rolling windows embedded in fingerprints for auditability; stripped from what the LLM sees during rewriting)

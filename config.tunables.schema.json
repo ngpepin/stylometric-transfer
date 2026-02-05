@@ -190,7 +190,12 @@
         "max_retries": {
           "type": "integer",
           "minimum": 0,
-          "description": "Retry budget per loop. In forced-person mode, voice and style loops each use this cap with separate counters."
+          "description": "Retry budget for the style loop."
+        },
+        "voice_max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Retry budget for the forced-person voice loop. If omitted, falls back to style_retry.max_retries."
         }
       },
       "additionalProperties": false

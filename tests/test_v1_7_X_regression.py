@@ -369,6 +369,25 @@ class TestV17XRegression(unittest.TestCase):
         b = {"allowed_count": 3, "violations": {"third_person": 2}}
         self.assertGreater(af.pronoun_override_quality(a), af.pronoun_override_quality(b))
 
+    def test_resolve_retry_budgets_separate_voice_cap(self) -> None:
+        style_cap, voice_cap = af.resolve_retry_budgets(
+            {"max_retries": 3, "voice_max_retries": 2},
+            cli_style_retries=1,
+            cli_default_style_retries=1,
+        )
+        self.assertEqual(style_cap, 3)
+        self.assertEqual(voice_cap, 2)
+
+    def test_resolve_retry_budgets_cli_style_override_keeps_voice_fallback(self) -> None:
+        style_cap, voice_cap = af.resolve_retry_budgets(
+            {"max_retries": 3},
+            cli_style_retries=5,
+            cli_default_style_retries=1,
+        )
+        # CLI overrides style cap; voice follows style when no explicit voice cap exists.
+        self.assertEqual(style_cap, 5)
+        self.assertEqual(voice_cap, 5)
+
     def test_pronoun_override_first_person_svo_object_pattern(self) -> None:
         text = "I saw her and thanked them for helping me."
         eval_obj = af.evaluate_pronoun_override(text, "first")

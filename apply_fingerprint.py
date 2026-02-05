@@ -80,6 +80,7 @@ ANSI_RED = "\x1b[31m"
 ANSI_YELLOW = "\x1b[33m"
 ANSI_RESET = "\x1b[0m"
 QUOTE_MODE: str | None = None
+DEFAULT_MAX_STYLE_RETRIES = 1
 DEFAULT_TUNABLES = {
     "humanizer_conflicts": {
         "em_dash_keep_rate": 0.5,
@@ -242,6 +243,35 @@ def load_tunables(path: Path | None = None) -> Dict[str, Any]:
     except Exception:
         pass
     return dict(DEFAULT_TUNABLES)
+
+
+# Function: Resolve style/voice retry budgets from tunables and CLI.
+def resolve_retry_budgets(
+    style_retry_conf: Dict[str, Any] | None,
+    cli_style_retries: int,
+    cli_default_style_retries: int = DEFAULT_MAX_STYLE_RETRIES
+) -> tuple[int, int]:
+    # Style retries are CLI-overridable; voice retries can be independently capped.
+    # Backward compatibility:
+    # - style_retry.max_retries still works (applies to style, and to voice if voice cap absent)
+    # - style_retry.voice_max_retries overrides only the voice loop cap.
+    style_cap = max(0, int(cli_style_retries))
+    if isinstance(style_retry_conf, dict):
+        style_from_tunables = style_retry_conf.get("style_max_retries")
+        if not isinstance(style_from_tunables, int):
+            style_from_tunables = style_retry_conf.get("max_retries")
+        if cli_style_retries == cli_default_style_retries and isinstance(style_from_tunables, int):
+            style_cap = max(0, int(style_from_tunables))
+
+        voice_from_tunables = style_retry_conf.get("voice_max_retries")
+        if isinstance(voice_from_tunables, int):
+            voice_cap = max(0, int(voice_from_tunables))
+        else:
+            # If no explicit voice cap exists, preserve old "same budget" behavior.
+            voice_cap = style_cap
+    else:
+        voice_cap = style_cap
+    return style_cap, voice_cap
 
 
 # Function: Parse avoid list.
@@ -4705,7 +4735,7 @@ def main() -> int:
     ap.add_argument(
         "--max-style-retries",
         type=int,
-        default=1,
+        default=DEFAULT_MAX_STYLE_RETRIES,
         help="Maximum number of style retry passes (default: 1)"
     )
     pronoun_group = ap.add_mutually_exclusive_group()
@@ -4793,6 +4823,7 @@ def main() -> int:
     if args.max_prompt_tokens is not None:
         # Allow CLI override for chunking threshold.
         cfg.max_prompt_tokens = args.max_prompt_tokens
+    max_voice_retries = args.max_style_retries
     if isinstance(tunables, dict):
         style_retry = tunables.get("style_retry", {})
         if isinstance(style_retry, dict):
@@ -4804,10 +4835,17 @@ def main() -> int:
                 threshold = style_retry.get("threshold")
                 if isinstance(threshold, (int, float)):
                     args.style_retry_threshold = float(threshold)
-            if args.max_style_retries == 1:
-                max_retries = style_retry.get("max_retries")
-                if isinstance(max_retries, int):
-                    args.max_style_retries = max(0, max_retries)
+            args.max_style_retries, max_voice_retries = resolve_retry_budgets(
+                style_retry,
+                args.max_style_retries,
+                DEFAULT_MAX_STYLE_RETRIES
+            )
+    if args.verbose and not args.no_style_retry:
+        vprint(
+            "Retry budgets: "
+            f"voice={max_voice_retries}, style={args.max_style_retries}, "
+            f"threshold={args.style_retry_threshold:.3f}"
+        )
 
     humanizer_rules: List[Dict[str, Any]] = []
     humanizer_debug: Dict[str, Any] | None = None
@@ -5359,12 +5397,12 @@ def main() -> int:
                     best_voice_md = final_md
                     best_voice_out = out_obj
                     best_voice_eval = override_eval
-                if override_eval.get("violations") and voice_retries_used < args.max_style_retries:
+                if override_eval.get("violations") and voice_retries_used < max_voice_retries:
                     if args.verbose and chunk_index is not None and chunk_total is not None:
                         reason = format_pronoun_override_debug(override_eval)
                         vprint(
                             f"Chunk {chunk_index}/{chunk_total} pronoun override violations; "
-                            f"retrying (voice retry {voice_retries_used + 1}/{args.max_style_retries})."
+                            f"retrying (voice retry {voice_retries_used + 1}/{max_voice_retries})."
                         )
                         vprint(f"  Pronoun override detail: {reason}")
                     style_feedback = {
@@ -5377,7 +5415,7 @@ def main() -> int:
                     continue
                 if (
                     override_eval.get("violations")
-                    and voice_retries_used >= args.max_style_retries
+                    and voice_retries_used >= max_voice_retries
                     and best_voice_md is not None
                     and best_voice_out is not None
                     and best_voice_eval is not None
