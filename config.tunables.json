@@ -67,7 +67,7 @@
     "max_feedback_retries": 2
   },
   "lexical_signals": {
-    "rare_words_limit": 100
+    "rare_words_limit": 80
   },
   "lexical_avoidance": {
     "rare_words_limit": 100
@@ -136,7 +136,7 @@
     "quoted_ratio_force": 0.08
   },
   "chunking": {
-    "max_input_tokens": 6000,
+    "max_input_tokens": 5750,
     "chunk_split_on": "sentence",
     "chunk_summary": {
       "enabled": true,
