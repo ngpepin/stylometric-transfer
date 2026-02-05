@@ -4108,7 +4108,10 @@ def main() -> int:
                 summary = normalize_summary(summary, summary_words)
                 out_obj["chunk_summary"] = summary
                 if args.verbose and chunk_index is not None and chunk_total is not None:
-                    vprint(f"Chunk {chunk_index}/{chunk_total} summary words: {len(summary.split())}")
+                    vprint(
+                        f"Chunk {chunk_index}/{chunk_total} summary "
+                        f"({len(summary.split())} words): {summary}"
+                    )
 
             compliance = compute_style_compliance(fingerprint, filter_author_voice_text(final_md))
             if not args.no_style_retry and attempts < args.max_style_retries and compliance["score"] < args.style_retry_threshold:
