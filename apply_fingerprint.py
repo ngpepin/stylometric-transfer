@@ -4029,6 +4029,11 @@ def main() -> int:
                 out_obj["chunk_summary"] = (previous_summary or "")
             return md_chunk, out_obj, {"score": 1.0, "deltas": []}
         attempts = 0
+        best_attempt = 0
+        best_score: float | None = None
+        best_md: str | None = None
+        best_out: Dict[str, Any] | None = None
+        best_comp: Dict[str, Any] | None = None
         fp_overlay = None
         controller_overlay = None
         if isinstance(tunables, dict):
@@ -4297,17 +4302,27 @@ def main() -> int:
                     )
 
             compliance = compute_style_compliance(fingerprint, filter_author_voice_text(final_md))
+            score_val = compliance.get("score") if isinstance(compliance, dict) else None
+            if not isinstance(score_val, (int, float)):
+                score_val = -1.0
+            attempt_no = attempts + 1
+            if best_score is None or score_val > best_score:
+                best_score = score_val
+                best_attempt = attempt_no
+                best_md = final_md
+                best_out = out_obj
+                best_comp = compliance
             if args.verbose and chunk_index is not None and chunk_total is not None:
                 comp_score = compliance.get("score")
                 if isinstance(comp_score, (int, float)):
                     vprint(
-                        f"Chunk {chunk_index}/{chunk_total} attempt {attempts + 1} "
+                        f"Chunk {chunk_index}/{chunk_total} attempt {attempt_no} "
                         f"compliance score: {comp_score:.3f} "
                         f"(threshold {args.style_retry_threshold})"
                     )
                 else:
                     vprint(
-                        f"Chunk {chunk_index}/{chunk_total} attempt {attempts + 1} "
+                        f"Chunk {chunk_index}/{chunk_total} attempt {attempt_no} "
                         f"compliance score: {comp_score} "
                         f"(threshold {args.style_retry_threshold})"
                     )
@@ -4346,6 +4361,14 @@ def main() -> int:
                         f"in={input_tokens}, out={output_tokens}"
                     )
             last_out = out_obj
+            if best_md is not None and best_out is not None and best_comp is not None:
+                if args.verbose and chunk_index is not None and chunk_total is not None and best_attempt != attempt_no:
+                    vprint(
+                        f"Chunk {chunk_index}/{chunk_total} using best attempt "
+                        f"{best_attempt} (score {best_score:.3f}) over last attempt "
+                        f"{attempt_no} (score {score_val:.3f})."
+                    )
+                return best_md, best_out, best_comp
             return final_md, out_obj, compliance
 
     summary_enabled = False

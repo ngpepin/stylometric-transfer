@@ -67,7 +67,7 @@
     "max_feedback_retries": 2
   },
   "lexical_signals": {
-    "rare_words_limit": 80
+    "rare_words_limit": 100
   },
   "lexical_avoidance": {
     "rare_words_limit": 100
