@@ -1724,6 +1724,18 @@ def compute_measurements(
             if token[:half] == token[half:]:
                 return True
         return False
+    # Function: Check whether token looks like concatenated artifacts.
+    def is_likely_concatenation(token: str) -> bool:
+        # Filter tokens that begin with unusually long consonant clusters (often OCR/glue artifacts).
+        if len(token) < 12:
+            return False
+        vowels = set("aeiouy")
+        prefix_len = 0
+        for ch in token:
+            if ch in vowels:
+                break
+            prefix_len += 1
+        return prefix_len >= 5
     # Function: Check whether candidate rare.
     def is_candidate_rare(token: str) -> bool:
         # Keep rare-word signals focused on lexical content rather than digits, numerals, or artifacts.
@@ -1737,6 +1749,8 @@ def compute_measurements(
         if roman_re.fullmatch(token) and len(token) >= 2:
             return False
         if is_repeated_token(token):
+            return False
+        if is_likely_concatenation(token):
             return False
         return token.isalpha()
     # Function: Check whether candidate common.
@@ -2632,7 +2646,17 @@ def rank_rare_words_llm(
     ranked = validation_result.get("ranked_rare_words") if isinstance(validation_result, dict) else None
     if not isinstance(ranked, list):
         return []
-    return [w for w in ranked if isinstance(w, str)]
+    seen: set[str] = set()
+    deduped: List[str] = []
+    for w in ranked:
+        if not isinstance(w, str):
+            continue
+        key = w.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(w)
+    return deduped
 
 
 # Function: Validate common phrases to remove OCR/citation noise.

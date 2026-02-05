@@ -1,6 +1,6 @@
 ---
 name: humanizer
-version: 2.1.1
+version: 2.1.2
 description: |
   Remove signs of AI-generated writing from text. Use when editing or reviewing
   text to make it sound more natural and human-written. Based on Wikipedia's
@@ -152,6 +152,22 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 **After:**
 > Traffic congestion increased after 2015 when three new IT parks opened. The municipal corporation began a stormwater drainage project in 2022 to address recurring floods.
+
+---
+
+### 6.5 Heading Qualifiers and Parenthetical Asides
+
+**Words to watch:** (why this matters), (quick fix), (defined carefully), , explained, , in brief
+
+**Problem:** LLMs add explanatory qualifiers in headings instead of integrating them into the title.
+
+**Before:**
+> Humanisation, defined carefully  
+> A taxonomy of stylometric features (why these work)
+
+**After:**
+> Humanisation: definition and scope  
+> A taxonomy of stylometric features
 
 ---
 

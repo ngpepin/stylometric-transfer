@@ -25,6 +25,19 @@
         "avoid_em_dashes": { "type": "boolean" },
         "emoji_policy": { "type": "string", "enum": ["remove", "replace", "none"] },
         "normalize_double_quotes": { "type": "boolean" },
+        "sanitize_heading_qualifiers": {
+          "oneOf": [
+            { "type": "boolean" },
+            {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "allowlist": { "type": "array", "items": { "type": "string" } }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
         "force_local_spelling": { "type": "string", "enum": ["none", "canadian", "australian", "british", "us"] }
       },
       "additionalProperties": false

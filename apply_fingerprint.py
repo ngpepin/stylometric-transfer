@@ -954,6 +954,22 @@ def should_normalize_double_quotes(tunables: Dict[str, Any] | None) -> bool:
     return bool(mandatory.get("normalize_double_quotes", False))
 
 
+# Function: Read heading qualifier sanitization settings.
+def get_heading_qualifier_sanitize_conf(
+    tunables: Dict[str, Any] | None
+) -> tuple[bool, List[str]]:
+    mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
+    conf = mandatory.get("sanitize_heading_qualifiers", False)
+    if isinstance(conf, dict):
+        enabled = conf.get("enabled", True)
+        allowlist = conf.get("allowlist", [])
+        if not isinstance(allowlist, list):
+            allowlist = []
+        allowlist = [str(item) for item in allowlist if isinstance(item, (str, int, float))]
+        return bool(enabled), allowlist
+    return bool(conf), []
+
+
 # Function: Get force local spelling.
 def get_force_local_spelling(tunables: Dict[str, Any] | None) -> str:
     mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
@@ -986,6 +1002,164 @@ def enforce_straight_double_quotes(text: str) -> tuple[str, int]:
         return text, 0
     trans = {ord(ch): ord('"') for ch in DOUBLE_QUOTE_CHARS}
     return text.translate(trans), count
+
+
+HEADING_QUALIFIER_PREFIXES = (
+    "why",
+    "how",
+    "what",
+    "when",
+    "where",
+    "defined",
+    "definition",
+    "quick",
+    "brief",
+    "overview",
+    "context",
+    "rationale",
+    "motivation",
+    "intuition",
+    "notes",
+    "note",
+    "summary",
+    "takeaway",
+    "key",
+    "guide",
+    "guidance",
+    "in practice",
+    "in theory",
+    "in brief",
+    "in short",
+    "quick fix",
+    "quick fixes",
+    "example",
+    "examples",
+    "case study",
+    "case studies"
+)
+HEADING_QUALIFIER_MAX_WORDS = 10
+HEADING_QUALIFIER_MIN_WORDS = 2
+
+
+# Function: Count words in a heading after stripping lightweight markup.
+def heading_word_count(text: str) -> int:
+    cleaned = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    cleaned = re.sub(r"[`*_~]", "", cleaned)
+    return len(words(cleaned))
+
+
+# Function: Detect trailing qualifier text in headings.
+def looks_like_heading_qualifier(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped:
+        return False
+    if re.search(r"\d", stripped):
+        return False
+    word_count = len(words(stripped))
+    if word_count == 0 or word_count > HEADING_QUALIFIER_MAX_WORDS:
+        return False
+    lower = stripped.lower()
+    if any(lower.startswith(prefix) for prefix in HEADING_QUALIFIER_PREFIXES):
+        return True
+    return stripped[0].islower()
+
+
+# Function: Remove trailing heading qualifiers when safe.
+def strip_heading_qualifier(heading_text: str) -> str:
+    if not heading_text.strip():
+        return heading_text
+    base_text = heading_text.strip()
+    paren_match = re.match(r"^(?P<base>.+?)\s*\((?P<qual>[^()]+)\)\s*$", base_text)
+    if paren_match:
+        base = paren_match.group("base").strip()
+        qualifier = paren_match.group("qual").strip()
+        if looks_like_heading_qualifier(qualifier) and heading_word_count(base) >= HEADING_QUALIFIER_MIN_WORDS:
+            return base
+    comma_match = re.match(r"^(?P<base>.+?),\s+(?P<qual>[^,]+)$", base_text)
+    if comma_match:
+        base = comma_match.group("base").strip()
+        qualifier = comma_match.group("qual").strip()
+        if looks_like_heading_qualifier(qualifier) and heading_word_count(base) >= HEADING_QUALIFIER_MIN_WORDS:
+            return base
+    return heading_text
+
+
+# Function: Compile heading allowlist regex patterns.
+def compile_heading_allowlist(patterns: List[str]) -> List[re.Pattern]:
+    compiled: List[re.Pattern] = []
+    for pattern in patterns:
+        if not pattern:
+            continue
+        try:
+            compiled.append(re.compile(pattern, re.IGNORECASE))
+        except re.error:
+            continue
+    return compiled
+
+
+# Function: Sanitize trailing qualifiers in Markdown headings.
+def enforce_heading_qualifiers(
+    text: str,
+    allowlist: List[re.Pattern] | None = None
+) -> tuple[str, int]:
+    lines = text.splitlines()
+    if not lines:
+        return text, 0
+    in_code = False
+    fence = ""
+    updated: List[str] = []
+    changes = 0
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            if not in_code:
+                in_code = True
+                fence = stripped[:3]
+            else:
+                if stripped.startswith(fence):
+                    in_code = False
+                    fence = ""
+            updated.append(line)
+            i += 1
+            continue
+        if in_code:
+            updated.append(line)
+            i += 1
+            continue
+        heading_info = get_heading_at(lines, i)
+        if not heading_info:
+            updated.append(line)
+            i += 1
+            continue
+        level, heading_text, span = heading_info
+        if allowlist:
+            if any(regex.search(heading_text) for regex in allowlist):
+                updated.append(line)
+                if span > 1:
+                    updated.extend(lines[i + 1:i + span])
+                i += span
+                continue
+        sanitized = strip_heading_qualifier(heading_text)
+        if sanitized != heading_text:
+            if span == 1:
+                m = ATX_HEADING_RE.match(line)
+                if m:
+                    prefix = m.group(1)
+                    updated.append(f"{prefix} {sanitized}")
+                else:
+                    updated.append(line)
+            else:
+                updated.append(sanitized)
+                updated.extend(lines[i + 1:i + span])
+            changes += 1
+        else:
+            updated.append(line)
+            if span > 1:
+                updated.extend(lines[i + 1:i + span])
+        i += span
+    return "\n".join(updated), changes
 
 
 # Function: Load local spelling rules.
@@ -1711,6 +1885,18 @@ def normalize_summary(summary: str, max_words: int | None) -> str:
         flags=re.IGNORECASE
     )
     summary = re.sub(
+        rf"\bthis\s+({noun_pattern})\b",
+        "the previous passage",
+        summary,
+        flags=re.IGNORECASE
+    )
+    summary = re.sub(
+        rf"\bthe\s+above\s+({noun_pattern})\b",
+        "the previous passage",
+        summary,
+        flags=re.IGNORECASE
+    )
+    summary = re.sub(
         rf"\bthe\s+(?!previous\b)({noun_pattern})\b",
         "the previous passage",
         summary,
@@ -1723,8 +1909,12 @@ def normalize_summary(summary: str, max_words: int | None) -> str:
         summary,
         flags=re.IGNORECASE
     )
+    summary = re.sub(r"\bthe previous passage is\b", "the previous passage was", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\bthe previous passage are\b", "the previous passage were", summary, flags=re.IGNORECASE)
     summary = re.sub(r"\bin\s+this\s+summary\b", "in the previous passage", summary, flags=re.IGNORECASE)
     summary = re.sub(r"^the previous passage\b", "The previous passage", summary, flags=re.IGNORECASE)
+    if summary and summary[0].islower():
+        summary = summary[0].upper() + summary[1:]
     # Prefer past tense when referring to prior content.
     verb_map = {
         "introduces": "introduced",
@@ -4453,6 +4643,8 @@ def main() -> int:
     apply_pronoun_override(fingerprint, args.force_person)
     forbid_em_dashes = should_forbid_em_dashes(tunables)
     normalize_double_quotes = should_normalize_double_quotes(tunables)
+    sanitize_heading_qualifiers, heading_allowlist_raw = get_heading_qualifier_sanitize_conf(tunables)
+    heading_allowlist = compile_heading_allowlist(heading_allowlist_raw) if sanitize_heading_qualifiers else []
     force_local_spelling = args.local_spelling or get_force_local_spelling(tunables)
     if args.local_spelling and args.verbose:
         vprint(f"Local spelling override: {force_local_spelling} (CLI)")
@@ -4510,6 +4702,12 @@ def main() -> int:
                 vprint("Hard constraint active: em dashes are forbidden (humanizer_mandatory).")
             if normalize_double_quotes:
                 vprint("Hard constraint active: double quotes will be normalized to straight quotes (humanizer_mandatory).")
+            if sanitize_heading_qualifiers:
+                allowlist_note = f" (allowlist: {len(heading_allowlist)} pattern(s))" if heading_allowlist else ""
+                vprint(
+                    "Hard constraint active: heading qualifiers will be sanitized (humanizer_mandatory)."
+                    + allowlist_note
+                )
             if force_local_spelling != "none":
                 vprint(f"Hard constraint active: {force_local_spelling} spelling enforced (humanizer_mandatory).")
             if emoji_policy and str(emoji_policy) != "none":
@@ -4921,6 +5119,14 @@ def main() -> int:
                         "rule_or_field": "punctuation.double_quotes",
                         "reason": "Curly double quotes normalized to straight quotes (humanizer_mandatory).",
                         "count": replaced_quotes
+                    })
+            if sanitize_heading_qualifiers:
+                final_md, sanitized_headings = enforce_heading_qualifiers(final_md, heading_allowlist)
+                if sanitized_headings:
+                    out_obj.setdefault("deviations", []).append({
+                        "rule_or_field": "structure.heading_qualifiers",
+                        "reason": "Heading qualifiers removed when safe (humanizer_mandatory).",
+                        "count": sanitized_headings
                     })
             if force_local_spelling != "none":
                 final_md, replacements = enforce_local_spelling(final_md, force_local_spelling, local_spelling_rules)

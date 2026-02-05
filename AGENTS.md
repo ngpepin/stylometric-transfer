@@ -79,6 +79,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Score style compliance locally and retry once by default with delta feedback (disable with `--no-style-retry`)
     - Apply `general-guidelines.md` humanizer rules when available, using an LLM parser by default then deterministically filtering out conflicts (disable with `--no-humanizer-llm-parse` or `--no-humanizer-guidelines`)
     - Cache parsed humanizer rules in `humanizer_rules.cache.json` (script directory) and re-parse only when guidelines change
+    - Sanitize trailing parenthetical/comma qualifiers in headings when enabled (humanizer_mandatory)
     - Normalize verbose/duplicative `controls.rewrite_policy` clauses and filter `priority_order` when loading a fingerprint
     - Normalize lexical avoidance checks to US spelling for matching, then apply local spelling to final output
     - Return rewritten text and deviations
@@ -105,7 +106,7 @@ Avoid ambiguous terms like “clone” in public documentation.
 - `config.tunables.json`
   - Overrides humanizer conflict thresholds for `apply_fingerprint.py`
   - See README for per‑field explanations and defaults
-  - Includes mandatory humanizer controls (em‑dash ban, emoji policy)
+  - Includes mandatory humanizer controls (em‑dash ban, emoji policy, heading qualifier sanitization)
   - Includes bounded stochastic variance controls (seeded micro‑operations)
   - Includes style retry controls (delta‑feedback retries)
   - Includes humanization metric weights for the aggregate 0–100 score

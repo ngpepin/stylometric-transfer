@@ -221,6 +221,29 @@ class TestV17XRegression(unittest.TestCase):
             self.assertNotIn(ch, updated)
         self.assertIn('"', updated)
 
+    def test_heading_qualifier_sanitizer(self) -> None:
+        md = (
+            "# Humanisation, defined carefully\n"
+            "## Code changes (quick fix)\n"
+            "### A taxonomy of stylometric features (why these work)\n"
+            "#### Methods, Results\n"
+            "#### Data (2021)\n"
+        )
+        updated, count = af.enforce_heading_qualifiers(md)
+        self.assertIn("# Humanisation, defined carefully", updated)
+        self.assertIn("## Code changes", updated)
+        self.assertIn("### A taxonomy of stylometric features", updated)
+        self.assertIn("#### Methods, Results", updated)
+        self.assertIn("#### Data (2021)", updated)
+        self.assertEqual(count, 2)
+
+    def test_heading_qualifier_allowlist(self) -> None:
+        md = "## Code changes (quick fix)\n"
+        allowlist = af.compile_heading_allowlist([r"Code changes"])
+        updated, count = af.enforce_heading_qualifiers(md, allowlist)
+        self.assertIn("## Code changes (quick fix)", updated)
+        self.assertEqual(count, 0)
+
     def test_force_local_spelling_canadian(self) -> None:
         rules = af.load_local_spelling_rules()
         text = "The color of the center meter is gray. She will license the program."
@@ -348,6 +371,18 @@ class TestV17XRegression(unittest.TestCase):
         self.assertNotIn("xxiii", rare_words)
         self.assertIn("reprioritized", rare_words)
         self.assertNotIn("reprioritised", rare_words)
+
+    def test_rare_words_filters_concatenation(self) -> None:
+        rules = fs.load_local_spelling_rules()
+        text = "mrcbgseniorfellows alpha beta gamma delta"
+        measurements = fs.compute_measurements(
+            [text],
+            rare_words_limit=20,
+            common_words=[],
+            local_spelling_rules=rules,
+        )
+        rare_words = [item.get("word") for item in measurements["lexical_signals"]["rare_words"]]
+        self.assertNotIn("mrcbgseniorfellows", rare_words)
 
 
 if __name__ == "__main__":

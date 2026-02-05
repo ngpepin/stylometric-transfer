@@ -152,6 +152,7 @@ endif
  :Apply per-chunk controller overlay to targets (optional);
 :Apply bounded humanizer variance (optional);
 :Restore placeholders;
+:Apply mandatory output normalizations (em dashes, quotes, heading qualifiers, local spelling);
 :Compute style compliance;
 
 if (Compliance below threshold?) then (yes)

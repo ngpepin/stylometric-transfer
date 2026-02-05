@@ -252,6 +252,10 @@ Example (defaults shown):
     "avoid_em_dashes": true,
     "emoji_policy": "replace",
     "normalize_double_quotes": true,
+    "sanitize_heading_qualifiers": {
+      "enabled": true,
+      "allowlist": []
+    },
     "force_local_spelling": "canadian"
   },
   "humanizer_variance": {
@@ -425,6 +429,11 @@ Example (defaults shown):
 - `inline_header_list_keep_rate` (0–1): if the input uses inline-header list style (e.g., `- **Label:** text`) **at or above** this ratio, the “avoid inline-header lists” guideline is dropped.
 - `avoid_em_dashes` (boolean): when true, em‑dashes are always removed in the output regardless of other signals.
 - `emoji_policy` (`remove`, `replace`, or `none`): remove emojis, replace common ones with conventional monochrome symbols, or disable emoji handling.
+- `normalize_double_quotes` (boolean): when true, curly double quotes are normalized to straight quotes.
+- `sanitize_heading_qualifiers` (boolean or object): when true (or enabled), trailing parenthetical/comma qualifiers in headings are removed if the remaining title still has at least two words.
+  - `enabled` (boolean): turn the sanitizer on/off.
+  - `allowlist` (array of regex strings): headings that match any pattern are exempt from qualifier stripping.
+- `force_local_spelling` (`none`, `canadian`, `australian`, `british`, `us`): force a locale-specific spelling pass on the final output.
 - `humanizer_variance.enabled` (boolean): enables bounded stochastic micro‑variation during application.
 - `humanizer_variance.seed` (integer): RNG seed for deterministic runs.
 - `humanizer_variance.max_ops_per_1000w` (float): maximum number of micro‑operations per 1000 words. **Recommendation:** start at `0.5`; `0.5–1.5` is usually safe. Values above `2.0` can begin to feel noisy unless the input is highly repetitive.

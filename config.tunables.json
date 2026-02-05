@@ -13,6 +13,10 @@
     "avoid_em_dashes": true,
     "emoji_policy": "replace",
     "normalize_double_quotes": true,
+    "sanitize_heading_qualifiers": {
+      "enabled": true,
+      "allowlist": ["quick win"]
+    },
     "force_local_spelling": "canadian"
   },
   "humanizer_variance": {

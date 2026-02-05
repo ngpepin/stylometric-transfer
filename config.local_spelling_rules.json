@@ -778,6 +778,26 @@
         ]
       },
       {
+        "id": "ise_ize_humanize",
+        "variants": {
+          "us": "humanize",
+          "canadian": "humanize",
+          "british": "humanise",
+          "australian": "humanise"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed",
+          "ation",
+          "ations"
+        ]
+      },
+      {
         "id": "ise_ize_prioritize",
         "variants": {
           "us": "prioritize",
