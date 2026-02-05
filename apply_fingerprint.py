@@ -1174,6 +1174,11 @@ def normalize_summary(summary: str, max_words: int | None) -> str:
     summary = " ".join(summary.split()).strip()
     if not summary:
         return ""
+    # Deterministic cleanup: avoid "this passage/section/chunk" phrasing for prior context.
+    summary = re.sub(r"\\bthis\\s+passage\\b", "the previous passage", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bthis\\s+section\\b", "the previous section", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bthis\\s+chunk\\b", "the previous chunk", summary, flags=re.IGNORECASE)
+    summary = re.sub(r"\\bin\\s+this\\s+summary\\b", "in the previous summary", summary, flags=re.IGNORECASE)
     if isinstance(max_words, int) and max_words > 0:
         tokens = summary.split()
         if len(tokens) > max_words:
