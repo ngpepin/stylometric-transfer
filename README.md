@@ -236,7 +236,7 @@ Notes:
 
 `apply_fingerprint.py` uses `config.tunables.json` to determine which humanizer guidelines conflict with the fingerprint or the input Markdown style. Any rule that conflicts is dropped before prompting. `fingerprint_style.py` can also embed a `tunables_snapshot` under `metadata.extraction` to preserve the exact tunables used during profile creation.
 
-Example (defaults shown):
+Example (`config.tunables.json` project configuration example):
 
 ```json
 {
@@ -257,18 +257,18 @@ Example (defaults shown):
     "heading_case_normalization": "by-level",
     "heading_case_by_level": {
       "h1": "title-case",
-      "h2": "sentence-case",
-      "h3": "identical",
-      "h4": "automatic",
-      "h5": "caps",
-      "h6": "lower",
-      "h7": "automatic",
-      "h8": "automatic"
+      "h2": "title-case",
+      "h3": "title-case",
+      "h4": "sentence-case",
+      "h5": "identical",
+      "h6": "automatic",
+      "h7": "lower",
+      "h8": "upper"
     },
     "preserve_proper_name_case": true,
     "sanitize_heading_qualifiers": {
       "enabled": true,
-      "allowlist": []
+      "allowlist": ["quick win"]
     },
     "force_local_spelling": "canadian"
   },
@@ -323,7 +323,7 @@ Example (defaults shown):
     ],
     "feedback_enabled": true,
     "feedback_tolerance": 0.35,
-    "max_feedback_retries": 2
+    "max_feedback_retries": 3
   },
   "lexical_signals": {
     "rare_words_limit": 100
@@ -333,7 +333,7 @@ Example (defaults shown):
   },
   "controls_normalization": {
     "rewrite_policy": {
-      "jaccard_threshold": 0.7,
+      "jaccard_threshold": 0.6,
       "dedupe_on_subset": true,
       "prefer_more_specific": true,
       "compress_directives": true,
@@ -395,11 +395,11 @@ Example (defaults shown):
     "quoted_ratio_force": 0.08
   },
   "chunking": {
-    "max_input_tokens": 6000,
+    "max_input_tokens": 5750,
     "chunk_split_on": "sentence",
     "chunk_summary": {
-      "enabled": false,
-      "summary_words": 25
+      "enabled": true,
+      "summary_words": 50
     },
     "min_chunks_when_perturbing": 2,
     "recovery_split_max_depth": 2,
@@ -414,8 +414,8 @@ Example (defaults shown):
   },
   "style_retry": {
     "enabled": true,
-    "threshold": 0.75,
-    "max_retries": 3,
+    "threshold": 0.60,
+    "max_retries": 2,
     "voice_max_retries": 2
   },
   "section_restore": {
@@ -533,7 +533,7 @@ Example (defaults shown):
 - `chunking.chunk_split_on` (`word`, `sentence`, or `paragraph`): primary unit for chunking. `sentence` is default. If a paragraph exceeds the token budget, it falls back to sentence splitting for that chunk; if a single sentence is still too long, it falls back to word splitting just for that chunk. Bullet/numbered list lines are treated as sentence units even without terminal punctuation.
 - `chunking.chunk_summary.enabled` (boolean): when true, each chunk asks the LLM for a short rolling summary of the “gist so far” to carry into the next chunk. This helps maintain narrative/topic continuity across many chunks and is excluded from the final output.
 - Retry optimisation: the chunk summary is requested on attempt 1 only, then reused across style/voice retries to reduce prompt tokens. Exception: if the first summary is empty or meta/task-focused, one refresh request is allowed on a later attempt. The final chunk does not request a summary.
-- `chunking.chunk_summary.summary_words` (integer): target word count for the rolling summary (default `25`). Keep small to minimise token overhead.
+- `chunking.chunk_summary.summary_words` (integer): target word count for the rolling summary (project config currently `50`; internal fallback default `25`). Keep small to minimise token overhead.
 - `chunking.min_chunks_when_perturbing` (integer): enforce a minimum number of chunks when perturbations are enabled (humanizer variance or controller overlays), so variability has room to express.
 - `chunking.recovery_split_max_depth` (integer): when the LLM repeatedly returns invalid output for a chunk, this controls how many recursive recovery splits may be attempted.
 - `chunking.recovery_split_min_chars` (integer): minimum chunk size (in characters) before attempting recovery splitting; smaller chunks are preserved verbatim instead.
@@ -546,8 +546,8 @@ Example (defaults shown):
 **Style/Voice Retry Budgets (`style_retry`)**
 *These budgets cap compliance retries and forced-person voice retries for each chunk.*
 - `style_retry.enabled` (boolean): enable/disable the delta‑feedback retry pass after measuring style compliance.
-- `style_retry.threshold` (0–1): retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold-based retries, while `1.0` retries unless the output is nearly perfect.
-- `style_retry.max_retries` (integer): maximum retry passes for the style loop.
+- `style_retry.threshold` (0–1): retry when compliance score is below this threshold (project config currently `0.60`; internal fallback default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold-based retries, while `1.0` retries unless the output is nearly perfect.
+- `style_retry.max_retries` (integer): maximum additional retry passes for the style loop after the initial attempt.
 - `style_retry.voice_max_retries` (integer): maximum retry passes for the forced-person voice loop (`--1st-person` / `--2nd-person` / `--3rd-person`). If omitted, it inherits `style_retry.max_retries`.
 
 **Section Restoration (`section_restore`)**
@@ -579,7 +579,7 @@ All thresholds are conservative defaults. Lowering a threshold increases the lik
 - `style_retry.threshold`:
   If local compliance score is below threshold, a style retry pass is attempted (subject to `style_retry.max_retries`).
 - `style_retry.max_retries`:
-  Sets retry budget for the style loop.
+  Sets retry budget for the style loop (additional passes after the base attempt).
 - `style_retry.voice_max_retries`:
   Sets retry budget for the voice loop when forced-person mode is enabled. If absent, uses `style_retry.max_retries`.
 - `humanization_controller.max_feedback_retries`:
@@ -682,7 +682,7 @@ Alternatively, use the wrapper script:
 
 Specify a non-default configuration path with `-c/--config`. Progress logging is enabled with `-v/--verbose`. `-f/--fingerprint` appends `.json` if no extension is given. Long inputs are chunked automatically based on `max_prompt_tokens`; override this with `--max-prompt-tokens`.
 
-Style compliance is scored locally. If the score falls below the threshold, the system retries once by default and produces a delta report (disable with `--no-style-retry`, adjust with `--style-retry-threshold` or `--max-style-retries`).
+Style compliance is scored locally. If the score falls below the threshold, the system performs bounded retry passes according to `style_retry` tunables (or CLI overrides) and produces delta feedback between attempts (disable with `--no-style-retry`, adjust with `--style-retry-threshold` or `--max-style-retries`).
 
 If `general-guidelines.md` is present in the repository root or next to the scripts, its humanization rules (adapted from softaworks/agent-toolkit by @leonardocouy) are parsed with an LLM by default. Deterministically conflicting guidance (based on fingerprint signals such as em-dash rate, hedging or first-person use) is dropped before prompting. This introduces one additional LLM call when enabled. Parsed rules are cached in `humanizer_rules.cache.json` next to the scripts and are only re-parsed when `general-guidelines.md` changes. LLM parsing can be disabled via `--no-humanizer-llm-parse`, or the guidelines can be disabled entirely via `--no-humanizer-guidelines`.
 
@@ -885,7 +885,7 @@ Recommended practice:
 Planned extensions:
 - [ ] JSON Schema validation (`jsonschema`)
 - [ ] HTML / PDF corpus ingestion
-- [ ] Streaming and retry/backoff support
+- [ ] Streaming support for long-running LLM calls
 - [ ] Style similarity scoring CLI
 - [ ] Batch rewriting
 - [ ] Fine-grained constraint toggles

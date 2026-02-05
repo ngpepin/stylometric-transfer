@@ -92,12 +92,15 @@ Avoid ambiguous terms like “clone” in public documentation.
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
   - Overrides: `--1st-person` / `--2nd-person` / `--3rd-person` force narrative voice regardless of fingerprint
+  - Runtime overrides: `--local-spelling {none|canadian|australian|british|us}` and `--seed [N]` (omitted value or `0` => random run seed)
 
-- `scripts/fingerprint_style.sh` and `scripts/apply_fingerprint.sh`
+- `scripts/fingerprint_style.sh`, `scripts/apply_fingerprint.sh`, and `scripts/show_fingerprint.sh`
   - Bash wrappers around the Python entry points
   - Pass all CLI args through unchanged
 - `show_fingerprint.py`
   - Generates a standalone HTML dashboard for a fingerprint JSON
+- `utils.py`
+  - Shared helper module for lightweight stats and text-splitting primitives used by both entry points
 
 - `prompts.json`
   - Externalized prompt templates used by both Python entry points
@@ -143,6 +146,9 @@ Avoid ambiguous terms like “clone” in public documentation.
 - `config.entity_blacklist.txt`
   - Optional entity blacklist (people, places, organizations; one per line)
   - Used to suppress proper‑name phrases during common-phrase validation
+- `config.local_spelling_rules.json`
+  - Locale spelling rules used by deterministic local-spelling enforcement in `apply_fingerprint.py`
+  - Supports direct variants, suffix variants, and context-aware variants with rule precedence
 
 ### Data Flow
 
@@ -150,6 +156,32 @@ Avoid ambiguous terms like “clone” in public documentation.
 Corpus → Voice-filtered local stats → LLM synthesis → Fingerprint JSON
 Fingerprint + Draft → Voice-filtered local stats → LLM rewrite → Styled Markdown
 ```
+
+### 3.1 Fast Onboarding for Agents
+
+If you are joining this codebase cold, do this first:
+
+1. Run `./tests/run_smoke.sh` to validate non-LLM regression health.
+2. Read `config.tunables.json` to understand active runtime behavior (many defaults are intentionally overridden there).
+3. Confirm active CLI surfaces:
+   - `python fingerprint_style.py --help`
+   - `python apply_fingerprint.py --help`
+   - `python show_fingerprint.py --help`
+4. Before changing rewrite behavior, inspect these hotspots:
+   - Retry/chunk orchestration and compliance loops in `apply_fingerprint.py`
+   - Deterministic post-processing (spelling, quotes, heading normalization) in `apply_fingerprint.py`
+   - Lexical normalization and rare/common-word filtering in `fingerprint_style.py`
+5. If a change affects tunables or CLI behavior, update all of:
+   - `README.md`
+   - `AGENTS.md`
+   - `config.tunables.schema.json`
+   - `UML-Apply.md` / `UML-Fingerprint.md` (if flow changed)
+
+Common pitfalls:
+- Retry counts are **additional passes** after attempt 1 (`max_retries=2` means up to 3 total attempts in that loop).
+- Voice and style retry budgets are separate in forced-person mode; do not assume one shared budget.
+- `humanization_controller.max_feedback_retries` only gates controller feedback injection, not total retry count.
+- Soft lexical-avoid matching is US-normalized for comparison; final output spelling is localized afterward.
 
 ---
 
@@ -348,21 +380,22 @@ High‑value next steps, in priority order:
 
 ### Phase 1 — Reliability
 
-- [ ] Add retry + exponential backoff wrapper for API calls  
-- [ ] Add request timeout + cancellation handling  
-- [ ] Add logging verbosity flag  
+- [x] Add retry + exponential backoff wrapper for API calls  
+- [x] Add request timeout handling  
+- [x] Add logging verbosity flag  
 
 ### Phase 2 — Validation
 
-- [ ] Add JSON Schema file (`schema/style_fingerprint.schema.json`)  
-- [ ] Validate fingerprint outputs with `jsonschema`  
+- [ ] Align/centralize fingerprint schema location and naming (current schema file exists as `style_fingerprint_schema.json`)  
+- [ ] Validate fingerprint outputs against schema in runtime and CI  
 - [ ] Emit warnings on missing or null critical fields  
 
 ### Phase 3 — Scoring & Feedback
 
-- [ ] Add post‑rewrite scoring against fingerprint  
-- [ ] Compute divergence metrics (sentence length, punctuation)  
-- [ ] Emit compliance score (0–1)  
+- [x] Add post‑rewrite scoring against fingerprint  
+- [x] Compute divergence metrics (sentence length, punctuation)  
+- [x] Emit compliance score (0–1)  
+- [ ] Add per-chunk compliance reason breakdowns (top failed constraints) for operator diagnostics
 
 ### Phase 4 — Tooling
 
