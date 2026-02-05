@@ -25,6 +25,7 @@
         "avoid_em_dashes": { "type": "boolean" },
         "emoji_policy": { "type": "string", "enum": ["remove", "replace", "none"] },
         "normalize_double_quotes": { "type": "boolean" },
+        "allow_heading_case_changes": { "type": "boolean" },
         "sanitize_heading_qualifiers": {
           "oneOf": [
             { "type": "boolean" },

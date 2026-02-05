@@ -13,6 +13,7 @@
     "avoid_em_dashes": true,
     "emoji_policy": "replace",
     "normalize_double_quotes": true,
+    "allow_heading_case_changes": false,
     "sanitize_heading_qualifiers": {
       "enabled": true,
       "allowlist": ["quick win"]

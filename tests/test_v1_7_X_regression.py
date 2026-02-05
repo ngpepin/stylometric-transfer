@@ -244,6 +244,60 @@ class TestV17XRegression(unittest.TestCase):
         self.assertIn("## Code changes (quick fix)", updated)
         self.assertEqual(count, 0)
 
+    def test_transfer_heading_casing_positionally(self) -> None:
+        source = "Humanisation, defined carefully"
+        rewritten = "humanization, Defined Carefully"
+        updated = af.transfer_heading_casing(source, rewritten)
+        self.assertEqual(updated, "Humanization, defined carefully")
+
+    def test_enforce_heading_casing_from_source(self) -> None:
+        source_md = "# Humanisation, defined carefully\n\n## CODE CHANGES (QUICK FIX)\n"
+        rewritten_md = "# humanization, Defined carefully\n\n## code changes (quick fix)\n"
+        updated, edits = af.enforce_heading_casing_from_source(source_md, rewritten_md)
+        self.assertGreaterEqual(edits, 2)
+        self.assertIn("# Humanization, defined carefully", updated)
+        self.assertIn("## CODE CHANGES (QUICK FIX)", updated)
+
+    def test_filter_humanizer_rules_drops_title_case_rule_when_heading_case_locked(self) -> None:
+        rules = [{"title": "Title Case in Headings", "words_to_watch": []}]
+        _, dropped = af.filter_humanizer_rules(
+            rules,
+            {},
+            input_style={"heading_title_case_rate": 0.1, "boldface_per_1000w": 0.0, "inline_header_list_rate": 0.0},
+            tunables={"humanizer_mandatory": {"allow_heading_case_changes": False}},
+        )
+        self.assertEqual(len(dropped), 1)
+        self.assertIn("Heading case changes disabled", dropped[0].get("drop_reason", ""))
+
+    def test_heading_case_lock_with_spelling_forced_qualifier_retained(self) -> None:
+        rules = af.load_local_spelling_rules()
+        source_md = "# John Black has a color in his name (take note!)\n"
+        rewritten_md = "# john black Has a color in HIS name (take note!)\n"
+        localized, _ = af.enforce_local_spelling_guarded(
+            rewritten_md,
+            "canadian",
+            rules,
+            preserve_multiword_quotes=False,
+        )
+        updated, edits = af.enforce_heading_casing_from_source(source_md, localized)
+        self.assertGreaterEqual(edits, 1)
+        self.assertIn("# John Black has a colour in his name (take note!)", updated)
+
+    def test_heading_case_lock_with_spelling_forced_qualifier_removed(self) -> None:
+        rules = af.load_local_spelling_rules()
+        source_md = "# John Black has a color in his name (take note!)\n"
+        rewritten_md = "# john black Has a color in HIS name\n"
+        localized, _ = af.enforce_local_spelling_guarded(
+            rewritten_md,
+            "canadian",
+            rules,
+            preserve_multiword_quotes=False,
+        )
+        updated, edits = af.enforce_heading_casing_from_source(source_md, localized)
+        self.assertGreaterEqual(edits, 1)
+        self.assertIn("# John Black has a colour in his name", updated)
+        self.assertNotIn("(take note!)", updated)
+
     def test_force_local_spelling_canadian(self) -> None:
         rules = af.load_local_spelling_rules()
         text = "The color of the center meter is gray. She will license the program."

@@ -254,6 +254,7 @@ Example (defaults shown):
     "avoid_em_dashes": true,
     "emoji_policy": "replace",
     "normalize_double_quotes": true,
+    "allow_heading_case_changes": false,
     "sanitize_heading_qualifiers": {
       "enabled": true,
       "allowlist": []
@@ -433,6 +434,7 @@ Example (defaults shown):
 - `avoid_em_dashes` (boolean): when true, em‑dashes are always removed in the output regardless of other signals.
 - `emoji_policy` (`remove`, `replace`, or `none`): remove emojis, replace common ones with conventional monochrome symbols, or disable emoji handling.
 - `normalize_double_quotes` (boolean): when true, curly double quotes are normalized to straight quotes.
+- `allow_heading_case_changes` (boolean): when false (default), heading case style from the source document is restored during finalization. This deterministically prevents LLM drift between sentence case/title case/all caps. When false, heading-case humanizer rules (for example “Title Case in Headings”) are dropped and reported in the dropped-rules log.
 - `sanitize_heading_qualifiers` (boolean or object): when true (or enabled), trailing parenthetical/comma qualifiers in headings are removed if the remaining title still has at least two words.
   - `enabled` (boolean): turn the sanitizer on/off.
   - `allowlist` (array of regex strings): headings that match any pattern are exempt from qualifier stripping.

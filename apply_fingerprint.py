@@ -94,7 +94,8 @@ DEFAULT_TUNABLES = {
     },
     "humanizer_mandatory": {
         "avoid_em_dashes": False,
-        "emoji_policy": "remove"
+        "emoji_policy": "remove",
+        "allow_heading_case_changes": False
     },
     "section_restore": {
         "enabled": True,
@@ -998,6 +999,12 @@ def get_heading_qualifier_sanitize_conf(
         allowlist = [str(item) for item in allowlist if isinstance(item, (str, int, float))]
         return bool(enabled), allowlist
     return bool(conf), []
+
+
+# Function: Decide whether heading casing is allowed to change.
+def allow_heading_case_changes(tunables: Dict[str, Any] | None) -> bool:
+    mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
+    return bool(mandatory.get("allow_heading_case_changes", False))
 
 
 # Function: Get force local spelling.
@@ -2260,6 +2267,164 @@ def get_heading_at(lines: List[str], idx: int) -> tuple[int, str, int] | None:
     return None
 
 
+# Function: Detect per-word case pattern.
+def _word_case_pattern(word: str) -> str:
+    if word.isupper():
+        return "upper"
+    if word.islower():
+        return "lower"
+    if word[:1].isupper() and word[1:].islower():
+        return "capitalized"
+    return "mixed"
+
+
+# Function: Apply per-word case pattern.
+def _apply_word_case_pattern(word: str, pattern: str) -> str:
+    if pattern == "upper":
+        return word.upper()
+    if pattern == "lower":
+        return word.lower()
+    if pattern == "capitalized":
+        return word[:1].upper() + word[1:].lower()
+    return word
+
+
+# Function: Transfer heading casing from source heading to rewritten heading text.
+def transfer_heading_casing(source_heading: str, rewritten_heading: str) -> str:
+    # Prefer token-position case transfer; fallback to coarse style transfer when token counts differ.
+    word_re = re.compile(r"[A-Za-z][A-Za-z']*")
+    src_matches = list(word_re.finditer(source_heading))
+    dst_matches = list(word_re.finditer(rewritten_heading))
+    if not dst_matches:
+        return rewritten_heading
+
+    if src_matches and len(src_matches) == len(dst_matches):
+        patterns = [_word_case_pattern(m.group(0)) for m in src_matches]
+        idx = 0
+
+        # Function: Apply source pattern by word position.
+        def repl(match: re.Match[str]) -> str:
+            nonlocal idx
+            pattern = patterns[idx] if idx < len(patterns) else "mixed"
+            idx += 1
+            return _apply_word_case_pattern(match.group(0), pattern)
+
+        return word_re.sub(repl, rewritten_heading)
+
+    if src_matches:
+        # If token counts differ (e.g., qualifier removed), preserve case pattern for aligned prefix tokens.
+        patterns = [_word_case_pattern(m.group(0)) for m in src_matches]
+        idx = 0
+
+        # Function: Apply source pattern to available prefix positions only.
+        def repl_prefix(match: re.Match[str]) -> str:
+            nonlocal idx
+            word = match.group(0)
+            if idx < len(patterns):
+                out = _apply_word_case_pattern(word, patterns[idx])
+            else:
+                out = word
+            idx += 1
+            return out
+
+        return word_re.sub(repl_prefix, rewritten_heading)
+
+    src_words = [m.group(0) for m in src_matches]
+    if src_words and all(w.isupper() for w in src_words):
+        return rewritten_heading.upper()
+    if src_words and all(w.islower() for w in src_words):
+        return rewritten_heading.lower()
+
+    cap_count = sum(1 for w in src_words if w[:1].isupper())
+    title_like = bool(src_words) and cap_count / max(1, len(src_words)) >= 0.6
+    if title_like:
+        small_words = {
+            "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "nor", "of",
+            "on", "or", "per", "the", "to", "vs", "via", "with"
+        }
+        all_words = list(word_re.finditer(rewritten_heading))
+        total = len(all_words)
+        idx = 0
+
+        # Function: Apply title-like casing while preserving acronyms.
+        def repl_title(match: re.Match[str]) -> str:
+            nonlocal idx
+            idx += 1
+            word = match.group(0)
+            lower = word.lower()
+            if word.isupper() and len(word) > 1:
+                return word
+            if 1 < idx < total and lower in small_words:
+                return lower
+            return word[:1].upper() + word[1:].lower()
+
+        return word_re.sub(repl_title, rewritten_heading)
+
+    # Sentence-like fallback: preserve acronyms, lower others, capitalize first alpha word.
+    alpha_words = list(word_re.finditer(rewritten_heading))
+    if not alpha_words:
+        return rewritten_heading
+    first_idx = alpha_words[0].start()
+    out = rewritten_heading.lower()
+    out = out[:first_idx] + out[first_idx:first_idx + 1].upper() + out[first_idx + 1:]
+    for match in alpha_words:
+        word = rewritten_heading[match.start():match.end()]
+        if word.isupper() and len(word) > 1:
+            out = out[:match.start()] + word + out[match.end():]
+    return out
+
+
+# Function: Enforce source heading casing in rewritten markdown.
+def enforce_heading_casing_from_source(source_markdown: str, rewritten_markdown: str) -> tuple[str, int]:
+    # Keep rewritten heading wording but transfer original case style by heading order.
+    src_lines = source_markdown.splitlines()
+    out_lines = rewritten_markdown.splitlines()
+    src_headings: List[tuple[int, str]] = []
+    out_headings: List[tuple[int, int, str, int]] = []
+
+    i = 0
+    while i < len(src_lines):
+        h = get_heading_at(src_lines, i)
+        if h:
+            level, heading_text, span = h
+            src_headings.append((level, heading_text))
+            i += span
+            continue
+        i += 1
+
+    i = 0
+    while i < len(out_lines):
+        h = get_heading_at(out_lines, i)
+        if h:
+            level, heading_text, span = h
+            out_headings.append((i, level, heading_text, span))
+            i += span
+            continue
+        i += 1
+
+    edits = 0
+    limit = min(len(src_headings), len(out_headings))
+    for idx in range(limit):
+        src_level, src_text = src_headings[idx]
+        out_idx, out_level, out_text, _out_span = out_headings[idx]
+        if src_level != out_level:
+            continue
+        recased = transfer_heading_casing(src_text, out_text)
+        if recased == out_text:
+            continue
+        m = ATX_HEADING_RE.match(out_lines[out_idx])
+        if m:
+            out_lines[out_idx] = out_lines[out_idx][:m.start(2)] + recased + out_lines[out_idx][m.end(2):]
+            edits += 1
+            continue
+        prefix_match = re.match(r"^(\s*)", out_lines[out_idx])
+        prefix = prefix_match.group(1) if prefix_match else ""
+        out_lines[out_idx] = f"{prefix}{recased}"
+        edits += 1
+
+    return "\n".join(out_lines), edits
+
+
 # Function: Check whether reference heading.
 def is_reference_heading(text: str) -> bool:
     return normalize_heading_text(text) in REFERENCE_HEADINGS
@@ -2956,11 +3121,13 @@ def filter_humanizer_rules(
 
     em_dash_forbidden = False
     emoji_policy = None
+    heading_case_changes_allowed = False
     if isinstance(tunables, dict):
         mandatory = tunables.get("humanizer_mandatory", {})
         if isinstance(mandatory, dict):
             em_dash_forbidden = bool(mandatory.get("avoid_em_dashes", False))
             emoji_policy = mandatory.get("emoji_policy")
+            heading_case_changes_allowed = bool(mandatory.get("allow_heading_case_changes", False))
 
     # Function: Collect style context.
     def collect_style_context() -> str:
@@ -3044,7 +3211,9 @@ def filter_humanizer_rules(
             title_case_rate = float(input_style.get("heading_title_case_rate", 0.0))
             bold_rate = float(input_style.get("boldface_per_1000w", 0.0))
             inline_header_rate = float(input_style.get("inline_header_list_rate", 0.0))
-            if "title case" in title and title_case_rate >= heading_title_case_keep_rate:
+            if "title case" in title and not heading_case_changes_allowed:
+                drop_reason = "Heading case changes disabled by humanizer_mandatory."
+            elif "title case" in title and title_case_rate >= heading_title_case_keep_rate:
                 drop_reason = "Input headings use Title Case."
             if "boldface" in title and bold_rate >= boldface_keep_per_1000w:
                 drop_reason = "Input uses boldface frequently."
@@ -4951,6 +5120,7 @@ def main() -> int:
     normalize_double_quotes = should_normalize_double_quotes(tunables)
     sanitize_heading_qualifiers, heading_allowlist_raw = get_heading_qualifier_sanitize_conf(tunables)
     heading_allowlist = compile_heading_allowlist(heading_allowlist_raw) if sanitize_heading_qualifiers else []
+    heading_case_changes_allowed = allow_heading_case_changes(tunables)
     force_local_spelling = args.local_spelling or get_force_local_spelling(tunables)
     if args.local_spelling and args.verbose:
         vprint(f"Local spelling override: {force_local_spelling} (CLI)")
@@ -5014,6 +5184,8 @@ def main() -> int:
                     "Hard constraint active: heading qualifiers will be sanitized (humanizer_mandatory)."
                     + allowlist_note
                 )
+            if not heading_case_changes_allowed:
+                vprint("Hard constraint active: original heading casing will be preserved (humanizer_mandatory).")
             if force_local_spelling != "none":
                 vprint(f"Hard constraint active: {force_local_spelling} spelling enforced (humanizer_mandatory).")
             if emoji_policy and str(emoji_policy) != "none":
@@ -6227,6 +6399,14 @@ def main() -> int:
                 "rule_or_field": "orthography.local_spelling",
                 "reason": f"Re-applied {force_local_spelling} spelling after section restoration.",
                 "count": post_restore_replacements,
+            })
+    if not heading_case_changes_allowed:
+        final_md, heading_case_edits = enforce_heading_casing_from_source(original_input_md, final_md)
+        if heading_case_edits:
+            all_deviations.append({
+                "rule_or_field": "structure.heading_case",
+                "reason": "Restored source heading case style (humanizer_mandatory).",
+                "count": heading_case_edits,
             })
     line_count_in = len(original_input_md.splitlines())
     line_count_out = len(final_md.splitlines())

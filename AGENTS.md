@@ -107,7 +107,7 @@ Avoid ambiguous terms like “clone” in public documentation.
 - `config.tunables.json`
   - Overrides humanizer conflict thresholds for `apply_fingerprint.py`
   - See README for per‑field explanations and defaults
-  - Includes mandatory humanizer controls (em‑dash ban, emoji policy, heading qualifier sanitization)
+  - Includes mandatory humanizer controls (em‑dash ban, emoji policy, heading qualifier sanitization, optional heading-case lock)
   - Includes bounded stochastic variance controls (seeded micro‑operations)
   - Includes style retry controls (delta‑feedback retries) with separate voice/style caps in forced-person mode
   - `style_retry.max_retries` caps style-loop retries; `style_retry.voice_max_retries` (optional) independently caps voice-loop retries in forced-person mode
