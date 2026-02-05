@@ -379,6 +379,13 @@ class TestV17XRegression(unittest.TestCase):
         normalized = af.normalize_summary(summary, 50)
         self.assertTrue(normalized.startswith("The previous passage"))
 
+    def test_summary_requested_only_on_first_attempt(self) -> None:
+        self.assertTrue(af.should_request_chunk_summary(1, True, False, False))
+        self.assertFalse(af.should_request_chunk_summary(2, True, False, False))
+        self.assertFalse(af.should_request_chunk_summary(1, False, False, False))
+        self.assertFalse(af.should_request_chunk_summary(1, True, True, False))
+        self.assertTrue(af.should_request_chunk_summary(2, True, False, True))
+
     def test_force_local_spelling_canadian_exceptions(self) -> None:
         rules = af.load_local_spelling_rules()
         text = "He replaced the tyre whilst he spelled the word."

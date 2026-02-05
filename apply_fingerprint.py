@@ -1954,6 +1954,20 @@ def summary_is_meta(text: str) -> bool:
     return any(pat in lowered for pat in META_SUMMARY_PATTERNS)
 
 
+# Function: Decide when to request chunk summary generation.
+def should_request_chunk_summary(
+    attempt_no: int,
+    summary_enabled: bool,
+    is_last_chunk: bool,
+    refresh_after_bad_first: bool = False,
+) -> bool:
+    if not summary_enabled or is_last_chunk:
+        return False
+    if attempt_no == 1:
+        return True
+    return bool(refresh_after_bad_first)
+
+
 # Function: Normalize a chunk summary for continuity.
 def normalize_summary(summary: str, max_words: int | None) -> str:
     if not isinstance(summary, str):
@@ -5385,8 +5399,21 @@ def main() -> int:
         style_feedback: Dict[str, Any] | None = None
         last_out: Dict[str, Any] = {}
         max_chunk_attempts = 1 + args.max_style_retries + (max_voice_retries if args.force_person else 0)
+        first_attempt_summary: str | None = None
+        refresh_summary_after_bad_first = False
+        is_last_chunk = bool(
+            chunk_index is not None
+            and chunk_total is not None
+            and chunk_index == chunk_total
+        )
         while True:
             attempt_global += 1
+            request_chunk_summary = should_request_chunk_summary(
+                attempt_global,
+                summary_enabled,
+                is_last_chunk,
+                refresh_summary_after_bad_first,
+            )
             messages = build_messages_for_chunk(
                 md_chunk,
                 style_feedback,
@@ -5395,7 +5422,7 @@ def main() -> int:
                 controller_overlay,
                 previous_summary,
                 summary_words,
-                summary_enabled
+                request_chunk_summary
             )
             input_tokens = estimate_tokens_for_messages(messages)
             last_raw = ""
@@ -5675,34 +5702,47 @@ def main() -> int:
                         vprint(f"  Pronoun override detail: {format_pronoun_override_debug(override_eval)}")
 
             if summary_enabled:
-                llm_summary = out_obj.get("chunk_summary") if isinstance(out_obj, dict) else None
-                summary = llm_summary if isinstance(llm_summary, str) else ""
-                if not summary.strip():
-                    fallback = build_semantic_fallback_summary(final_md, summary_words)
-                    summary = normalize_summary(fallback, summary_words)
-                    if args.verbose and chunk_index is not None and chunk_total is not None:
-                        vprint(
-                            f"Chunk {chunk_index}/{chunk_total} summary fallback (LLM empty)."
-                        )
-                        vprint(f"  LLM summary: (empty)")
-                        vprint(f"  Fallback summary: {summary}")
-                else:
-                    summary = normalize_summary(summary, summary_words)
-                    if summary and summary_is_meta(summary):
+                if request_chunk_summary:
+                    llm_summary = out_obj.get("chunk_summary") if isinstance(out_obj, dict) else None
+                    summary = llm_summary if isinstance(llm_summary, str) else ""
+                    summary_was_fallback = False
+                    if not summary.strip():
                         fallback = build_semantic_fallback_summary(final_md, summary_words)
                         summary = normalize_summary(fallback, summary_words)
+                        summary_was_fallback = True
                         if args.verbose and chunk_index is not None and chunk_total is not None:
                             vprint(
-                                f"Chunk {chunk_index}/{chunk_total} summary fallback (LLM meta/task-focused)."
+                                f"Chunk {chunk_index}/{chunk_total} summary fallback (LLM empty)."
                             )
-                            vprint(f"  LLM summary: {normalize_summary(llm_summary, summary_words)}")
+                            vprint("  LLM summary: (empty)")
                             vprint(f"  Fallback summary: {summary}")
-                out_obj["chunk_summary"] = summary
-                if args.verbose and chunk_index is not None and chunk_total is not None:
-                    vprint(
-                        f"Chunk {chunk_index}/{chunk_total} summary "
-                        f"({len(summary.split())} words): {summary}"
-                    )
+                    else:
+                        summary = normalize_summary(summary, summary_words)
+                        if summary and summary_is_meta(summary):
+                            fallback = build_semantic_fallback_summary(final_md, summary_words)
+                            summary = normalize_summary(fallback, summary_words)
+                            summary_was_fallback = True
+                            if args.verbose and chunk_index is not None and chunk_total is not None:
+                                vprint(
+                                    f"Chunk {chunk_index}/{chunk_total} summary fallback (LLM meta/task-focused)."
+                                )
+                                vprint(f"  LLM summary: {normalize_summary(llm_summary, summary_words)}")
+                                vprint(f"  Fallback summary: {summary}")
+                    first_attempt_summary = summary
+                    if attempt_global == 1 and summary_was_fallback:
+                        # Allow one refresh attempt when first summary is empty/meta.
+                        refresh_summary_after_bad_first = True
+                    else:
+                        refresh_summary_after_bad_first = False
+                    out_obj["chunk_summary"] = summary
+                    if args.verbose and chunk_index is not None and chunk_total is not None:
+                        origin = "refresh" if attempt_global > 1 else "attempt 1"
+                        vprint(
+                            f"Chunk {chunk_index}/{chunk_total} summary "
+                            f"({len(summary.split())} words, {origin}): {summary}"
+                        )
+                elif first_attempt_summary is not None:
+                    out_obj["chunk_summary"] = first_attempt_summary
 
             compliance = compute_style_compliance(fingerprint, filter_author_voice_text(final_md))
             score_val = compliance.get("score") if isinstance(compliance, dict) else None
