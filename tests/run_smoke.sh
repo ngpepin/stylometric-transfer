@@ -10,7 +10,45 @@ set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 # Allow overriding the config path (defaults to repo root config.llm.json).
-CONFIG_PATH=${1:-"$ROOT_DIR/config.llm.json"}
+CONFIG_PATH="$ROOT_DIR/config.llm.json"
+RUN_LLM_TESTS=0
+
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") [--llm-tests] [-c CONFIG] [CONFIG]
+
+Options:
+  --llm-tests   Run LLM connectivity + end-to-end pipeline smoke tests (off by default).
+  -c, --config  Path to config.llm.json (defaults to repo root config).
+  CONFIG        Optional positional config path (backward compatible).
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --llm-tests)
+      RUN_LLM_TESTS=1
+      shift
+      ;;
+    -c|--config)
+      CONFIG_PATH="${2:-}"
+      if [[ -z "$CONFIG_PATH" ]]; then
+        echo "Missing config path after $1" >&2
+        exit 2
+      fi
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      # Backward-compatible positional config argument.
+      CONFIG_PATH="$1"
+      shift
+      ;;
+  esac
+done
 ARTIFACTS_DIR="$ROOT_DIR/tests/_artifacts"
 FIXTURES_DIR="$ROOT_DIR/tests/fixtures"
 
@@ -27,17 +65,18 @@ mkdir -p "$ARTIFACTS_DIR"
 "$ROOT_DIR/tests/run_v1_5_X_regression.sh"
 "$ROOT_DIR/tests/run_v1_7_X_regression.sh"
 
-# LLM connectivity smoke test (requires API config).
-LLM_SMOKE_CONFIG="$CONFIG_PATH" python "$ROOT_DIR/tests/test_llm_smoke.py"
+if [[ "$RUN_LLM_TESTS" -eq 1 ]]; then
+  # LLM connectivity smoke test (requires API config).
+  LLM_SMOKE_CONFIG="$CONFIG_PATH" python "$ROOT_DIR/tests/test_llm_smoke.py"
 
-CORPUS_MD="$FIXTURES_DIR/corpus.md"
-INPUT_MD="$FIXTURES_DIR/input.md"
-CORPUS_ZIP="$ARTIFACTS_DIR/corpus.zip"
-FINGERPRINT_JSON="$ARTIFACTS_DIR/fingerprint.json"
-OUTPUT_MD="$ARTIFACTS_DIR/input.styled.md"
+  CORPUS_MD="$FIXTURES_DIR/corpus.md"
+  INPUT_MD="$FIXTURES_DIR/input.md"
+  CORPUS_ZIP="$ARTIFACTS_DIR/corpus.zip"
+  FINGERPRINT_JSON="$ARTIFACTS_DIR/fingerprint.json"
+  OUTPUT_MD="$ARTIFACTS_DIR/input.styled.md"
 
-# Create a tiny corpus archive from the fixture.
-python - <<PY
+  # Create a tiny corpus archive from the fixture.
+  python - <<PY
 import zipfile
 from pathlib import Path
 corpus_md = Path("$CORPUS_MD")
@@ -46,24 +85,24 @@ with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
     zf.write(corpus_md, arcname=corpus_md.name)
 PY
 
-# Run fingerprinting using the minimal corpus.
-python "$ROOT_DIR/fingerprint_style.py" \
-  -a "$CORPUS_ZIP" \
-  -o "$FINGERPRINT_JSON" \
-  -c "$CONFIG_PATH" \
-  --max-files 1 \
-  --max-bytes-per-file 50000 \
-  --excerpt-char-budget 3000
+  # Run fingerprinting using the minimal corpus.
+  python "$ROOT_DIR/fingerprint_style.py" \
+    -a "$CORPUS_ZIP" \
+    -o "$FINGERPRINT_JSON" \
+    -c "$CONFIG_PATH" \
+    --max-files 1 \
+    --max-bytes-per-file 50000 \
+    --excerpt-char-budget 3000
 
-# Apply the fingerprint to the input fixture.
-python "$ROOT_DIR/apply_fingerprint.py" \
-  -f "$FINGERPRINT_JSON" \
-  -i "$INPUT_MD" \
-  -o "$OUTPUT_MD" \
-  -c "$CONFIG_PATH"
+  # Apply the fingerprint to the input fixture.
+  python "$ROOT_DIR/apply_fingerprint.py" \
+    -f "$FINGERPRINT_JSON" \
+    -i "$INPUT_MD" \
+    -o "$OUTPUT_MD" \
+    -c "$CONFIG_PATH"
 
-# Sanity-check outputs.
-python - <<PY
+  # Sanity-check outputs.
+  python - <<PY
 import json
 from pathlib import Path
 fp = Path("$FINGERPRINT_JSON")
@@ -78,4 +117,7 @@ if not out_md.read_text(encoding="utf-8").strip():
     raise SystemExit("styled markdown empty")
 PY
 
-echo "Smoke test complete. Artifacts in $ARTIFACTS_DIR" 
+  echo "Smoke test complete (LLM enabled). Artifacts in $ARTIFACTS_DIR"
+else
+  echo "Smoke test complete (LLM disabled)."
+fi

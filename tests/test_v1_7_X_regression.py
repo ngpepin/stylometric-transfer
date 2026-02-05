@@ -7,6 +7,7 @@ sys.path.insert(0, str(ROOT))
 
 import fingerprint_style as fs  # noqa: E402
 import apply_fingerprint as af  # noqa: E402
+import utils as utils  # noqa: E402
 
 
 class TestV17XRegression(unittest.TestCase):
@@ -314,6 +315,39 @@ class TestV17XRegression(unittest.TestCase):
         updated, _ = af.enforce_local_spelling(text, "us", rules)
         self.assertIn("color's", updated.lower())
         self.assertIn("color-grade", updated.lower())
+
+    def test_utils_common_helpers(self) -> None:
+        text = "One token, two tokens."
+        self.assertEqual(utils.words(text), ["One", "token", "two", "tokens"])
+        self.assertEqual(utils.clamp01(-0.2), 0.0)
+        self.assertEqual(utils.clamp01(1.2), 1.0)
+        hist = utils.histogram([1, 2, 2, 3, 10], [(1, 1), (2, 2), (3, 5), (6, None)])
+        self.assertEqual(len(hist), 4)
+        self.assertAlmostEqual(sum(hist), 1.0)
+        self.assertAlmostEqual(hist[0], 0.2, places=2)
+        self.assertAlmostEqual(utils.approx_rate_per_1000_words(5, 1000), 5.0)
+        self.assertAlmostEqual(utils.safe_mean([1, 2, 3]), 2.0)
+        self.assertGreaterEqual(utils.safe_stdev([1, 2, 3]), 0.0)
+        self.assertEqual(utils.split_sentences("One. Two?"), ["One.", "Two?"])
+        self.assertEqual(utils.split_paragraphs("A\n\nB"), ["A", "B"])
+
+    def test_rare_words_filters_duplicates_and_roman_numerals(self) -> None:
+        rules = fs.load_local_spelling_rules()
+        text = (
+            "chairmanchairman xxiii reprioritised reprioritised "
+            "alpha beta gamma delta"
+        )
+        measurements = fs.compute_measurements(
+            [text],
+            rare_words_limit=20,
+            common_words=[],
+            local_spelling_rules=rules,
+        )
+        rare_words = [item.get("word") for item in measurements["lexical_signals"]["rare_words"]]
+        self.assertNotIn("chairmanchairman", rare_words)
+        self.assertNotIn("xxiii", rare_words)
+        self.assertIn("reprioritized", rare_words)
+        self.assertNotIn("reprioritised", rare_words)
 
 
 if __name__ == "__main__":

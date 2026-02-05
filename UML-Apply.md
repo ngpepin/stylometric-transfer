@@ -63,6 +63,16 @@ class StyleCompliance {
   +score: float
 }
 
+class Utils {
+  +words()
+  +split_sentences()
+  +split_paragraphs()
+  +histogram()
+  +approx_rate_per_1000_words()
+  +safe_mean()
+  +safe_stdev()
+}
+
 class StyleFingerprint {
   +lexicon: object
   +targets: object
@@ -91,6 +101,7 @@ ApplyPipeline --> StyleFingerprint
 ApplyPipeline --> HumanizerGuidelines
 ApplyPipeline --> StyleCompliance
 ApplyPipeline --> Tunables
+ApplyPipeline --> Utils
 @enduml
 ```
 
@@ -120,7 +131,7 @@ start
 :If non-fiction, mask multi-word quoted passages;
 :Mask blockquotes, references, footnotes, citations;
 
-:Compute input measurements (author-voice only);
+:Compute input measurements (author-voice only; uses shared utils);
 if (Metrics enabled?) then (yes)
   :Compute input humanization metrics;
 endif
@@ -182,6 +193,7 @@ AF -> AF : detect fiction vs non-fiction
 AF -> AF : compute variance-aware chunk sizing (optional)
 AF -> AF : mask non-voice blocks & placeholders
 AF -> AF : compute input measurements
+note right of AF : Measurements use shared utils\n(words/splits/histograms)
 AF -> AF : compute input humanization metrics (optional)
 AF -> FS : read general-guidelines.md (optional)
 AF -> LLM : parse humanizer guidelines (optional; retry on transient errors)

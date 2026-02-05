@@ -26,10 +26,12 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple, Optional
 
 
+# Function: Load JSON from disk.
 def load_json(path: Path) -> Dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+# Function: Load tunables config from disk, with fallbacks.
 def load_tunables(path: Path | None = None) -> Dict[str, Any]:
     if path and path.exists():
         try:
@@ -37,6 +39,7 @@ def load_tunables(path: Path | None = None) -> Dict[str, Any]:
             return data if isinstance(data, dict) else {}
         except Exception:
             return {}
+    # Prefer cwd config to align with CLI working directory; fallback to script dir.
     cwd_path = Path.cwd() / "config.tunables.json"
     script_path = Path(__file__).resolve().parent / "config.tunables.json"
     path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
@@ -49,10 +52,12 @@ def load_tunables(path: Path | None = None) -> Dict[str, Any]:
         return {}
 
 
+# Function: Escape text for HTML rendering.
 def esc(text: Any) -> str:
     return html.escape(str(text))
 
 
+# Function: Format numeric values for display.
 def fmt_num(value: Any, digits: int = 2) -> str:
     if isinstance(value, (int, float)):
         if isinstance(value, bool):
@@ -65,6 +70,7 @@ def fmt_num(value: Any, digits: int = 2) -> str:
     return esc(value)
 
 
+# Function: Safely traverse nested dictionaries.
 def safe_get(obj: Dict[str, Any], *keys: str, default: Any = None) -> Any:
     cur: Any = obj
     for key in keys:
@@ -74,6 +80,7 @@ def safe_get(obj: Dict[str, Any], *keys: str, default: Any = None) -> Any:
     return cur
 
 
+# Function: Take a limited number of items from an iterable.
 def take_items(items: Iterable[Any], limit: int = 10) -> List[Any]:
     out: List[Any] = []
     for item in items:
@@ -83,6 +90,7 @@ def take_items(items: Iterable[Any], limit: int = 10) -> List[Any]:
     return out
 
 
+# Function: Load Zipf frequencies from the common-words list.
 def load_common_word_frequencies() -> Dict[str, float]:
     # Load common-word Zipf frequencies from config.common_words.txt if present.
     filename = "config.common_words.txt"
@@ -109,12 +117,14 @@ def load_common_word_frequencies() -> Dict[str, float]:
     return freq_map
 
 
+# Function: Truncate text with an ellipsis when needed.
 def truncate_text(text: str, max_len: int = 60) -> str:
     if len(text) <= max_len:
         return text
     return text[: max(0, max_len - 1)].rstrip() + "…"
 
 
+# Function: Clean and normalize a work label for display.
 def clean_work_label(text: str) -> str:
     text = text.replace("\\_", "_")
     text = text.replace("_", " ")
@@ -125,6 +135,7 @@ def clean_work_label(text: str) -> str:
     return text
 
 
+# Function: Check whether a label is display-worthy.
 def is_quality_label(text: str) -> bool:
     if not text:
         return False
@@ -132,6 +143,7 @@ def is_quality_label(text: str) -> bool:
     return alnum >= 4 and (alnum / max(1, len(text))) >= 0.35
 
 
+# Function: Render the corpus work list as HTML.
 def render_work_list(documents: List[Dict[str, Any]], limit: int = 8, max_len: int = 60) -> str:
     if not documents:
         return "<p class='muted'>No works listed</p>"
@@ -167,6 +179,7 @@ def render_work_list(documents: List[Dict[str, Any]], limit: int = 8, max_len: i
     return f"<ul class='doc-list'>{items}{suffix}</ul>"
 
 
+# Function: Normalize rewrite policy text for display.
 def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> str:
     if not isinstance(text, str):
         return text
@@ -174,6 +187,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
     if not policy:
         return policy
     conf = conf or {}
+    # Split into directive-like clauses so the UI shows a deduped, readable summary.
     verbs = conf.get("directive_verbs")
     if not isinstance(verbs, list) or not verbs:
         verbs = [
@@ -214,6 +228,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
     dedupe_on_subset = bool(conf.get("dedupe_on_subset", True))
     prefer_more_specific = bool(conf.get("prefer_more_specific", True))
 
+    # Function: Normalize tokens.
     def norm_tokens(s: str) -> List[str]:
         s = s.lower()
         s = re.sub(r"[^\w\s'-]", " ", s)
@@ -261,6 +276,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
     # smaller set of clauses. This keeps the policy interpretable while reducing noise.
     compress_directives = bool(conf.get("compress_directives", True))
     if compress_directives and len(clauses) > 1:
+        # Function: Split directive.
         def split_directive(clause: str) -> tuple[str | None, str]:
             c = clause.strip()
             m = re.match(
@@ -292,6 +308,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
                 continue
             other_clauses.append(clause)
 
+        # Function: Compute score for phrase.
         def score_phrase(s: str) -> int:
             return len([t for t in norm_tokens(s) if t])
 
@@ -301,6 +318,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
             "rhythm": ["detail", "details", "structure"],
         }
 
+        # Function: Compute aspect score.
         def aspect_score(aspect: str, phrase: str) -> float:
             base = float(score_phrase(phrase))
             pl = phrase.lower()
@@ -310,6 +328,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
                     penalty += 2.0
             return base - penalty
 
+        # Function: Select best.
         def pick_best(existing: str | None, candidate: str, aspect: str | None = None) -> str:
             if not existing:
                 return candidate
@@ -340,6 +359,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
             if "rhythm" in rl:
                 preserve_aspects["rhythm"] = pick_best(preserve_aspects.get("rhythm"), rest, "rhythm")
 
+        # Function: Extract segment.
         def extract_segment(phrase: str, keyword: str) -> str:
             pl = phrase.lower()
             keyword_hits = [keyword]
@@ -448,6 +468,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
     return cleaned
 
 
+# Function: Normalize priority order.
 def normalize_priority_order(value: Any, conf: Dict[str, Any] | None = None) -> List[str]:
     conf = conf or {}
     if isinstance(value, list):
@@ -491,6 +512,7 @@ def normalize_priority_order(value: Any, conf: Dict[str, Any] | None = None) -> 
     return deduped
 
 
+# Function: Render a bar chart as inline SVG.
 def svg_bar_chart(labels: List[str], values: List[float], width: int = 840, height: int = 300, color: str = "#2E6DD8") -> str:
     if not values:
         return ""
@@ -498,6 +520,7 @@ def svg_bar_chart(labels: List[str], values: List[float], width: int = 840, heig
     bar_w = width / max(1, len(values))
     bars = []
     grid = []
+    # Horizontal gridlines improve scale readability.
     for i in range(5):
         y = (height - 30) * (i / 4) + 10
         grid.append(f"<line x1='0' y1='{y:.1f}' x2='{width}' y2='{y:.1f}' stroke='#1f2937' stroke-width='1' />")
@@ -505,6 +528,7 @@ def svg_bar_chart(labels: List[str], values: List[float], width: int = 840, heig
         h = (v / max_val) * (height - 30)
         x = i * bar_w + 6
         y = height - h - 16
+        # Tooltip titles give exact values without cluttering the chart.
         bars.append(
             f"<rect x='{x:.1f}' y='{y:.1f}' width='{bar_w - 12:.1f}' height='{h:.1f}' rx='4' fill='{color}'>"
             f"<title>{esc(labels[i])}: {fmt_num(v, 3)}</title></rect>"
@@ -518,12 +542,14 @@ def svg_bar_chart(labels: List[str], values: List[float], width: int = 840, heig
     return f"<svg viewBox='0 0 {width} {height}' width='{width}' height='{height}'>{''.join(grid)}{''.join(bars)}</svg>"
 
 
+# Function: Render a dot chart as inline SVG.
 def svg_dot_chart(labels: List[str], values: List[float], width: int = 840, height: int = 340, color: str = "#16A34A") -> str:
     if not values:
         return ""
     max_val = max(values) if max(values) > 0 else 1.0
     dots = []
     grid = []
+    # Vertical gridlines make rate comparisons easier.
     for i in range(5):
         x = (width - 60) * (i / 4) + 50
         grid.append(f"<line x1='{x:.1f}' y1='0' x2='{x:.1f}' y2='{height}' stroke='#1f2937' stroke-width='1' />")
@@ -538,6 +564,7 @@ def svg_dot_chart(labels: List[str], values: List[float], width: int = 840, heig
     return f"<svg viewBox='0 0 {width} {height}' width='{width}' height='{height}'>{''.join(grid)}{''.join(dots)}</svg>"
 
 
+# Function: Render a dashboard card section.
 def card(title: str, body: str, accent: str | None = None) -> str:
     accent_style = f" style='border-top: 2px solid {accent};'" if accent else ""
     return f"""
@@ -548,6 +575,7 @@ def card(title: str, body: str, accent: str | None = None) -> str:
     """
 
 
+# Function: Render key/value list entries.
 def list_kv(items: List[Tuple[str, Any]]) -> str:
     rows = []
     for k, v in items:
@@ -555,6 +583,7 @@ def list_kv(items: List[Tuple[str, Any]]) -> str:
     return "".join(rows)
 
 
+# Function: Render a list of chip tags.
 def chips(items: Iterable[str]) -> str:
     items = list(items)
     if not items:
@@ -562,6 +591,7 @@ def chips(items: Iterable[str]) -> str:
     return "<div class='chip-list'>" + "".join(f"<span class='chip'>{esc(item)}</span>" for item in items) + "</div>"
 
 
+# Function: Render chip tags with optional tooltips.
 def chips_with_titles(items: Iterable[Tuple[str, Optional[str]]]) -> str:
     items = list(items)
     if not items:
@@ -573,6 +603,7 @@ def chips_with_titles(items: Iterable[Tuple[str, Optional[str]]]) -> str:
     return "<div class='chip-list'>" + "".join(parts) + "</div>"
 
 
+# Function: Render JSON as a preformatted block.
 def json_block(obj: Any) -> str:
     try:
         text = json.dumps(obj, indent=2, ensure_ascii=True)
@@ -581,11 +612,13 @@ def json_block(obj: Any) -> str:
     return f"<pre>{esc(text)}</pre>"
 
 
+# Function: Render a collapsible details block.
 def details_block(title: str, content: str, open_state: bool = False) -> str:
     open_attr = " open" if open_state else ""
     return f"<details{open_attr}><summary>{esc(title)}</summary>{content}</details>"
 
 
+# Function: Render dashboard.
 def render_dashboard(fp: Dict[str, Any], source_path: Path, tunables: Dict[str, Any] | None = None) -> str:
     profile_id = fp.get("profile_id", "(unknown)")
     schema_version = fp.get("schema_version", "")
@@ -675,7 +708,9 @@ def render_dashboard(fp: Dict[str, Any], source_path: Path, tunables: Dict[str, 
     freq_map = load_common_word_frequencies()
     lex_prefer = take_items(lexicon.get("prefer_words", []) or [], 100)
 
+    # Function: Sort by freq.
     def sort_by_freq(words: Iterable[str]) -> List[str]:
+        # Function: Build key for data.
         def key(w: str) -> Tuple[float, str]:
             freq = freq_map.get(w.lower())
             freq_val = float(freq) if isinstance(freq, (int, float)) else -1.0
@@ -745,6 +780,7 @@ def render_dashboard(fp: Dict[str, Any], source_path: Path, tunables: Dict[str, 
 
     avoidance_words = safe_get(fp, "measurements", "lexical_avoidance", "rare_words", default=[]) or []
     avoidance_items = [item for item in avoidance_words if isinstance(item, dict)]
+    # Function: Compute avoid sort key.
     def avoid_sort_key(item: Dict[str, Any]) -> Tuple[float, str]:
         word = str(item.get("word", "")).lower()
         freq = item.get("zipf_frequency")
@@ -904,6 +940,7 @@ footer {{ color: var(--muted); padding: 24px 36px; font-size: 12px; border-top: 
     return html_out
 
 
+# Function: CLI entry point.
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("fingerprint", type=Path, help="Path to fingerprint JSON")

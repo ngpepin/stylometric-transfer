@@ -778,6 +778,46 @@
         ]
       },
       {
+        "id": "ise_ize_prioritize",
+        "variants": {
+          "us": "prioritize",
+          "canadian": "prioritize",
+          "british": "prioritise",
+          "australian": "prioritise"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed",
+          "ation",
+          "ations"
+        ]
+      },
+      {
+        "id": "ise_ize_reprioritize",
+        "variants": {
+          "us": "reprioritize",
+          "canadian": "reprioritize",
+          "british": "reprioritise",
+          "australian": "reprioritise"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed",
+          "ation",
+          "ations"
+        ]
+      },
+      {
         "id": "yse_yze_analyze",
         "variants": {
           "us": "analyze",

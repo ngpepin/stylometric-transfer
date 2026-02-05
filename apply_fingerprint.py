@@ -38,6 +38,16 @@ from typing import Any, Dict, List
 
 import requests
 
+from utils import (
+    approx_rate_per_1000_words,
+    histogram,
+    safe_mean,
+    safe_stdev,
+    split_paragraphs,
+    split_sentences,
+    words,
+)
+
 
 # ---- same lightweight stats as fingerprint script ----
 # Script overview:
@@ -49,9 +59,6 @@ import requests
 # - Strip base64 images before prompting, then reinsert after rewriting
 # - Preserve non-voice blocks (blockquotes, references, footnotes, citations) verbatim
 
-WORD_RE = re.compile(r"[A-Za-z0-9]+(?:'[A-Za-z0-9]+)?")
-SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[])")
-PARA_SPLIT_RE = re.compile(r"\n\s*\n+")
 BASE64_IMAGE_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=\\s]+", re.IGNORECASE)
 BASE64_PLACEHOLDER_RE = re.compile(r"\[\[BASE64_IMAGE_\d+\]\]")
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
@@ -138,6 +145,7 @@ WORDS_TO_WATCH_RE = re.compile(r"^\*\*Words to watch:\*\*\s*(.+)$")
 PROBLEM_RE = re.compile(r"^\*\*Problem:\*\*\s*(.+)$")
 
 
+# Function: Load prompts.
 def load_prompts() -> Dict[str, Any]:
     # Load externalized prompt templates located alongside this script.
     if not PROMPTS_PATH.exists():
@@ -145,20 +153,24 @@ def load_prompts() -> Dict[str, Any]:
     return json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))
 
 
+# Function: Colorize text for terminal output.
 def colorize(text: str, color: str, stream: Any) -> str:
     if os.getenv("NO_COLOR") or os.getenv("CLICOLOR") == "0":
         return text
     return f"{color}{text}{ANSI_RESET}"
 
 
+# Function: Print warnings to stderr.
 def print_warn(msg: str) -> None:
     print(colorize(msg, ANSI_YELLOW, sys.stderr), file=sys.stderr)
 
 
+# Function: Print errors to stderr.
 def print_error(msg: str) -> None:
     print(colorize(msg, ANSI_RED, sys.stderr), file=sys.stderr)
 
 
+# Function: Deep-merge nested dictionaries.
 def deep_merge_dict(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     out = dict(base)
     for k, v in override.items():
@@ -169,6 +181,7 @@ def deep_merge_dict(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str,
     return out
 
 
+# Function: Load emoji substitutions.
 def load_emoji_substitutions(script_dir: Path) -> list[tuple[str, str]]:
     path = script_dir / EMOJI_SUBSTITUTIONS_FILENAME
     if not path.exists():
@@ -198,6 +211,7 @@ def load_emoji_substitutions(script_dir: Path) -> list[tuple[str, str]]:
     return out
 
 
+# Function: Get emoji substitutions.
 def get_emoji_substitutions() -> list[tuple[str, str]]:
     global EMOJI_SUBSTITUTIONS
     if EMOJI_SUBSTITUTIONS is None:
@@ -205,6 +219,7 @@ def get_emoji_substitutions() -> list[tuple[str, str]]:
     return EMOJI_SUBSTITUTIONS
 
 
+# Function: Load tunables config from disk, with fallbacks.
 def load_tunables(path: Path | None = None) -> Dict[str, Any]:
     # Load optional tunables JSON.
     if path and path.exists():
@@ -229,6 +244,7 @@ def load_tunables(path: Path | None = None) -> Dict[str, Any]:
     return dict(DEFAULT_TUNABLES)
 
 
+# Function: Parse avoid list.
 def parse_avoid_list(text: str) -> List[str]:
     items: List[str] = []
     for raw in text.splitlines():
@@ -238,6 +254,7 @@ def parse_avoid_list(text: str) -> List[str]:
     return items
 
 
+# Function: Load avoid list.
 def load_avoid_list(path: Path | None = None) -> List[str]:
     # Load optional avoid-word list from CWD or script directory.
     if path and path.exists():
@@ -256,6 +273,7 @@ def load_avoid_list(path: Path | None = None) -> List[str]:
         return []
 
 
+# Function: Merge avoid list into fingerprint.
 def merge_avoid_list_into_fingerprint(
     fingerprint: Dict[str, Any],
     avoid_list: List[str]
@@ -271,6 +289,7 @@ def merge_avoid_list_into_fingerprint(
     merged: List[str] = []
     seen = set()
 
+    # Function: Add item.
     def add_item(item: Any) -> None:
         if not isinstance(item, str):
             return
@@ -292,6 +311,7 @@ def merge_avoid_list_into_fingerprint(
     return fingerprint
 
 
+# Function: Normalize rewrite policy text for display.
 def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> str:
     if not isinstance(text, str):
         return text
@@ -339,6 +359,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
     dedupe_on_subset = bool(conf.get("dedupe_on_subset", True))
     prefer_more_specific = bool(conf.get("prefer_more_specific", True))
 
+    # Function: Normalize tokens.
     def norm_tokens(s: str) -> List[str]:
         s = s.lower()
         s = re.sub(r"[^\w\s'-]", " ", s)
@@ -386,6 +407,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
     # smaller set of clauses. This keeps the policy interpretable while reducing noise.
     compress_directives = bool(conf.get("compress_directives", True))
     if compress_directives and len(clauses) > 1:
+        # Function: Split directive.
         def split_directive(clause: str) -> tuple[str | None, str]:
             c = clause.strip()
             m = re.match(
@@ -417,6 +439,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
                 continue
             other_clauses.append(clause)
 
+        # Function: Compute score for phrase.
         def score_phrase(s: str) -> int:
             return len([t for t in norm_tokens(s) if t])
 
@@ -427,6 +450,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
             "rhythm": ["detail", "details", "structure"],
         }
 
+        # Function: Compute aspect score.
         def aspect_score(aspect: str, phrase: str) -> float:
             base = float(score_phrase(phrase))
             pl = phrase.lower()
@@ -436,6 +460,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
                     penalty += 2.0
             return base - penalty
 
+        # Function: Select best.
         def pick_best(existing: str | None, candidate: str, aspect: str | None = None) -> str:
             if not existing:
                 return candidate
@@ -467,6 +492,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
             if "rhythm" in rl:
                 preserve_aspects["rhythm"] = pick_best(preserve_aspects.get("rhythm"), rest, "rhythm")
 
+        # Function: Extract segment.
         def extract_segment(phrase: str, keyword: str) -> str:
             # For some aspects, keep only the segment that contains the keyword to avoid
             # leaking other aspects into the same phrase (e.g., "technical detail and narrative rhythm").
@@ -581,6 +607,7 @@ def normalize_rewrite_policy(text: str, conf: Dict[str, Any] | None = None) -> s
     return cleaned
 
 
+# Function: Normalize priority order.
 def normalize_priority_order(value: Any, conf: Dict[str, Any] | None = None) -> List[str]:
     conf = conf or {}
     if isinstance(value, list):
@@ -624,6 +651,7 @@ def normalize_priority_order(value: Any, conf: Dict[str, Any] | None = None) -> 
     return deduped
 
 
+# Function: Compute baseline quantile.
 def _baseline_quantile(stats: Dict[str, Any], q: float) -> float | None:
     if not isinstance(stats, dict):
         return None
@@ -649,6 +677,7 @@ def _baseline_quantile(stats: Dict[str, Any], q: float) -> float | None:
     return points[-1][1]
 
 
+# Function: Clamp range.
 def _clamp_range(low: float, high: float, lo: float | None = None, hi: float | None = None) -> tuple[float, float]:
     if lo is not None:
         low = max(lo, low)
@@ -661,6 +690,7 @@ def _clamp_range(low: float, high: float, lo: float | None = None, hi: float | N
     return low, high
 
 
+# Function: Build per-chunk controller overlay targets.
 def build_controller_overlay(
     fingerprint: Dict[str, Any],
     tunables: Dict[str, Any] | None,
@@ -706,6 +736,7 @@ def build_controller_overlay(
     min_width = float(conf.get("min_width", 0.05))
     max_width = float(conf.get("max_width", 6.0))
 
+    # Seed is deterministic per run, with a per-chunk offset to vary overlays across chunks.
     seed = int(conf.get("seed", 0))
     if seed_override is not None:
         seed = int(seed_override)
@@ -749,6 +780,7 @@ def build_controller_overlay(
         targets = {}
         fp_copy["targets"] = targets
 
+    # Function: Set target.
     def set_target(path: List[str], target: List[float]) -> None:
         node = targets
         for key in path[:-1]:
@@ -785,6 +817,7 @@ def build_controller_overlay(
     return fp_copy, overlay
 
 
+# Function: Compute overlay observations.
 def compute_overlay_observations(text: str) -> Dict[str, float]:
     sents = split_sentences(text)
     sent_lens = [len(words(s)) for s in sents] if sents else []
@@ -819,6 +852,7 @@ def compute_overlay_observations(text: str) -> Dict[str, float]:
     }
 
 
+# Function: Build overlay feedback.
 def build_overlay_feedback(
     overlay: Dict[str, Any],
     output_text: str,
@@ -865,6 +899,7 @@ def build_overlay_feedback(
     }
 
 
+# Function: Compute variance aware factor.
 def compute_variance_aware_factor(
     fingerprint: Dict[str, Any],
     tunables: Dict[str, Any] | None
@@ -907,16 +942,19 @@ def compute_variance_aware_factor(
     return max(min_factor, max_factor - (max_factor - min_factor) * t)
 
 
+# Function: Decide whether to forbid em dashes.
 def should_forbid_em_dashes(tunables: Dict[str, Any] | None) -> bool:
     mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
     return bool(mandatory.get("avoid_em_dashes", False))
 
 
+# Function: Decide whether to normalize double quotes.
 def should_normalize_double_quotes(tunables: Dict[str, Any] | None) -> bool:
     mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
     return bool(mandatory.get("normalize_double_quotes", False))
 
 
+# Function: Get force local spelling.
 def get_force_local_spelling(tunables: Dict[str, Any] | None) -> str:
     mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
     value = str(mandatory.get("force_local_spelling", "none")).lower()
@@ -925,6 +963,7 @@ def get_force_local_spelling(tunables: Dict[str, Any] | None) -> str:
     return value
 
 
+# Function: Enforce no em dashes.
 def enforce_no_em_dashes(text: str) -> tuple[str, int]:
     # Replace em dashes with a spaced hyphen to preserve readability without em-dash glyphs.
     if EM_DASH_CHAR not in text:
@@ -938,6 +977,7 @@ DOUBLE_QUOTE_CHARS = ("“", "”", "„", "‟", "«", "»")
 LOCAL_SPELLING_RULES_FILENAME = "config.local_spelling_rules.json"
 
 
+# Function: Enforce straight double quotes.
 def enforce_straight_double_quotes(text: str) -> tuple[str, int]:
     if not text:
         return text, 0
@@ -948,6 +988,7 @@ def enforce_straight_double_quotes(text: str) -> tuple[str, int]:
     return text.translate(trans), count
 
 
+# Function: Load local spelling rules.
 def load_local_spelling_rules() -> Dict[str, Any]:
     rules_path = Path(__file__).resolve().parent / LOCAL_SPELLING_RULES_FILENAME
     if rules_path.exists():
@@ -963,11 +1004,13 @@ def load_local_spelling_rules() -> Dict[str, Any]:
 LOCAL_SPELLING_NOUN_VERB_LOCALES = {"canadian", "british", "australian"}
 
 
+# Function: Normalize lexicon token.
 def _normalize_lexicon_token(token: str) -> str:
     token = re.sub(r"[\"“”'’()\\[\\]{}]", "", str(token).lower()).strip()
     return re.sub(r"\\s+", " ", token)
 
 
+# Function: Build a spelling-variant mapping for a locale.
 def build_local_spelling_map(rules: Dict[str, Any], locale: str) -> Dict[str, str]:
     if not isinstance(rules, dict):
         return {}
@@ -1014,9 +1057,11 @@ def build_local_spelling_map(rules: Dict[str, Any], locale: str) -> Dict[str, st
     return mapping
 
 
+# Function: Normalize tokens to US spelling for avoidance checks.
 def normalize_tokens_for_avoidance(tokens: set[str], rules: Dict[str, Any]) -> set[str]:
     if not tokens:
         return set()
+    # Avoidance checks use a US-normalized baseline so soft avoids remain stable across locales.
     us_map = build_local_spelling_map(rules, "us")
     if not us_map:
         return set(_normalize_lexicon_token(t) for t in tokens if t)
@@ -1029,6 +1074,7 @@ def normalize_tokens_for_avoidance(tokens: set[str], rules: Dict[str, Any]) -> s
     return normalized
 
 
+# Function: Apply case.
 def _apply_case(template: str, replacement: str) -> str:
     if template.isupper():
         return replacement.upper()
@@ -1039,6 +1085,7 @@ def _apply_case(template: str, replacement: str) -> str:
     return replacement
 
 
+# Function: Check whether a context window contains keywords.
 def _context_has(tokens: list[str], idx: int, keywords: list[str], window: int) -> bool:
     if not keywords:
         return False
@@ -1048,6 +1095,7 @@ def _context_has(tokens: list[str], idx: int, keywords: list[str], window: int) 
     return any(k in window_tokens for k in keywords)
 
 
+# Function: Replace base word with a locale suffix variant.
 def _replace_with_suffix(word: str, base_us: str, base_ca: str, suffixes: list[str]) -> tuple[str, bool]:
     lower = word.lower()
     for suffix in suffixes:
@@ -1056,6 +1104,7 @@ def _replace_with_suffix(word: str, base_us: str, base_ca: str, suffixes: list[s
     return word, False
 
 
+# Function: Heuristic verb detection from adjacent tokens.
 def _probable_verb(prev_word: str, next_word: str) -> bool:
     prev = prev_word.lower()
     nextw = next_word.lower()
@@ -1067,6 +1116,7 @@ def _probable_verb(prev_word: str, next_word: str) -> bool:
     return prev in aux or nextw in {"to", "me", "him", "her", "them", "it"}
 
 
+# Function: Heuristic noun detection from adjacent tokens.
 def _probable_noun(prev_word: str, next_word: str) -> bool:
     prev = prev_word.lower()
     det = {
@@ -1080,6 +1130,7 @@ def _probable_noun(prev_word: str, next_word: str) -> bool:
     return False
 
 
+# Function: Normalize practise license.
 def _normalize_practise_license(word: str, prev_word: str, next_word: str) -> tuple[str, bool]:
     lower = word.lower()
     if lower in {"practice", "practise"}:
@@ -1097,6 +1148,7 @@ def _normalize_practise_license(word: str, prev_word: str, next_word: str) -> tu
     return word, False
 
 
+# Function: Apply locale spelling rules to text.
 def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tuple[str, int]:
     if not text:
         return text, 0
@@ -1149,21 +1201,25 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
     last = 0
     replacements = 0
 
+    # Function: Find the previous non-space character.
     def _prev_non_space(idx: int) -> str:
         j = idx - 1
         while j >= 0 and text[j].isspace():
             j -= 1
         return text[j] if j >= 0 else ""
 
+    # Function: Check whether sentence start.
     def _is_sentence_start(idx: int) -> bool:
         prev = _prev_non_space(idx)
         return prev == "" or prev in ".!?\n"
 
+    # Function: Check whether mixed case.
     def _is_mixed_case(word: str) -> bool:
         if word.islower() or word.isupper():
             return False
         return not (word[:1].isupper() and word[1:].islower())
 
+    # Function: Check whether like path.
     def _looks_like_path(start: int, end: int) -> bool:
         window = text[max(0, start - 6):min(len(text), end + 6)]
         if "://" in window or window.startswith(("./", "../", "~/")):
@@ -1181,6 +1237,7 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
             return True
         return False
 
+    # Function: Split possessive.
     def _split_possessive(word: str) -> tuple[str, str] | None:
         lowered = word.lower()
         if lowered.endswith(("'s", "’s")):
@@ -1189,9 +1246,10 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
             return word[:-2], word[-2:]
         return None
 
+    # Function: Attach a possessive suffix to a word.
     def _attach_possessive(replaced: str, suffix: str) -> str:
         return f"{replaced}{suffix}"
-    # Build context-sensitive rules.
+    # Build context-sensitive rules (e.g., noun/verb or domain-specific disambiguation).
     context_rules: list[dict[str, Any]] = []
     for entry in context_variants:
         if not isinstance(entry, dict):
@@ -1216,7 +1274,7 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
         word = match.group(0)
         parts.append(text[last:start])
         last = end
-        # Skip placeholders, acronyms, or URL-like tokens.
+        # Skip placeholders, acronyms, URLs, and paths to avoid mangling identifiers.
         window = text[max(0, start - 3):min(len(text), end + 3)]
         if "__" in window or word.isupper() and len(word) > 2:
             parts.append(word)
@@ -1233,7 +1291,7 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
         if word[:1].isupper() and not _is_sentence_start(start):
             parts.append(word)
             continue
-        # Avoid changing a word that is part of a larger alnum token.
+        # Avoid changing a word that is part of a larger alnum token (e.g., snake_case, hex IDs).
         prev_ch = text[start - 1] if start > 0 else ""
         next_ch = text[end] if end < len(text) else ""
         if (prev_ch.isalnum() or prev_ch == "_") or (next_ch.isalnum() or next_ch == "_"):
@@ -1263,7 +1321,7 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
         base = poss[0] if poss else word
         suffix = poss[1] if poss else ""
         lower = base.lower()
-        # Context-sensitive rules first (for ambiguous words).
+        # Context-sensitive rules first (for ambiguous words like tire/tyre, practice/practise).
         applied_context = False
         blocked_context = False
         for rule in context_rules:
@@ -1307,8 +1365,10 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
         if blocked_context:
             parts.append(word)
             continue
+        # Context rules take precedence over direct/suffix rules.
         if applied_context:
             continue
+        # Direct variants are explicit word-for-word mappings.
         if lower in direct_map:
             updated = _apply_case(base, direct_map[lower])
             if suffix:
@@ -1316,6 +1376,7 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
             replacements += 1
             parts.append(updated)
             continue
+        # Suffix variants handle family patterns like -our/-or with shared suffixes.
         if lower in suffix_map:
             updated = _apply_case(base, suffix_map[lower])
             if suffix:
@@ -1323,7 +1384,7 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
             replacements += 1
             parts.append(updated)
             continue
-        # double-l inflection handling
+        # Double-l inflection handling (travelled vs traveled) for select locales.
         converted = False
         if double_l_bases and double_l_suffixes:
             for base in double_l_bases:
@@ -1356,6 +1417,7 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
     return "".join(parts), replacements
 
 
+# Function: Check whether heading or list line.
 def is_heading_or_list_line(text: str) -> bool:
     stripped = text.lstrip()
     if not stripped:
@@ -1367,6 +1429,7 @@ def is_heading_or_list_line(text: str) -> bool:
     return False
 
 
+# Function: Apply removed emoji punctuation.
 def apply_removed_emoji_punctuation(text: str) -> str:
     marker = EMOJI_REMOVED_MARKER
     if marker not in text:
@@ -1408,6 +1471,7 @@ def apply_removed_emoji_punctuation(text: str) -> str:
     return "".join(updated)
 
 
+# Function: Enforce emoji policy.
 def enforce_emoji_policy(text: str, policy: str) -> tuple[str, int, int]:
     # Remove or replace emoji glyphs with conventional monochrome symbols.
     removed = 0
@@ -1446,6 +1510,7 @@ def enforce_emoji_policy(text: str, policy: str) -> tuple[str, int, int]:
     return text, removed, replaced
 
 
+# Function: Apply bounded stochastic perturbations to text.
 def apply_humanizer_variance(
     text: str,
     seed: int,
@@ -1472,6 +1537,7 @@ def apply_humanizer_variance(
     }
     filler_terms = {"very", "really", "quite", "rather"}
 
+    # Function: Replace a transition token based on templates.
     def replace_transition(text_in: str, budget: int) -> tuple[str, int]:
         if budget <= 0:
             return text_in, 0
@@ -1488,6 +1554,7 @@ def apply_humanizer_variance(
                 count += 1
         return text_in, count
 
+    # Function: Drop filler words from text.
     def drop_fillers(text_in: str, budget: int) -> tuple[str, int]:
         if budget <= 0:
             return text_in, 0
@@ -1516,6 +1583,7 @@ def apply_humanizer_variance(
 
     return text, ops_applied
 
+# Function: Resolve general guidelines path.
 def resolve_general_guidelines_path() -> Path | None:
     # Resolve optional humanizer guidelines from CWD or script directory.
     cwd_path = Path.cwd() / HUMANIZER_GUIDELINES_FILENAME
@@ -1524,6 +1592,7 @@ def resolve_general_guidelines_path() -> Path | None:
     return path
 
 
+# Function: Load general guidelines.
 def load_general_guidelines() -> tuple[str | None, Path | None]:
     path = resolve_general_guidelines_path()
     if not path:
@@ -1531,6 +1600,7 @@ def load_general_guidelines() -> tuple[str | None, Path | None]:
     return path.read_text(encoding="utf-8"), path
 
 
+# Function: Resolve license path.
 def resolve_license_path() -> Path | None:
     # Resolve LICENSE.md from CWD or script directory.
     cwd_path = Path.cwd() / LICENSE_FILENAME
@@ -1542,6 +1612,7 @@ def resolve_license_path() -> Path | None:
     return None
 
 
+# Function: Render markdown.
 def render_markdown(text: str) -> None:
     try:
         from rich.console import Console
@@ -1553,6 +1624,7 @@ def render_markdown(text: str) -> None:
     console.print(Markdown(text))
 
 
+# Function: Print license and exit.
 def print_license_and_exit() -> int:
     path = resolve_license_path()
     if not path:
@@ -1561,6 +1633,7 @@ def print_license_and_exit() -> int:
     render_markdown(path.read_text(encoding="utf-8"))
     return 0
 
+# Function: Get prompt value.
 def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
     # Traverse a nested dict safely and fail fast if a key is missing.
     cur: Any = prompts
@@ -1569,11 +1642,6 @@ def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
             raise KeyError(f"Missing prompts key: {'.'.join(path)}")
         cur = cur[key]
     return cur
-
-def words(text: str) -> List[str]:
-    # Tokenize into simple word-like units for lightweight stats.
-    return WORD_RE.findall(text)
-
 
 META_SUMMARY_PATTERNS = [
     "as an ai",
@@ -1601,18 +1669,20 @@ META_SUMMARY_PATTERNS = [
 ]
 
 
+# Function: Detect meta/task-focused summaries.
 def summary_is_meta(text: str) -> bool:
     lowered = text.lower()
     return any(pat in lowered for pat in META_SUMMARY_PATTERNS)
 
 
+# Function: Normalize a chunk summary for continuity.
 def normalize_summary(summary: str, max_words: int | None) -> str:
     if not isinstance(summary, str):
         return ""
     summary = " ".join(summary.split()).strip()
     if not summary:
         return ""
-    # Deterministic cleanup: avoid "this passage/section/..." phrasing for prior context.
+    # Deterministic cleanup: enforce prior-context phrasing and consistent tense for chaining.
     context_nouns = (
         "passage", "section", "chunk", "text", "document", "paper", "article",
         "report", "excerpt", "chapter", "part", "segment", "portion", "appendix",
@@ -1740,6 +1810,7 @@ def normalize_summary(summary: str, max_words: int | None) -> str:
     return summary
 
 
+# Function: Build fallback summary.
 def build_fallback_summary(text: str, max_words: int | None) -> str:
     cleaned = filter_author_voice_text(text)
     tokens = words(cleaned)
@@ -1752,6 +1823,7 @@ def build_fallback_summary(text: str, max_words: int | None) -> str:
     return " ".join(tokens)
 
 
+# Function: Build semantic fallback summary.
 def build_semantic_fallback_summary(text: str, max_words: int | None) -> str:
     cleaned = filter_author_voice_text(text)
     sents = [s.strip() for s in split_sentences(cleaned) if s.strip()]
@@ -1792,6 +1864,7 @@ def build_semantic_fallback_summary(text: str, max_words: int | None) -> str:
     return summary
 
 
+# Function: Find quote spans.
 def _quote_spans(text: str) -> List[tuple[int, int, str]]:
     spans: List[tuple[int, int, str]] = []
     for match in QUOTE_SPAN_RE.finditer(text):
@@ -1802,10 +1875,12 @@ def _quote_spans(text: str) -> List[tuple[int, int, str]]:
     return spans
 
 
+# Function: Check whether multiword quote.
 def is_multiword_quote(inner: str) -> bool:
     return len(words(inner)) >= 2
 
 
+# Function: Detect fiction from text.
 def detect_fiction_from_text(
     text: str,
     quote_span_min: int,
@@ -1838,38 +1913,13 @@ def detect_fiction_from_text(
         return True
     return False
 
-def split_sentences(text: str) -> List[str]:
-    # Naive sentence splitter to keep stats interpretable and dependency-free.
-    text = re.sub(r"\s+", " ", text).strip()
-    if not text:
-        return []
-    sents = SENT_SPLIT_RE.split(text)
-    return [s.strip() for s in sents if s.strip()]
-
-def split_paragraphs(text: str) -> List[str]:
-    # Paragraphs separated by blank lines.
-    paras = PARA_SPLIT_RE.split(text.strip())
-    return [p.strip() for p in paras if p.strip()]
-
-def histogram(values: List[int], bins: List[tuple[int, int | None]]) -> List[float]:
-    # Convert a list of values into a probability histogram over bins.
-    if not values:
-        return [0.0] * len(bins)
-    counts = [0] * len(bins)
-    for v in values:
-        for i, (lo, hi) in enumerate(bins):
-            if v >= lo and (hi is None or v <= hi):
-                counts[i] += 1
-                break
-    total = sum(counts)
-    return [c / total for c in counts] if total else [0.0] * len(bins)
-
-
+# Function: Strip base64 images.
 def strip_base64_images(text: str) -> tuple[str, Dict[str, str]]:
     # Replace base64 images with placeholders to avoid prompt token blowups.
     mapping: Dict[str, str] = {}
     counter = 0
 
+    # Function: Replacement helper for data.
     def repl(match: re.Match[str]) -> str:
         nonlocal counter
         placeholder = f"[[BASE64_IMAGE_{counter}]]"
@@ -1881,6 +1931,7 @@ def strip_base64_images(text: str) -> tuple[str, Dict[str, str]]:
     return stripped, mapping
 
 
+# Function: Restore base64 images.
 def restore_base64_images(text: str, mapping: Dict[str, str], placeholders: List[str] | None = None) -> str:
     # Reinsert the original base64 image strings where placeholders appear.
     if not mapping:
@@ -1893,16 +1944,19 @@ def restore_base64_images(text: str, mapping: Dict[str, str], placeholders: List
     return text
 
 
+# Function: Find base64 placeholders.
 def find_base64_placeholders(text: str) -> List[str]:
     # Helper to detect placeholders in rewritten output.
     return re.findall(r"\[\[BASE64_IMAGE_\d+\]\]", text)
 
 
+# Function: Normalize heading text.
 def normalize_heading_text(text: str) -> str:
     text = re.sub(r"[^a-z0-9\s]", "", text.lower())
     return re.sub(r"\s+", " ", text).strip()
 
 
+# Function: Get heading at.
 def get_heading_at(lines: List[str], idx: int) -> tuple[int, str, int] | None:
     # Return (level, heading_text, span_lines) if a heading starts at idx.
     line = lines[idx]
@@ -1918,10 +1972,12 @@ def get_heading_at(lines: List[str], idx: int) -> tuple[int, str, int] | None:
     return None
 
 
+# Function: Check whether reference heading.
 def is_reference_heading(text: str) -> bool:
     return normalize_heading_text(text) in REFERENCE_HEADINGS
 
 
+# Function: Find reference sections.
 def find_reference_sections(lines: List[str]) -> List[tuple[int, int]]:
     # Return list of (start_idx, end_idx) line ranges for reference-like sections.
     sections: List[tuple[int, int]] = []
@@ -1950,6 +2006,7 @@ def find_reference_sections(lines: List[str]) -> List[tuple[int, int]]:
     return sections
 
 
+# Function: Strip non voice sections.
 def strip_non_voice_sections(text: str) -> str:
     # Remove blockquotes, reference sections, and footnote definitions.
     text = re.sub(r"(?is)<blockquote[^>]*>.*?</blockquote>", "\n", text)
@@ -1980,6 +2037,7 @@ def strip_non_voice_sections(text: str) -> str:
     return cleaned.strip()
 
 
+# Function: Strip fenced code blocks.
 def strip_fenced_code_blocks(text: str) -> str:
     # Remove fenced code blocks (``` or ~~~) entirely.
     lines = text.splitlines()
@@ -2002,11 +2060,13 @@ def strip_fenced_code_blocks(text: str) -> str:
     return "\n".join(out)
 
 
+# Function: Strip inline code.
 def strip_inline_code(text: str) -> str:
     # Remove inline code spans delimited by backticks.
     return re.sub(r"(``[^`]+``|`[^`]+`)", "", text)
 
 
+# Function: Strip html.
 def strip_html(text: str) -> str:
     # Remove HTML tags and block elements to exclude HTML from profiling.
     text = re.sub(r"(?is)<[A-Za-z][^>]*>.*?</[A-Za-z][^>]*>", "\n", text)
@@ -2015,6 +2075,7 @@ def strip_html(text: str) -> str:
     return text
 
 
+# Function: Strip latex math.
 def strip_latex_math(text: str) -> str:
     # Remove LaTeX-style inline/display math.
     text = re.sub(r"(?s)\\\[.*?\\\]", "\n", text)
@@ -2027,11 +2088,13 @@ def strip_latex_math(text: str) -> str:
     return text
 
 
+# Function: Strip html entities.
 def strip_html_entities(text: str) -> str:
     # Remove HTML entities (e.g., &nbsp;).
     return re.sub(r"&[A-Za-z0-9#]+;", "", text)
 
 
+# Function: Check whether parenthetical citation.
 def is_parenthetical_citation(inner: str) -> bool:
     if not re.search(r"\b(19|20)\d{2}[a-z]?\b", inner):
         return False
@@ -2052,11 +2115,13 @@ def is_parenthetical_citation(inner: str) -> bool:
     return False
 
 
+# Function: Strip inline citations.
 def strip_inline_citations(text: str) -> str:
     # Remove inline citation markers while keeping surrounding prose.
     text = INLINE_FOOTNOTE_RE.sub("", text)
     text = INLINE_NUMERIC_CITE_RE.sub("", text)
 
+    # Function: Replacement helper for data.
     def repl(match: re.Match[str]) -> str:
         inner = match.group(0)[1:-1]
         return "" if is_parenthetical_citation(inner) else match.group(0)
@@ -2067,6 +2132,7 @@ def strip_inline_citations(text: str) -> str:
     return text.strip()
 
 
+# Function: Strip quoted passages.
 def strip_quoted_passages(text: str) -> str:
     # Remove multi-word quoted passages (used for non-fiction measurements).
     spans = _quote_spans(text)
@@ -2085,6 +2151,7 @@ def strip_quoted_passages(text: str) -> str:
     return "".join(out)
 
 
+# Function: Filter author voice text.
 def filter_author_voice_text(text: str) -> str:
     # Remove non-author voice segments and inline citations for measurements.
     text = strip_fenced_code_blocks(text)
@@ -2106,11 +2173,13 @@ def filter_author_voice_text(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
+# Function: Mask non voice blocks.
 def mask_non_voice_blocks(markdown: str) -> tuple[str, Dict[str, str]]:
     # Replace non-voice blocks with placeholders to preserve them verbatim.
     mapping: Dict[str, str] = {}
     counter = 0
 
+    # Function: Create placeholder.
     def make_placeholder(block: str) -> str:
         nonlocal counter
         placeholder = f"[[FROZEN_BLOCK_{counter}]]"
@@ -2118,6 +2187,7 @@ def mask_non_voice_blocks(markdown: str) -> tuple[str, Dict[str, str]]:
         counter += 1
         return placeholder
 
+    # Function: Replacement helper for html.
     def repl_html(match: re.Match[str]) -> str:
         return make_placeholder(match.group(0))
 
@@ -2157,11 +2227,13 @@ def mask_non_voice_blocks(markdown: str) -> tuple[str, Dict[str, str]]:
     return ("\n".join(out_lines), mapping)
 
 
+# Function: Mask inline citations.
 def mask_inline_citations(text: str) -> tuple[str, Dict[str, str]]:
     # Replace inline citations with placeholders to preserve them verbatim.
     mapping: Dict[str, str] = {}
     counter = 0
 
+    # Function: Create placeholder.
     def make_placeholder(match_text: str) -> str:
         nonlocal counter
         placeholder = f"[[CITATION_{counter}]]"
@@ -2169,12 +2241,14 @@ def mask_inline_citations(text: str) -> tuple[str, Dict[str, str]]:
         counter += 1
         return placeholder
 
+    # Function: Replacement helper for simple.
     def repl_simple(match: re.Match[str]) -> str:
         return make_placeholder(match.group(0))
 
     text = INLINE_FOOTNOTE_RE.sub(repl_simple, text)
     text = INLINE_NUMERIC_CITE_RE.sub(repl_simple, text)
 
+    # Function: Replacement helper for paren.
     def repl_paren(match: re.Match[str]) -> str:
         inner = match.group(0)[1:-1]
         return make_placeholder(match.group(0)) if is_parenthetical_citation(inner) else match.group(0)
@@ -2183,6 +2257,7 @@ def mask_inline_citations(text: str) -> tuple[str, Dict[str, str]]:
     return text, mapping
 
 
+# Function: Mask quoted passages.
 def mask_quoted_passages(text: str) -> tuple[str, Dict[str, str]]:
     # Replace multi-word quoted passages with placeholders to preserve them verbatim.
     mapping: Dict[str, str] = {}
@@ -2208,6 +2283,7 @@ def mask_quoted_passages(text: str) -> tuple[str, Dict[str, str]]:
     return "".join(out), mapping
 
 
+# Function: Restore placeholders.
 def restore_placeholders(text: str, mapping: Dict[str, str]) -> str:
     if not mapping:
         return text
@@ -2217,10 +2293,12 @@ def restore_placeholders(text: str, mapping: Dict[str, str]) -> str:
     return text
 
 
+# Function: Find placeholders.
 def find_placeholders(text: str, pattern: re.Pattern[str]) -> List[str]:
     return pattern.findall(text)
 
 
+# Function: Normalize heading.
 def normalize_heading(text: str) -> str:
     # Normalize heading text for loose matching (case/punct insensitive).
     lowered = text.lower()
@@ -2233,6 +2311,7 @@ def normalize_heading(text: str) -> str:
     return re.sub(r"\s+", " ", lowered).strip()
 
 
+# Function: Extract heading blocks.
 def extract_heading_blocks(markdown: str) -> List[Dict[str, Any]]:
     # Extract heading-based section blocks for completeness checks.
     lines = markdown.splitlines()
@@ -2262,6 +2341,7 @@ def extract_heading_blocks(markdown: str) -> List[Dict[str, Any]]:
     return blocks
 
 
+# Function: Extract heading keys.
 def extract_heading_keys(markdown: str) -> set[str]:
     keys: set[str] = set()
     for line in markdown.splitlines():
@@ -2274,6 +2354,7 @@ def extract_heading_keys(markdown: str) -> set[str]:
     return keys
 
 
+# Function: Build section signature.
 def section_signature(block: str, max_lines: int = 6) -> set[str]:
     # Build a content signature from the heading + first few non-empty lines.
     lines = block.splitlines()
@@ -2291,6 +2372,7 @@ def section_signature(block: str, max_lines: int = 6) -> set[str]:
     return set(tokens)
 
 
+# Function: Compute Jaccard similarity for token sets.
 def jaccard_similarity(a: set[str], b: set[str]) -> float:
     if not a or not b:
         return 0.0
@@ -2299,12 +2381,14 @@ def jaccard_similarity(a: set[str], b: set[str]) -> float:
     return inter / max(1, union)
 
 
+# Function: Compute heading similarity for section matching.
 def heading_similarity(a: str, b: str) -> float:
     if not a or not b:
         return 0.0
     return difflib.SequenceMatcher(None, a, b).ratio()
 
 
+# Function: Parse humanizer guidelines.
 def parse_humanizer_guidelines(text: str) -> List[Dict[str, Any]]:
     # Parse general-guidelines.md into structured rules.
     rules: List[Dict[str, Any]] = []
@@ -2381,6 +2465,7 @@ def parse_humanizer_guidelines(text: str) -> List[Dict[str, Any]]:
     return rules
 
 
+# Function: Normalize humanizer rules.
 def normalize_humanizer_rules(rules: List[Dict[str, Any]], source: str) -> List[Dict[str, Any]]:
     normalized: List[Dict[str, Any]] = []
     for rule in rules:
@@ -2408,6 +2493,7 @@ def normalize_humanizer_rules(rules: List[Dict[str, Any]], source: str) -> List[
     return normalized
 
 
+# Function: Build humanizer parse prompt.
 def build_humanizer_parse_prompt(prompts: Dict[str, Any], raw_guidelines: str) -> List[Dict[str, str]]:
     system = get_prompt_value(prompts, "humanizer_parse", "system")
     user_template = get_prompt_value(prompts, "humanizer_parse", "user")
@@ -2421,6 +2507,7 @@ def build_humanizer_parse_prompt(prompts: Dict[str, Any], raw_guidelines: str) -
     ]
 
 
+# Function: Parse humanizer guidelines LLM.
 def parse_humanizer_guidelines_llm(
     cfg: LLMConfig,
     prompts: Dict[str, Any],
@@ -2439,6 +2526,7 @@ def parse_humanizer_guidelines_llm(
     return normalize_humanizer_rules(rules_obj, "llm")
 
 
+# Function: Load humanizer rules cache.
 def load_humanizer_rules_cache(cache_path: Path) -> Dict[str, Any] | None:
     if not cache_path.exists():
         return None
@@ -2449,6 +2537,7 @@ def load_humanizer_rules_cache(cache_path: Path) -> Dict[str, Any] | None:
         return None
 
 
+# Function: Write humanizer rules cache.
 def write_humanizer_rules_cache(
     cache_path: Path,
     rules: List[Dict[str, Any]],
@@ -2465,6 +2554,7 @@ def write_humanizer_rules_cache(
     cache_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+# Function: Analyze markdown style.
 def analyze_markdown_style(text: str) -> Dict[str, Any]:
     # Estimate heading case, boldface density, and inline-header list usage.
     headings_total = 0
@@ -2504,6 +2594,7 @@ def analyze_markdown_style(text: str) -> Dict[str, Any]:
     }
 
 
+# Function: Filter humanizer rules.
 def filter_humanizer_rules(
     rules: List[Dict[str, Any]],
     fingerprint: Dict[str, Any],
@@ -2583,6 +2674,7 @@ def filter_humanizer_rules(
             em_dash_forbidden = bool(mandatory.get("avoid_em_dashes", False))
             emoji_policy = mandatory.get("emoji_policy")
 
+    # Function: Collect style context.
     def collect_style_context() -> str:
         parts: List[str] = []
         for path in ("notes",):
@@ -2603,6 +2695,7 @@ def filter_humanizer_rules(
     style_context = collect_style_context()
     formal_style = any(tag in style_context for tag in ("formal", "academic", "technical", "scholarly"))
 
+    # Function: Expand words.
     def expand_words(words: List[str]) -> set[str]:
         out: set[str] = set()
         for w in words:
@@ -2679,11 +2772,13 @@ def filter_humanizer_rules(
     return kept, dropped
 
 
+# Function: Estimate tokens.
 def estimate_tokens(text: str) -> int:
     # Rough heuristic: ~4 characters per token.
     return max(1, (len(text) + 3) // 4)
 
 
+# Function: Estimate tokens for messages.
 def estimate_tokens_for_messages(messages: List[Dict[str, str]]) -> int:
     # Add a small per-message overhead to approximate chat tokenization.
     total = 0
@@ -2693,11 +2788,13 @@ def estimate_tokens_for_messages(messages: List[Dict[str, str]]) -> int:
     return total + 2
 
 
+# Function: Estimate tokens for text.
 def estimate_tokens_for_text(text: str) -> int:
     # Rough token estimate for plain text.
     return estimate_tokens(text)
 
 
+# Function: Split markdown blocks.
 def split_markdown_blocks(markdown: str) -> List[str]:
     # Split Markdown into text and code blocks while preserving fences.
     blocks: List[str] = []
@@ -2736,6 +2833,7 @@ def split_markdown_blocks(markdown: str) -> List[str]:
     return blocks
 
 
+# Function: Check whether code block.
 def is_code_block(block: str) -> bool:
     # Identify fenced code blocks so we can chunk them safely.
     lines = block.splitlines()
@@ -2748,10 +2846,12 @@ def is_code_block(block: str) -> bool:
     return False
 
 
+# Function: Split text into words while preserving separators.
 def split_words_preserve(text: str) -> List[str]:
     return re.findall(r"\S+", text)
 
 
+# Function: Split sentences for chunking.
 def split_sentences_for_chunking(text: str) -> List[str]:
     lines = text.splitlines()
     sentences: List[str] = []
@@ -2770,6 +2870,7 @@ def split_sentences_for_chunking(text: str) -> List[str]:
     return [s for s in sentences if s.strip()]
 
 
+# Function: Split a block into units based on the chosen strategy.
 def split_block_units(block: str, split_on: str, max_chars: int, max_input_tokens: int) -> tuple[List[str], str]:
     if is_code_block(block):
         if estimate_tokens_for_text(block) <= max_input_tokens:
@@ -2807,11 +2908,13 @@ def split_block_units(block: str, split_on: str, max_chars: int, max_input_token
     return split_words_preserve(block), " "
 
 
+# Function: Mask inline code.
 def mask_inline_code(text: str) -> tuple[str, Dict[str, str]]:
     # Replace inline code spans with placeholders to preserve verbatim.
     mapping: Dict[str, str] = {}
     counter = 0
 
+    # Function: Replacement helper for data.
     def repl(match: re.Match[str]) -> str:
         nonlocal counter
         placeholder = f"[[INLINE_CODE_{counter}]]"
@@ -2825,15 +2928,18 @@ def mask_inline_code(text: str) -> tuple[str, Dict[str, str]]:
     return stripped, mapping
 
 
+# Function: Find inline code placeholders.
 def find_inline_code_placeholders(text: str) -> List[str]:
     return re.findall(r"\[\[INLINE_CODE_\d+\]\]", text)
 
 
+# Function: Mask html.
 def mask_html(text: str) -> tuple[str, Dict[str, str]]:
     # Replace HTML blocks and tags with placeholders to preserve verbatim.
     mapping: Dict[str, str] = {}
     counter = 0
 
+    # Function: Create placeholder.
     def make_placeholder(block: str) -> str:
         nonlocal counter
         placeholder = f"[[HTML_BLOCK_{counter}]]"
@@ -2841,6 +2947,7 @@ def mask_html(text: str) -> tuple[str, Dict[str, str]]:
         counter += 1
         return placeholder
 
+    # Function: Replacement helper for block.
     def repl_block(match: re.Match[str]) -> str:
         return make_placeholder(match.group(0))
 
@@ -2853,12 +2960,14 @@ def mask_html(text: str) -> tuple[str, Dict[str, str]]:
     return text, mapping
 
 
+# Function: Mask math notation.
 def mask_math_notation(text: str) -> tuple[str, Dict[str, str]]:
     # Replace LaTeX-style math with placeholders to preserve verbatim.
     mapping: Dict[str, str] = {}
     counter_inline = 0
     counter_display = 0
 
+    # Function: Replacement helper for display.
     def repl_display(match: re.Match[str]) -> str:
         nonlocal counter_display
         placeholder = f"[[DISPLAY_MATH_{counter_display}]]"
@@ -2866,6 +2975,7 @@ def mask_math_notation(text: str) -> tuple[str, Dict[str, str]]:
         counter_display += 1
         return placeholder
 
+    # Function: Replacement helper for inline.
     def repl_inline(match: re.Match[str]) -> str:
         nonlocal counter_inline
         placeholder = f"[[INLINE_MATH_{counter_inline}]]"
@@ -2881,11 +2991,13 @@ def mask_math_notation(text: str) -> tuple[str, Dict[str, str]]:
     return text, mapping
 
 
+# Function: Mask html entities.
 def mask_html_entities(text: str) -> tuple[str, Dict[str, str]]:
     # Replace HTML entities with placeholders to preserve verbatim.
     mapping: Dict[str, str] = {}
     counter = 0
 
+    # Function: Replacement helper for data.
     def repl(match: re.Match[str]) -> str:
         nonlocal counter
         placeholder = f"[[HTML_ENTITY_{counter}]]"
@@ -2897,6 +3009,7 @@ def mask_html_entities(text: str) -> tuple[str, Dict[str, str]]:
     return stripped, mapping
 
 
+# Function: Split an oversized markdown block safely.
 def split_oversize_block(
     block: str,
     estimate_tokens_fn,
@@ -2959,6 +3072,7 @@ def split_oversize_block(
     return chunks
 
 
+# Function: Enforce minimum chunks.
 def enforce_min_chunks(markdown: str, chunks: List[str], min_chunks: int) -> List[str]:
     if min_chunks <= 1:
         return chunks
@@ -2995,6 +3109,7 @@ def enforce_min_chunks(markdown: str, chunks: List[str], min_chunks: int) -> Lis
     return [c for c in work if c.strip()]
 
 
+# Function: Chunk markdown into size-limited units.
 def chunk_markdown(
     markdown: str,
     build_messages_fn,
@@ -3015,6 +3130,7 @@ def chunk_markdown(
     chunks: List[str] = []
     current = ""
 
+    # Function: Flush data.
     def flush() -> None:
         nonlocal current
         if current.strip():
@@ -3024,6 +3140,7 @@ def chunk_markdown(
     for block in blocks:
         if not block.strip():
             continue
+        # Split by the requested unit (paragraph/sentence/word) with fallback if a unit is oversized.
         units, joiner = split_block_units(block.strip(), split_on, max_chars, max_input_tokens)
         if not units:
             continue
@@ -3050,12 +3167,7 @@ def chunk_markdown(
     flush()
     return [c for c in chunks if c.strip()]
 
-def approx_rate_per_1000_words(count: int, total_words: int) -> float:
-    # Normalize counts for cross-document comparability.
-    if total_words <= 0:
-        return 0.0
-    return (count / total_words) * 1000.0
-
+# Function: Detect likely English spelling variant in text.
 def detect_english_spelling_variant(text: str) -> Dict[str, Any]:
     # Heuristic: count common US vs Canadian/British spellings.
     pairs = [
@@ -3126,6 +3238,7 @@ def detect_english_spelling_variant(text: str) -> Dict[str, Any]:
         "note": "Heuristic based on common US vs Canadian spellings."
     }
 
+# Function: Compute stylometric measurements for a text corpus.
 def compute_measurements(text: str) -> Dict[str, Any]:
     # Gather lightweight, explainable measurements for the input chunk.
     w = words(text)
@@ -3258,6 +3371,7 @@ def compute_measurements(text: str) -> Dict[str, Any]:
         ]
     }
 
+    # Function: Check whether a sentence contains a marker.
     def sentence_has_marker(sentence: str, markers: List[str]) -> bool:
         s = sentence.lower()
         return any(m in s for m in markers)
@@ -3278,15 +3392,6 @@ def compute_measurements(text: str) -> Dict[str, Any]:
             continue
         opening_lens.append(len(words(sents[0])))
         closing_lens.append(len(words(sents[-1])))
-
-    def safe_mean(xs: List[int]) -> float:
-        return float(sum(xs) / len(xs)) if xs else 0.0
-
-    def safe_stdev(xs: List[int]) -> float:
-        if len(xs) < 2:
-            return 0.0
-        mean = safe_mean(xs)
-        return (sum((x - mean) ** 2 for x in xs) / len(xs)) ** 0.5
 
     # Epistemic stance bands (simple token markers).
     speculative_terms = {"may","might","perhaps","possibly","could","seems","appears","suggests","tends"}
@@ -3319,6 +3424,7 @@ def compute_measurements(text: str) -> Dict[str, Any]:
     }
 
     # Self-echo repetition rates (bigrams/trigrams reused above a threshold).
+    # Function: Compute the fraction of repeated n-grams above a minimum count.
     def repeat_rate(ngram_list: List[str], min_count: int = 3) -> float:
         if not ngram_list:
             return 0.0
@@ -3326,6 +3432,7 @@ def compute_measurements(text: str) -> Dict[str, Any]:
         repeat_tokens = sum(c for _, c in counts.items() if c >= min_count)
         return repeat_tokens / max(1, len(ngram_list))
 
+    # Function: Generate n-grams from tokens.
     def ngrams_all(n: int) -> List[str]:
         toks_local = [t.lower() for t in w]
         out: List[str] = []
@@ -3421,17 +3528,20 @@ def compute_measurements(text: str) -> Dict[str, Any]:
     }
 
 
+# Function: Compute L1 distance for distance.
 def l1_distance(a: List[float], b: List[float]) -> float:
     if not a or not b or len(a) != len(b):
         return 0.0
     return sum(abs(x - y) for x, y in zip(a, b))
 
 
+# Function: Compute relative difference between values.
 def relative_diff(a: float, b: float) -> float:
     denom = max(abs(b), 1.0)
     return abs(a - b) / denom
 
 
+# Function: Compute style compliance.
 def compute_style_compliance(
     fingerprint: Dict[str, Any],
     output_text: str
@@ -3445,6 +3555,7 @@ def compute_style_compliance(
 
     section_scores: Dict[str, List[float]] = {}
 
+    # Function: Add score.
     def add_score(section: str, value: float) -> None:
         section_scores.setdefault(section, []).append(value)
 
@@ -3649,6 +3760,7 @@ def compute_style_compliance(
     }
 
 
+# Function: Compute entropy for data.
 def _entropy(counts: Dict[str, int]) -> float:
     total = sum(counts.values())
     if total <= 0:
@@ -3662,6 +3774,7 @@ def _entropy(counts: Dict[str, int]) -> float:
     return ent
 
 
+# Function: Compute Jensen-Shannon divergence for divergence.
 def _js_divergence(p: List[float], q: List[float]) -> float:
     if not p or not q or len(p) != len(q):
         return 0.0
@@ -3672,6 +3785,7 @@ def _js_divergence(p: List[float], q: List[float]) -> float:
     return (kl_pm + kl_qm) / 2.0
 
 
+# Function: Compute humanization metrics.
 def compute_humanization_metrics(text: str, fingerprint: Dict[str, Any] | None = None) -> Dict[str, Any]:
     # Heuristic, research-inspired quantitative signals (lexical diversity, repetition, burstiness).
     text = filter_author_voice_text(text)
@@ -3814,6 +3928,7 @@ def compute_humanization_metrics(text: str, fingerprint: Dict[str, Any] | None =
     }
 
 
+# Function: Compute the aggregate humanization score.
 def compute_humanization_aggregate(
     scores: Dict[str, float],
     weights: Dict[str, float] | None = None
@@ -3845,6 +3960,7 @@ def compute_humanization_aggregate(
 
 class LLMConfig:
     # Minimal OpenAI-compatible configuration container.
+    # Function: Initialize an LLM configuration instance.
     def __init__(
         self,
         api_key: str,
@@ -3871,6 +3987,7 @@ class LLMConfig:
         self.backoff_base_seconds = backoff_base_seconds
         self.backoff_max_seconds = backoff_max_seconds
 
+# Function: Load config.
 def load_config(path: Path) -> LLMConfig:
     # Load the API config JSON and apply defaults.
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -3889,6 +4006,7 @@ def load_config(path: Path) -> LLMConfig:
         backoff_max_seconds=float(data.get("backoff_max_seconds", 20.0))
     )
 
+# Function: Call completions.
 def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> tuple[str, Dict[str, Any] | None]:
     # POST to a /v1/chat/completions-compatible endpoint.
     url = f"{cfg.base_url}/chat/completions"
@@ -3931,6 +4049,7 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> tuple[st
             time.sleep(sleep_s)
     raise RuntimeError(f"LLM call failed after {cfg.max_retries + 1} attempts: {last_err}")
 
+# Function: Parse JSON strict.
 def parse_json_strict(s: str) -> Dict[str, Any]:
     # Strip code fences if present and parse strictly as JSON.
     s = s.strip()
@@ -3939,6 +4058,7 @@ def parse_json_strict(s: str) -> Dict[str, Any]:
         s = re.sub(r"\s*```$", "", s)
     return json.loads(s)
 
+# Function: Repair JSON with LLM.
 def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any]) -> Dict[str, Any]:
     # Ask the LLM to repair malformed JSON while preserving content.
     system = get_prompt_value(prompts, "repair_json", "system")
@@ -3956,6 +4076,7 @@ def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any
 
 # ---- Prompting: apply fingerprint ----
 
+# Function: Build the LLM prompt for applying a fingerprint to a draft.
 def build_apply_prompt(
     fingerprint: Dict[str, Any],
     input_md: str,
@@ -4038,6 +4159,7 @@ def build_apply_prompt(
     ]
 
 
+# Function: Apply pronoun override.
 def apply_pronoun_override(fingerprint: Dict[str, Any], mode: str | None) -> None:
     if not mode:
         return
@@ -4082,12 +4204,14 @@ def apply_pronoun_override(fingerprint: Dict[str, Any], mode: str | None) -> Non
         persona["pronoun_preferences"] = pronoun_prefs
 
 
+# Function: Evaluate pronoun override.
 def evaluate_pronoun_override(text: str, mode: str) -> Dict[str, Any]:
     tokens = [t.lower() for t in words(text)]
     first_person = {"i","me","my","mine","we","us","our","ours"}
     second_person = {"you","your","yours"}
     third_person = {"he","him","his","she","her","hers","they","them","their","theirs"}
 
+    # Function: Count hits.
     def count_hits(word_set: set[str]) -> int:
         return sum(1 for t in tokens if t in word_set)
 
@@ -4119,6 +4243,7 @@ def evaluate_pronoun_override(text: str, mode: str) -> Dict[str, Any]:
     }
 
 
+# Function: CLI entry point.
 def main() -> int:
     if "--license" in sys.argv:
         return print_license_and_exit()
@@ -4249,6 +4374,7 @@ def main() -> int:
         script_cfg = Path(__file__).resolve().parent / "config.llm.json"
         args.config = cwd_cfg if cwd_cfg.exists() else script_cfg
 
+    # Function: Verbose-print when enabled.
     def vprint(msg: str) -> None:
         if args.verbose:
             print(msg)
@@ -4482,6 +4608,7 @@ def main() -> int:
     all_deviations: List[Any] = []
     outputs: List[str] = []
 
+    # Function: Build messages for chunk.
     def build_messages_for_chunk(
         md_chunk: str,
         style_feedback: Dict[str, Any] | None = None,
@@ -4519,6 +4646,7 @@ def main() -> int:
             summary_payload
         )
 
+    # Function: Rewrite a single chunk via the LLM.
     def rewrite_chunk(
         md_chunk: str,
         chunk_index: int | None = None,
@@ -4640,6 +4768,7 @@ def main() -> int:
                 recovery_max_depth = max(0, recovery_max_depth)
                 recovery_min_chars = max(0, recovery_min_chars)
 
+                # Function: Split for recovery.
                 def split_for_recovery(text: str) -> List[str]:
                     blocks = split_markdown_blocks(text)
                     if len(blocks) >= 2:
@@ -5094,6 +5223,7 @@ def main() -> int:
             vprint(f"Prompt too large ({initial_tokens} tokens); chunking input...")
         elif force_min_chunks and args.verbose:
             vprint(f"Perturbations enabled; enforcing minimum chunk count: {min_chunks_when_perturbing}")
+        # Function: Build messages for chunk est.
         def build_messages_for_chunk_est(md_chunk: str, style_feedback=None, for_estimate: bool = False, fingerprint_override=None, controller_overlay=None):
             return build_messages_for_chunk(
                 md_chunk,

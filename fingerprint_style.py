@@ -50,6 +50,17 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from utils import (
+    approx_rate_per_1000_words,
+    clamp01,
+    histogram,
+    safe_mean,
+    safe_stdev,
+    split_paragraphs as utils_split_paragraphs,
+    split_sentences as utils_split_sentences,
+    words,
+)
+
 import requests
 
 try:
@@ -58,6 +69,7 @@ except Exception:
     Document = None  # optional
 
 
+# Function: Print warnings to stderr.
 def print_warn(msg: str) -> None:
     print(msg, file=sys.stderr)
 
@@ -142,12 +154,14 @@ DEFAULT_COMMON_WORDS = {
     "understand","use","view","want","watch","work","write"
 }
 
+# Function: Load prompts.
 def load_prompts() -> Dict[str, Any]:
     # Load externalized prompt templates located alongside this script.
     if not PROMPTS_PATH.exists():
         raise FileNotFoundError(f"prompts.json not found at {PROMPTS_PATH}")
     return json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))
 
+# Function: Resolve license path.
 def resolve_license_path() -> Path | None:
     # Resolve LICENSE.md from CWD or script directory.
     cwd_path = Path.cwd() / LICENSE_FILENAME
@@ -159,6 +173,7 @@ def resolve_license_path() -> Path | None:
     return None
 
 
+# Function: Render markdown.
 def render_markdown(text: str) -> None:
     try:
         from rich.console import Console
@@ -170,6 +185,7 @@ def render_markdown(text: str) -> None:
     console.print(Markdown(text))
 
 
+# Function: Print license and exit.
 def print_license_and_exit() -> int:
     path = resolve_license_path()
     if not path:
@@ -178,6 +194,7 @@ def print_license_and_exit() -> int:
     render_markdown(path.read_text(encoding="utf-8"))
     return 0
 
+# Function: Load optional lexicon hints.
 def load_optional_lexicon_hints() -> Optional[Dict[str, Any]]:
     # Load optional lexicon hints from CWD or script directory.
     cwd_path = Path.cwd() / LEXICON_HINTS_FILENAME
@@ -192,6 +209,7 @@ def load_optional_lexicon_hints() -> Optional[Dict[str, Any]]:
         return None
 
 
+# Function: Load tunables snapshot.
 def load_tunables_snapshot() -> Optional[Dict[str, Any]]:
     # Load tunables for auditability snapshot (CWD or script directory).
     cwd_path = Path.cwd() / "config.tunables.json"
@@ -205,6 +223,7 @@ def load_tunables_snapshot() -> Optional[Dict[str, Any]]:
     except Exception:
         return None
 
+# Function: Parse list lines.
 def parse_list_lines(text: str) -> List[str]:
     items: List[str] = []
     for raw in text.splitlines():
@@ -214,10 +233,12 @@ def parse_list_lines(text: str) -> List[str]:
     return items
 
 
+# Function: Parse avoid list.
 def parse_avoid_list(text: str) -> List[str]:
     return parse_list_lines(text)
 
 
+# Function: Load avoid list.
 def load_avoid_list() -> List[str]:
     # Load optional avoid-word list from CWD or script directory.
     cwd_path = Path.cwd() / AVOID_LIST_FILENAME
@@ -231,6 +252,7 @@ def load_avoid_list() -> List[str]:
         return []
 
 
+# Function: Load common words.
 def load_common_words() -> List[Tuple[str, Optional[float]]]:
     # Load optional common-words list from CWD or script directory.
     cwd_path = Path.cwd() / COMMON_WORDS_FILENAME
@@ -266,6 +288,7 @@ def load_common_words() -> List[Tuple[str, Optional[float]]]:
     return [(w, None) for w in sorted(DEFAULT_COMMON_WORDS)]
 
 
+# Function: Normalize entity name.
 def normalize_entity_name(value: str) -> str:
     try:
         import unicodedata
@@ -279,6 +302,7 @@ def normalize_entity_name(value: str) -> str:
     return " ".join(tokens)
 
 
+# Function: Load entity blacklist.
 def load_entity_blacklist() -> List[str]:
     # Load optional entity blacklist from CWD or script directory.
     cwd_path = Path.cwd() / ENTITY_BLACKLIST_FILENAME
@@ -304,6 +328,7 @@ def load_entity_blacklist() -> List[str]:
     return normalized
 
 
+# Function: Build entity matcher.
 def build_entity_matcher(entities: List[str]) -> tuple[set[str], set[tuple[str, ...]], int]:
     singles: set[str] = set()
     phrases: set[tuple[str, ...]] = set()
@@ -321,6 +346,7 @@ def build_entity_matcher(entities: List[str]) -> tuple[set[str], set[tuple[str, 
     return singles, phrases, max_len
 
 
+# Function: Apply case.
 def _apply_case(template: str, replacement: str) -> str:
     if template.isupper():
         return replacement.upper()
@@ -331,6 +357,7 @@ def _apply_case(template: str, replacement: str) -> str:
     return replacement
 
 
+# Function: Load local spelling rules.
 def load_local_spelling_rules() -> Dict[str, Any]:
     rules_path = Path(__file__).resolve().parent / LOCAL_SPELLING_RULES_FILENAME
     if rules_path.exists():
@@ -343,6 +370,7 @@ def load_local_spelling_rules() -> Dict[str, Any]:
     return {}
 
 
+# Function: Build a spelling-variant mapping for a locale.
 def build_local_spelling_map(rules: Dict[str, Any], locale: str) -> Dict[str, str]:
     if not isinstance(rules, dict):
         return {}
@@ -389,6 +417,7 @@ def build_local_spelling_map(rules: Dict[str, Any], locale: str) -> Dict[str, st
     return mapping
 
 
+# Function: Normalize spelling variants in text via a mapping.
 def normalize_text_spelling(text: str, mapping: Dict[str, str]) -> str:
     if not text or not mapping:
         return text
@@ -409,6 +438,7 @@ def normalize_text_spelling(text: str, mapping: Dict[str, str]) -> str:
     return "".join(parts)
 
 
+# Function: Normalize lexicon spellings to a US baseline.
 def normalize_lexicon_spelling(
     fingerprint: Dict[str, Any],
     rules: Dict[str, Any],
@@ -424,6 +454,7 @@ def normalize_lexicon_spelling(
         return
     avoid_literal = {str(item).lower().strip() for item in avoid_list if isinstance(item, str)}
 
+    # Function: Normalize list.
     def normalize_list(items: Any, skip_literal: bool = False) -> list[str]:
         if not isinstance(items, list):
             return []
@@ -479,6 +510,7 @@ def normalize_lexicon_spelling(
         lexicon["synonym_preferences"] = updated
 
 
+# Function: Merge avoid lists and normalize US spellings.
 def normalize_lexicon_avoids(
     fingerprint: Dict[str, Any],
     measurements: Dict[str, Any],
@@ -493,6 +525,7 @@ def normalize_lexicon_avoids(
     hard_seen: set[str] = set()
     hard_list: List[str] = []
 
+    # Function: Add hard.
     def add_hard(item: Any) -> None:
         if not isinstance(item, str):
             return
@@ -531,6 +564,7 @@ def normalize_lexicon_avoids(
                 if isinstance(key, str) and key.strip():
                     avoid_category_set.add(key.strip())
 
+    # Function: Add soft.
     def add_soft(item: Any) -> None:
         if not isinstance(item, str):
             return
@@ -571,6 +605,7 @@ def normalize_lexicon_avoids(
         lexicon["avoid_words_soft"] = soft_list
 
 
+# Function: Normalize rewrite policy text for display.
 def normalize_rewrite_policy(text: str, conf: Optional[Dict[str, Any]] = None) -> str:
     if not isinstance(text, str):
         return text
@@ -619,6 +654,7 @@ def normalize_rewrite_policy(text: str, conf: Optional[Dict[str, Any]] = None) -
     dedupe_on_subset = bool(conf.get("dedupe_on_subset", True))
     prefer_more_specific = bool(conf.get("prefer_more_specific", True))
 
+    # Function: Normalize tokens.
     def norm_tokens(s: str) -> List[str]:
         s = s.lower()
         s = re.sub(r"[^\w\s'-]", " ", s)
@@ -666,6 +702,7 @@ def normalize_rewrite_policy(text: str, conf: Optional[Dict[str, Any]] = None) -
     # smaller set of clauses. This keeps the policy interpretable while reducing noise.
     compress_directives = bool(conf.get("compress_directives", True))
     if compress_directives and len(clauses) > 1:
+        # Function: Split directive.
         def split_directive(clause: str) -> tuple[Optional[str], str]:
             c = clause.strip()
             m = re.match(
@@ -697,6 +734,7 @@ def normalize_rewrite_policy(text: str, conf: Optional[Dict[str, Any]] = None) -
                 continue
             other_clauses.append(clause)
 
+        # Function: Compute score for phrase.
         def score_phrase(s: str) -> int:
             return len([t for t in norm_tokens(s) if t])
 
@@ -706,6 +744,7 @@ def normalize_rewrite_policy(text: str, conf: Optional[Dict[str, Any]] = None) -
             "rhythm": ["detail", "details", "structure"],
         }
 
+        # Function: Compute aspect score.
         def aspect_score(aspect: str, phrase: str) -> float:
             base = float(score_phrase(phrase))
             pl = phrase.lower()
@@ -715,6 +754,7 @@ def normalize_rewrite_policy(text: str, conf: Optional[Dict[str, Any]] = None) -
                     penalty += 2.0
             return base - penalty
 
+        # Function: Select best.
         def pick_best(existing: Optional[str], candidate: str, aspect: Optional[str] = None) -> str:
             if not existing:
                 return candidate
@@ -745,6 +785,7 @@ def normalize_rewrite_policy(text: str, conf: Optional[Dict[str, Any]] = None) -
             if "rhythm" in rl:
                 preserve_aspects["rhythm"] = pick_best(preserve_aspects.get("rhythm"), rest, "rhythm")
 
+        # Function: Extract segment.
         def extract_segment(phrase: str, keyword: str) -> str:
             pl = phrase.lower()
             keyword_hits = [keyword]
@@ -853,6 +894,7 @@ def normalize_rewrite_policy(text: str, conf: Optional[Dict[str, Any]] = None) -
     return cleaned
 
 
+# Function: Normalize priority order.
 def normalize_priority_order(value: Any, conf: Optional[Dict[str, Any]] = None) -> List[str]:
     conf = conf or {}
     if isinstance(value, list):
@@ -896,6 +938,7 @@ def normalize_priority_order(value: Any, conf: Optional[Dict[str, Any]] = None) 
     return deduped
 
 
+# Function: Merge avoid list into hints.
 def merge_avoid_list_into_hints(
     lexicon_hints: Optional[Dict[str, Any]],
     avoid_list: List[str]
@@ -907,6 +950,7 @@ def merge_avoid_list_into_hints(
     merged: List[str] = []
     seen = set()
 
+    # Function: Add item.
     def add_item(item: Any) -> None:
         if not isinstance(item, str):
             return
@@ -927,6 +971,7 @@ def merge_avoid_list_into_hints(
         hints["avoid_words"] = merged
     return hints
 
+# Function: Get prompt value.
 def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
     # Traverse a nested dict safely and fail fast if a key is missing.
     cur: Any = prompts
@@ -941,6 +986,7 @@ def get_prompt_value(prompts: Dict[str, Any], *path: str) -> Any:
 # Helpers: archive extraction
 # ----------------------------
 
+# Function: Extract a corpus archive into a destination directory.
 def extract_archive(archive_path: Path, dest_dir: Path) -> None:
     # Support zip and common tar variants; raise on unknown formats.
     name = archive_path.name.lower()
@@ -963,6 +1009,7 @@ def extract_archive(archive_path: Path, dest_dir: Path) -> None:
 # Helpers: reading documents
 # ----------------------------
 
+# Function: Read a .docx file using python-docx.
 def read_docx(path: Path) -> str:
     # Use python-docx if installed; otherwise fail with a clear message.
     if Document is None:
@@ -975,6 +1022,7 @@ def read_docx(path: Path) -> str:
     return "\n".join(parts)
 
 
+# Function: Read text file.
 def read_text_file(path: Path, max_bytes: int) -> str:
     # Read raw bytes, cap size, and decode with a few common encodings.
     # Try utf-8 first, fallback latin-1
@@ -1003,6 +1051,7 @@ OCR_LIGATURES = {
     "ﬆ": "st"
 }
 
+# Function: Normalize text.
 def normalize_text(s: str) -> str:
     # Strip frontmatter and normalize line breaks for consistent measurement.
     # Remove common YAML frontmatter (typical in markdown/blog)
@@ -1020,6 +1069,7 @@ def normalize_text(s: str) -> str:
     return s.strip()
 
 
+# Function: Strip base64 images.
 def strip_base64_images(text: str) -> str:
     # Replace embedded base64 images with a placeholder to reduce token load.
     return BASE64_IMAGE_RE.sub("[[BASE64_IMAGE]]", text)
@@ -1046,11 +1096,13 @@ INLINE_NUMERIC_CITE_RE = re.compile(r"\[(?:\d+|[IVX]+)(?:\s*[-–,;]\s*(?:\d+|[I
 PAREN_GROUP_RE = re.compile(r"\([^()]{1,80}\)")
 
 
+# Function: Normalize heading text.
 def normalize_heading_text(text: str) -> str:
     text = re.sub(r"[^a-z0-9\s]", "", text.lower())
     return re.sub(r"\s+", " ", text).strip()
 
 
+# Function: Get heading at.
 def get_heading_at(lines: List[str], idx: int) -> Optional[Tuple[int, str, int]]:
     # Return (level, heading_text, span_lines) if a heading starts at idx.
     line = lines[idx]
@@ -1067,10 +1119,12 @@ def get_heading_at(lines: List[str], idx: int) -> Optional[Tuple[int, str, int]]
     return None
 
 
+# Function: Check whether reference heading.
 def is_reference_heading(text: str) -> bool:
     return normalize_heading_text(text) in REFERENCE_HEADINGS
 
 
+# Function: Find reference sections.
 def find_reference_sections(lines: List[str]) -> List[Tuple[int, int]]:
     # Return list of (start_idx, end_idx) line ranges for reference-like sections.
     sections: List[Tuple[int, int]] = []
@@ -1099,6 +1153,7 @@ def find_reference_sections(lines: List[str]) -> List[Tuple[int, int]]:
     return sections
 
 
+# Function: Strip non voice sections.
 def strip_non_voice_sections(text: str) -> str:
     # Remove blockquotes, reference sections, and footnote definitions.
     text = re.sub(r"(?is)<blockquote[^>]*>.*?</blockquote>", "\n", text)
@@ -1129,6 +1184,7 @@ def strip_non_voice_sections(text: str) -> str:
     return cleaned.strip()
 
 
+# Function: Strip boilerplate sections.
 def strip_boilerplate_sections(text: str) -> str:
     # Remove legal/publishing boilerplate sections and paragraphs.
     lines = text.splitlines()
@@ -1189,6 +1245,7 @@ def strip_boilerplate_sections(text: str) -> str:
     return cleaned.strip()
 
 
+# Function: Strip fenced code blocks.
 def strip_fenced_code_blocks(text: str) -> str:
     # Remove fenced code blocks (``` or ~~~) entirely.
     lines = text.splitlines()
@@ -1211,11 +1268,13 @@ def strip_fenced_code_blocks(text: str) -> str:
     return "\n".join(out)
 
 
+# Function: Strip inline code.
 def strip_inline_code(text: str) -> str:
     # Remove inline code spans delimited by backticks.
     return re.sub(r"(``[^`\n]+``|`[^`\n]+`)", "", text)
 
 
+# Function: Strip latex math.
 def strip_latex_math(text: str) -> str:
     # Remove LaTeX-style inline/display math.
     text = re.sub(r"(?s)\\\[.*?\\\]", "\n", text)
@@ -1228,6 +1287,7 @@ def strip_latex_math(text: str) -> str:
     return text
 
 
+# Function: Strip html.
 def strip_html(text: str) -> str:
     # Remove HTML tags and block elements to exclude HTML from profiling.
     text = re.sub(r"(?is)<[A-Za-z][^>]*>.*?</[A-Za-z][^>]*>", "\n", text)
@@ -1236,11 +1296,13 @@ def strip_html(text: str) -> str:
     return text
 
 
+# Function: Strip html entities.
 def strip_html_entities(text: str) -> str:
     # Remove HTML entities (e.g., &nbsp;).
     return HTML_ENTITY_RE.sub("", text)
 
 
+# Function: Find quote spans.
 def _quote_spans(text: str) -> List[tuple[int, int, str]]:
     spans: List[tuple[int, int, str]] = []
     for match in QUOTE_SPAN_RE.finditer(text):
@@ -1251,10 +1313,12 @@ def _quote_spans(text: str) -> List[tuple[int, int, str]]:
     return spans
 
 
+# Function: Check whether multiword quote.
 def is_multiword_quote(inner: str) -> bool:
     return len(words(inner)) >= 2
 
 
+# Function: Strip quoted passages.
 def strip_quoted_passages(text: str) -> str:
     # Remove multi-word quoted passages (used for non-fiction).
     spans = _quote_spans(text)
@@ -1273,6 +1337,7 @@ def strip_quoted_passages(text: str) -> str:
     return "".join(out)
 
 
+# Function: Detect fiction from texts.
 def detect_fiction_from_texts(
     texts: List[str],
     quote_span_min: int,
@@ -1308,6 +1373,7 @@ def detect_fiction_from_texts(
     return False
 
 
+# Function: Check whether parenthetical citation.
 def is_parenthetical_citation(inner: str) -> bool:
     if not re.search(r"\b(19|20)\d{2}[a-z]?\b", inner):
         return False
@@ -1328,11 +1394,13 @@ def is_parenthetical_citation(inner: str) -> bool:
     return False
 
 
+# Function: Strip inline citations.
 def strip_inline_citations(text: str) -> str:
     # Remove inline citation markers while keeping surrounding prose.
     text = INLINE_FOOTNOTE_RE.sub("", text)
     text = INLINE_NUMERIC_CITE_RE.sub("", text)
 
+    # Function: Replacement helper for data.
     def repl(match: re.Match[str]) -> str:
         inner = match.group(0)[1:-1]
         return "" if is_parenthetical_citation(inner) else match.group(0)
@@ -1343,6 +1411,7 @@ def strip_inline_citations(text: str) -> str:
     return text.strip()
 
 
+# Function: Filter author voice text.
 def filter_author_voice_text(text: str) -> str:
     # Remove non-author voice segments and inline citations for measurements/excerpts.
     text = strip_fenced_code_blocks(text)
@@ -1359,6 +1428,7 @@ def filter_author_voice_text(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
+# Function: Iterate over corpus texts.
 def iter_corpus_texts(root: Path, max_files: int, max_bytes_per_file: int) -> List[Tuple[str, str]]:
     """
     Returns list of (relative_path, text).
@@ -1393,6 +1463,7 @@ def iter_corpus_texts(root: Path, max_files: int, max_bytes_per_file: int) -> Li
     return items
 
 
+# Function: Extract title.
 def extract_title(text: str) -> Optional[str]:
     # Try to detect a title from HTML or Markdown headings.
     # Try HTML <title>...</title>
@@ -1437,6 +1508,7 @@ def extract_title(text: str) -> Optional[str]:
     return None
 
 
+# Function: Build corpus documents.
 def build_corpus_documents(files_and_texts: List[Tuple[str, str]]) -> List[Dict[str, Any]]:
     # Build per-document metadata records for the fingerprint.
     documents: List[Dict[str, Any]] = []
@@ -1467,56 +1539,19 @@ def build_corpus_documents(files_and_texts: List[Tuple[str, str]]) -> List[Dict[
 # Measurement: token-ish stats
 # ----------------------------
 
-WORD_RE = re.compile(r"[A-Za-z0-9]+(?:'[A-Za-z0-9]+)?")
-SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[])")
-PARA_SPLIT_RE = re.compile(r"\n\s*\n+")
-
-def words(text: str) -> List[str]:
-    # Lightweight tokenizer for measurement only (not linguistically perfect).
-    return WORD_RE.findall(text)
-
-def split_sentences(text: str) -> List[str]:
-    # naive sentence splitter; good enough for style stats
-    text = re.sub(r"\s+", " ", text).strip()
-    if not text:
-        return []
-    sents = SENT_SPLIT_RE.split(text)
-    # If splitter fails (single long sentence), return as one
-    return [s.strip() for s in sents if s.strip()]
-
-def split_paragraphs(text: str) -> List[str]:
-    # Paragraphs separated by blank lines.
-    paras = PARA_SPLIT_RE.split(text.strip())
-    return [p.strip() for p in paras if p.strip()]
-
-def clamp01(x: float) -> float:
-    return max(0.0, min(1.0, x))
-
-def histogram(values: List[int], bins: List[Tuple[int, Optional[int]]]) -> List[float]:
-    """
-    bins: list of (lo, hi) inclusive, hi=None for open-ended.
-    Returns proportions summing to 1.0 (or all zeros if empty).
-    """
-    # Convert values into normalized proportions over the requested bins.
-    if not values:
-        return [0.0] * len(bins)
-    counts = [0] * len(bins)
-    for v in values:
-        for i, (lo, hi) in enumerate(bins):
-            if v >= lo and (hi is None or v <= hi):
-                counts[i] += 1
-                break
-    total = sum(counts)
-    if total == 0:
-        return [0.0] * len(bins)
-    return [c / total for c in counts]
+# Function: Split text into sentences using the shared heuristic.
+split_sentences = utils_split_sentences
+# Function: Split text into paragraphs using the shared heuristic.
+split_paragraphs = utils_split_paragraphs
 
 
+# Function: Estimate tokens.
 def estimate_tokens(text: str) -> int:
     # Rough heuristic: ~4 characters per token.
     return max(1, (len(text) + 3) // 4)
 
 
+# Function: Estimate tokens for messages.
 def estimate_tokens_for_messages(messages: List[Dict[str, str]]) -> int:
     # Add a small per-message overhead to approximate chat tokenization.
     total = 0
@@ -1525,12 +1560,7 @@ def estimate_tokens_for_messages(messages: List[Dict[str, str]]) -> int:
         total += 4
     return total + 2
 
-def approx_rate_per_1000_words(count: int, total_words: int) -> float:
-    # Normalize counts so they are comparable across corpora.
-    if total_words <= 0:
-        return 0.0
-    return (count / total_words) * 1000.0
-
+# Function: Detect likely English spelling variant in text.
 def detect_english_spelling_variant(text: str) -> Dict[str, Any]:
     # Heuristic: count common US vs Canadian/British spellings.
     pairs = [
@@ -1601,11 +1631,13 @@ def detect_english_spelling_variant(text: str) -> Dict[str, Any]:
         "note": "Heuristic based on common US vs Canadian spellings."
     }
 
+# Function: Compute stylometric measurements for a text corpus.
 def compute_measurements(
     texts: List[str],
     rare_words_limit: int | None = None,
     rare_words_limit_avoidance: int | None = None,
-    common_words: Optional[Iterable[str]] = None
+    common_words: Optional[Iterable[str]] = None,
+    local_spelling_rules: Dict[str, Any] | None = None
 ) -> Dict[str, Any]:
     # Compute corpus-wide measurements for stylistic grounding.
     combined = "\n\n".join(texts)
@@ -1675,14 +1707,39 @@ def compute_measurements(
     cap_counts = collections.Counter(t.lower() for t in w if t and t[0].isupper())
 
     # Rare-word signals: low-frequency tokens that the author rarely uses.
+    roman_re = re.compile(r"^[ivxlcdm]+$")
+
+    # Function: Check whether repeated token.
+    def is_repeated_token(token: str) -> bool:
+        # Filter pathological tokens like "chairmanchairman" that are almost always OCR or tokenization noise.
+        if len(token) < 8:
+            return False
+        for k in range(3, (len(token) // 2) + 1):
+            if len(token) % k != 0:
+                continue
+            if token == token[:k] * (len(token) // k):
+                return True
+        if len(token) % 2 == 0:
+            half = len(token) // 2
+            if token[:half] == token[half:]:
+                return True
+        return False
+    # Function: Check whether candidate rare.
     def is_candidate_rare(token: str) -> bool:
+        # Keep rare-word signals focused on lexical content rather than digits, numerals, or artifacts.
         if token in stop:
             return False
         if len(token) < 4:
             return False
         if any(ch.isdigit() for ch in token):
             return False
+        # Roman numerals (e.g., "xxiii") are excluded to avoid skew from chapter/section markers.
+        if roman_re.fullmatch(token) and len(token) >= 2:
+            return False
+        if is_repeated_token(token):
+            return False
         return token.isalpha()
+    # Function: Check whether candidate common.
     def is_candidate_common(token: str) -> bool:
         if token in stop:
             return False
@@ -1724,17 +1781,20 @@ def compute_measurements(
         (token, token_counts.get(token, 0), freq) for token, freq, _ in common_entries
         if is_candidate_common(token) and token_counts.get(token, 0) == 0
     ]
+    # Function: Compute a stable hash for token ordering.
     def stable_token_hash(token: str) -> int:
         return int(hashlib.md5(token.encode("utf-8")).hexdigest()[:8], 16)
 
+    # Function: Estimate proper-name likelihood for a token.
     def proper_name_likelihood(token: str) -> float:
         total = token_counts.get(token, 0)
         if total <= 0:
             return 0.0
         return cap_counts.get(token, 0) / total
 
+    # Prefer low frequency and low proper-name likelihood, then stabilize ordering with a hash.
     rare_candidates.sort(key=lambda x: (x[1], proper_name_likelihood(x[0]), stable_token_hash(x[0])))
-    # Round-robin by initial letter to avoid alphabetical bias when counts tie.
+    # Round-robin by initial letter to reduce alphabetical clustering when counts tie.
     by_initial: Dict[str, List[Tuple[str, int]]] = {}
     for token, count in rare_candidates:
         initial = token[0] if token else "#"
@@ -1756,14 +1816,26 @@ def compute_measurements(
     candidate_pool = selected[:pool_size]
     candidate_pool.sort(key=lambda x: (proper_name_likelihood(x[0]), x[1], stable_token_hash(x[0])))
     filtered = candidate_pool[:max(limit_signals, limit_avoid)]
-    # LLM ranking is handled during common-phrase validation to avoid extra calls.
+    # LLM ranking is handled during common-phrase validation to avoid extra calls here.
+    rules = local_spelling_rules if isinstance(local_spelling_rules, dict) else load_local_spelling_rules()
+    # Normalize rare-word signals to a US baseline so fingerprints are comparable across locales.
+    spelling_map = build_local_spelling_map(rules, "us")
+    normalized_counts: Dict[str, int] = {}
+    normalized_order: List[str] = []
+    for token, count in filtered[:limit_signals]:
+        norm = normalize_text_spelling(token, spelling_map) if spelling_map else token
+        if norm not in normalized_counts:
+            normalized_counts[norm] = count
+            normalized_order.append(norm)
+        else:
+            normalized_counts[norm] += count
     rare_words_signals = [
         {
             "word": token,
-            "count": count,
-            "rate_per_1000w": approx_rate_per_1000_words(count, total_words)
+            "count": normalized_counts[token],
+            "rate_per_1000w": approx_rate_per_1000_words(normalized_counts[token], total_words)
         }
-        for token, count in filtered[:limit_signals]
+        for token in normalized_order
     ]
     rare_words_avoid = []
     for token, count, freq in common_absent_candidates[:limit_avoid]:
@@ -1775,6 +1847,7 @@ def compute_measurements(
         if freq is not None:
             item["zipf_frequency"] = freq
         rare_words_avoid.append(item)
+    # Function: Generate n-grams from tokens.
     def ngrams(n: int) -> Iterable[str]:
         for i in range(0, len(toks) - n + 1):
             chunk = toks[i:i+n]
@@ -1878,6 +1951,7 @@ def compute_measurements(
         ]
     }
 
+    # Function: Check whether a sentence contains a marker.
     def sentence_has_marker(sentence: str, markers: List[str]) -> bool:
         s = sentence.lower()
         return any(m in s for m in markers)
@@ -1935,13 +2009,8 @@ def compute_measurements(
     para_bins = [(1,1),(2,3),(4,5),(6,8),(9,None)]
     para_hist = histogram(para_lens, para_bins)
 
-    def safe_mean(xs: List[int]) -> float:
-        return float(statistics.mean(xs)) if xs else 0.0
-
-    def safe_stdev(xs: List[int]) -> float:
-        return float(statistics.pstdev(xs)) if len(xs) >= 2 else 0.0
-
     # Self-echo repetition rates (bigrams/trigrams reused above a threshold).
+    # Function: Compute the fraction of repeated n-grams above a minimum count.
     def repeat_rate(ngram_list: List[str], min_count: int = 3) -> float:
         if not ngram_list:
             return 0.0
@@ -2049,6 +2118,7 @@ def compute_measurements(
     return measurements
 
 
+# Function: Compute entropy for counts.
 def _entropy_counts(counts: Dict[str, int]) -> float:
     total = sum(v for v in counts.values() if isinstance(v, int) and v > 0)
     if total <= 0:
@@ -2062,6 +2132,7 @@ def _entropy_counts(counts: Dict[str, int]) -> float:
     return ent
 
 
+# Function: Compute quantile for data.
 def _quantile(sorted_vals: List[float], q: float) -> float:
     if not sorted_vals:
         return 0.0
@@ -2079,6 +2150,7 @@ def _quantile(sorted_vals: List[float], q: float) -> float:
     return float(sorted_vals[lo] * (1.0 - frac) + sorted_vals[hi] * frac)
 
 
+# Function: Compute rolling humanization baselines from a corpus.
 def compute_humanization_baseline(
     texts: List[str],
     conf: Optional[Dict[str, Any]] = None
@@ -2104,7 +2176,7 @@ def compute_humanization_baseline(
     min_window_words = max(50, min_window_words)
     max_windows = max(10, max_windows)
 
-    # Paragraph-driven rolling windows to preserve punctuation/sentence structure.
+    # Paragraph-driven rolling windows preserve local punctuation and cadence signals.
     paras: List[str] = []
     para_words: List[int] = []
     for t in texts:
@@ -2131,6 +2203,7 @@ def compute_humanization_baseline(
             "notes": ["No usable paragraphs for baseline computation."]
         }
 
+    # Function: Compute windowed metrics.
     def window_metrics(text: str) -> Dict[str, float]:
         toks = [w.lower() for w in words(text)]
         total_w = len(toks)
@@ -2274,6 +2347,7 @@ def compute_humanization_baseline(
     }
 
 
+# Function: Compute token capitalization ratios.
 def compute_token_capitalization_ratios(
     texts: List[str],
     token_set: set[str]
@@ -2298,6 +2372,7 @@ def compute_token_capitalization_ratios(
     return ratios
 
 
+# Function: Select representative excerpts.
 def pick_representative_excerpts(files_and_texts: List[Tuple[str, str]], max_total_chars: int) -> List[Dict[str, str]]:
     """
     Pick excerpts from multiple files to show the LLM real style.
@@ -2306,6 +2381,7 @@ def pick_representative_excerpts(files_and_texts: List[Tuple[str, str]], max_tot
     excerpts: List[Dict[str, str]] = []
     used = 0
 
+    # Function: Compute score for paragraph voice.
     def score_paragraph_voice(p: str) -> float:
         # Heuristic: prefer clean, narrative paragraphs with fewer artifacts.
         ws = words(p)
@@ -2390,6 +2466,7 @@ class LLMConfig:
     backoff_base_seconds: float = 2.0
     backoff_max_seconds: float = 20.0
 
+# Function: Load config.
 def load_config(path: Path) -> LLMConfig:
     # Load API configuration and apply defaults.
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -2408,6 +2485,7 @@ def load_config(path: Path) -> LLMConfig:
         backoff_max_seconds=float(data.get("backoff_max_seconds", 20.0)),
     )
 
+# Function: Call completions.
 def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> tuple[str, Dict[str, Any] | None]:
     # POST to a /v1/chat/completions-compatible endpoint.
     url = f"{cfg.base_url}/chat/completions"
@@ -2462,12 +2540,14 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> tuple[st
 # Prompting
 # ----------------------------
 
+# Function: Extract the fingerprint schema template from prompts.
 def fingerprint_schema_template(prompts: Dict[str, Any]) -> Dict[str, Any]:
     schema = get_prompt_value(prompts, "fingerprint", "schema_hint")
     if not isinstance(schema, dict):
         raise TypeError("prompts.fingerprint.schema_hint must be an object")
     return copy.deepcopy(schema)
 
+# Function: Build fingerprint prompt.
 def build_fingerprint_prompt(
     measurements: Dict[str, Any],
     excerpts: List[Dict[str, str]],
@@ -2495,12 +2575,14 @@ def build_fingerprint_prompt(
     ]
 
 
+# Function: Strip measurements from a fingerprint before merging.
 def slim_fingerprint_for_merge(fingerprint: Dict[str, Any]) -> Dict[str, Any]:
     slim = dict(fingerprint)
     slim.pop("measurements", None)
     return slim
 
 
+# Function: Build the LLM prompt for fingerprint merging.
 def build_merge_prompt(
     fingerprint_a: Dict[str, Any],
     fingerprint_b: Dict[str, Any],
@@ -2525,6 +2607,7 @@ def build_merge_prompt(
     ]
 
 
+# Function: Build the LLM prompt for phrase validation.
 def build_phrase_validation_prompt(
     phrases: List[Dict[str, Any]],
     prompts: Dict[str, Any]
@@ -2542,6 +2625,7 @@ def build_phrase_validation_prompt(
     ]
 
 
+# Function: Extract LLM-ranked rare words from validation output.
 def rank_rare_words_llm(
     validation_result: Dict[str, Any]
 ) -> List[str]:
@@ -2551,6 +2635,7 @@ def rank_rare_words_llm(
     return [w for w in ranked if isinstance(w, str)]
 
 
+# Function: Validate common phrases to remove OCR/citation noise.
 def validate_common_phrases(
     cfg: LLMConfig,
     phrases: List[Dict[str, Any]],
@@ -2572,6 +2657,7 @@ def validate_common_phrases(
         "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec"
     }
 
+    # Function: Check whether like date.
     def looks_like_date(phrase: str) -> bool:
         lowered = phrase.lower()
         tokens = [t for t in re.findall(r"[A-Za-z0-9]+", lowered)]
@@ -2598,7 +2684,9 @@ def validate_common_phrases(
     else:
         entity_singles, entity_phrases, entity_max_len = set(), set(), 1
 
+    # Function: Check for entity.
     def contains_entity(phrase: str) -> bool:
+        # Entity matching is optional; skip when no blacklist is loaded.
         if not entity_singles and not entity_phrases:
             return False
         tokens = re.findall(r"[A-Za-z0-9]+", phrase.lower())
@@ -2619,6 +2707,7 @@ def validate_common_phrases(
                     return True
         return False
 
+    # Function: Decide whether to drop proper name.
     def should_drop_proper_name(phrase: str) -> bool:
         tokens = [t for t in re.findall(r"[A-Za-z][A-Za-z'-]*", phrase)]
         if not tokens:
@@ -2686,6 +2775,7 @@ def validate_common_phrases(
     return result
 
 
+# Function: Filter phrases that look like proper names or dates.
 def filter_proper_phrase_candidates(
     phrases: List[Dict[str, Any]],
     token_cap_ratios: Dict[str, float] | None,
@@ -2703,6 +2793,7 @@ def filter_proper_phrase_candidates(
         "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec"
     }
 
+    # Function: Check whether like date.
     def looks_like_date(phrase: str) -> bool:
         lowered = phrase.lower()
         tokens = [t for t in re.findall(r"[A-Za-z0-9]+", lowered)]
@@ -2726,6 +2817,7 @@ def filter_proper_phrase_candidates(
     else:
         entity_singles, entity_phrases, entity_max_len = set(), set(), 1
 
+    # Function: Check for entity.
     def contains_entity(phrase: str) -> bool:
         if not entity_singles and not entity_phrases:
             return False
@@ -2747,6 +2839,7 @@ def filter_proper_phrase_candidates(
                     return True
         return False
 
+    # Function: Decide whether to drop.
     def should_drop(phrase: str) -> bool:
         tokens = [t for t in re.findall(r"[A-Za-z][A-Za-z'-]*", phrase)]
         if not tokens:
@@ -2785,6 +2878,7 @@ def filter_proper_phrase_candidates(
     return kept, dropped
 
 
+# Function: Chunk excerpts.
 def chunk_excerpts(
     excerpts: List[Dict[str, str]],
     measurements: Dict[str, Any],
@@ -2817,6 +2911,7 @@ def chunk_excerpts(
     return batches
 
 
+# Function: Extract JSON candidate.
 def _extract_json_candidate(text: str) -> str | None:
     # Extract the first complete JSON object/array from a string.
     start = None
@@ -2852,6 +2947,7 @@ def _extract_json_candidate(text: str) -> str | None:
     return None
 
 
+# Function: Parse JSON strict.
 def parse_json_strict(s: str) -> Dict[str, Any]:
     # Strip code fences if present and parse strictly as JSON.
     s = s.strip()
@@ -2867,6 +2963,7 @@ def parse_json_strict(s: str) -> Dict[str, Any]:
             return json.loads(candidate)
         raise
 
+# Function: Repair JSON with LLM.
 def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any]) -> Dict[str, Any]:
     # Ask the LLM to repair malformed JSON while preserving content.
     system = get_prompt_value(prompts, "repair_json", "system")
@@ -2882,6 +2979,7 @@ def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any
     return parse_json_strict(fixed)
 
 
+# Function: Call the LLM with retries and JSON parsing.
 def request_json_with_retries(
     cfg: LLMConfig,
     messages: List[Dict[str, str]],
@@ -2923,6 +3021,7 @@ def request_json_with_retries(
 # Main
 # ----------------------------
 
+# Function: CLI entry point.
 def main() -> int:
     if "--license" in sys.argv:
         return print_license_and_exit()
@@ -2995,6 +3094,7 @@ def main() -> int:
         script_cfg = Path(__file__).resolve().parent / "config.llm.json"
         args.config = cwd_cfg if cwd_cfg.exists() else script_cfg
 
+    # Function: Verbose-print when enabled.
     def vprint(msg: str) -> None:
         if args.verbose:
             print(msg)
@@ -3089,7 +3189,8 @@ def main() -> int:
             texts,
             rare_words_limit=rare_words_limit,
             rare_words_limit_avoidance=rare_words_limit_avoid,
-            common_words=common_words
+            common_words=common_words,
+            local_spelling_rules=local_spelling_rules
         )
         # Deterministically filter sentence/transition openers to reduce proper-name noise.
         template_signals = measurements.get("templates_signals", {})

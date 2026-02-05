@@ -367,6 +367,10 @@ High‑value next steps, in priority order:
 - [ ] Add `generate_from_fingerprint.py`  
 - [ ] Support outlines / prompts conditioned on fingerprint  
 
+### Refactoring (Future)
+
+- [ ] Consolidate additional shared helpers (masking/placeholder, regex utilities, LLM client wrappers) into a shared module alongside `utils.py` to reduce duplication.
+
 ---
 
 ## 11. Testing Strategy
@@ -387,7 +391,7 @@ Recommended additions:
 - JSON validity tests
 
 Current smoke test:
-- `tests/run_smoke.sh` — end-to-end pipeline using small fixtures plus an LLM connectivity check (requires valid `config.llm.json`)
+- `tests/run_smoke.sh` — regression suites by default (no LLM calls); end-to-end pipeline + LLM connectivity check when `--llm-tests` is provided (requires valid `config.llm.json`)
 
 Regression suite:
 - `tests/test_v1_1_0_regression.py` (run via `./tests/run_v1_1_0_regression.sh`; executed automatically by `run_smoke.sh`)

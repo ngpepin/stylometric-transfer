@@ -697,7 +697,7 @@ This file is human readable, editable, version controllable and reusable across 
 
 ## Testing
 
-Lightweight smoke tests are located in `tests/` and exercise the full pipeline using small fixtures. These tests call the LLM and require a valid `config.llm.json`.
+Lightweight smoke tests are located in `tests/` and exercise the full pipeline using small fixtures when LLM tests are enabled. By default, only the regression suites run (no LLM calls).
 
 To run the smoke test:
 
@@ -725,7 +725,7 @@ The v1.7.x regression suite (no API calls) is found in `tests/test_v1_7_X_regres
 ./tests/run_v1_7_X_regression.sh
 ```
 
-An LLM connectivity check is also run by `run_smoke.sh` via `tests/test_llm_smoke.py` (uses the same `config.llm.json`); it is skipped when the endpoint is unreachable.
+An LLM connectivity check and the end-to-end fingerprint/apply smoke path can be enabled by passing `--llm-tests` to `run_smoke.sh`, which runs `tests/test_llm_smoke.py` using the same `config.llm.json`.
 
 ---
 

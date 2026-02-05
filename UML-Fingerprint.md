@@ -46,6 +46,17 @@ class PhraseValidator {
   +validate_common_phrases()
 }
 
+class Utils {
+  +words()
+  +split_sentences()
+  +split_paragraphs()
+  +histogram()
+  +approx_rate_per_1000_words()
+  +clamp01()
+  +safe_mean()
+  +safe_stdev()
+}
+
 class LexiconHints {
   +lexicon_hints: dict
   +avoid_list: list
@@ -78,6 +89,7 @@ FingerprintPipeline --> PromptTemplates
 FingerprintPipeline --> PhraseValidator
 FingerprintPipeline --> LexiconHints
 FingerprintPipeline --> StyleFingerprint
+FingerprintPipeline --> Utils
 @enduml
 ```
 
@@ -100,7 +112,7 @@ start
 :Detect fiction vs non-fiction (can be forced by flags);
 :Filter non-author voice text;
 :If non-fiction, drop multi-word quoted passages;
-:Compute measurements (rhetoric moves, cadence, discourse markers, repetition);
+:Compute measurements (rhetoric moves, cadence, discourse markers, repetition; uses shared utils);
 :Compute humanization baseline (rolling windows; embedded for auditability; stripped from LLM prompts during apply);
 
 if (Phrase validation enabled?) then (yes)
@@ -155,6 +167,7 @@ FS -> FSYS : extract archive & read files
 FS -> FS : detect fiction vs non-fiction
 FS -> FS : normalize/filter text
 FS -> FS : compute measurements
+note right of FS : Measurements use shared utils\n(words/splits/histograms)
 FS -> FS : compute humanization baseline
 FS -> FS : prefilter proper-name phrases
 FS -> LLM : validate common phrases (optional)
