@@ -4874,7 +4874,14 @@ def main() -> int:
             if summary_enabled:
                 out_obj["chunk_summary"] = (previous_summary or "")
             return md_chunk, out_obj, {"score": 1.0, "deltas": []}
-        attempts = 0
+        # Track style-compliance retries separately from forced-person retries so that
+        # voice enforcement doesn't consume the style retry budget (common with --1st-person).
+        style_retries_used = 0
+        voice_retries_used = 0
+        # When forcing narrative person, we treat the "voice pass" output as a baseline that
+        # generates feedback; style attempts begin on the *next* call so budgets add.
+        style_phase_started = args.force_person is None
+        attempt_global = 0
         best_attempt = 0
         best_score: float | None = None
         best_md: str | None = None
@@ -4895,6 +4902,7 @@ def main() -> int:
         style_feedback: Dict[str, Any] | None = None
         last_out: Dict[str, Any] = {}
         while True:
+            attempt_global += 1
             messages = build_messages_for_chunk(
                 md_chunk,
                 style_feedback,
@@ -5137,17 +5145,22 @@ def main() -> int:
                         "count": replacements
                     })
 
-            if args.force_person and not args.no_style_retry and attempts < args.max_style_retries:
+            if args.force_person and not args.no_style_retry:
                 voice_text = filter_author_voice_text(final_md)
                 override_eval = evaluate_pronoun_override(voice_text, args.force_person)
-                if override_eval.get("violations"):
+                if override_eval.get("violations") and voice_retries_used < args.max_style_retries:
+                    if args.verbose and chunk_index is not None and chunk_total is not None:
+                        vprint(
+                            f"Chunk {chunk_index}/{chunk_total} pronoun override violations; "
+                            f"retrying (voice retry {voice_retries_used + 1}/{args.max_style_retries})."
+                        )
                     style_feedback = {
                         "pronoun_override": override_eval,
                         "notes": [
                             "Pronoun override violations detected. Rewrite to match forced narrative voice."
                         ]
                     }
-                    attempts += 1
+                    voice_retries_used += 1
                     continue
 
             if summary_enabled:
@@ -5184,7 +5197,7 @@ def main() -> int:
             score_val = compliance.get("score") if isinstance(compliance, dict) else None
             if not isinstance(score_val, (int, float)):
                 score_val = -1.0
-            attempt_no = attempts + 1
+            attempt_no = attempt_global
             if best_score is None or score_val > best_score:
                 best_score = score_val
                 best_attempt = attempt_no
@@ -5205,7 +5218,15 @@ def main() -> int:
                         f"compliance score: {comp_score} "
                         f"(threshold {args.style_retry_threshold})"
                     )
-            if not args.no_style_retry and attempts < args.max_style_retries and compliance["score"] < args.style_retry_threshold:
+
+            # If we forced narrative person, the voice-phase output is used only to generate
+            # compliance deltas; do not count it as a "style attempt" so budgets add.
+            if (
+                args.force_person
+                and not style_phase_started
+                and not args.no_style_retry
+                and compliance["score"] < args.style_retry_threshold
+            ):
                 style_feedback = {
                     "score": compliance["score"],
                     "deltas": compliance.get("deltas", [])
@@ -5214,7 +5235,7 @@ def main() -> int:
                     controller_conf = tunables.get("humanization_controller", {}) if isinstance(tunables.get("humanization_controller", {}), dict) else {}
                     if controller_conf.get("feedback_enabled", False):
                         max_feedback_retries = int(controller_conf.get("max_feedback_retries", args.max_style_retries))
-                        if attempts < max_feedback_retries:
+                        if style_retries_used < max_feedback_retries:
                             overlay_feedback = build_overlay_feedback(
                                 controller_overlay,
                                 filter_author_voice_text(final_md),
@@ -5222,7 +5243,41 @@ def main() -> int:
                             )
                             if overlay_feedback:
                                 style_feedback["humanization_controller"] = overlay_feedback
-                attempts += 1
+                # If the voice budget is exhausted but violations remain, carry them into the
+                # style feedback so the model still gets a chance to fix voice while improving compliance.
+                voice_text = filter_author_voice_text(final_md)
+                override_eval = evaluate_pronoun_override(voice_text, args.force_person)
+                if override_eval.get("violations"):
+                    style_feedback["pronoun_override"] = override_eval
+                    style_feedback.setdefault("notes", []).append(
+                        "Pronoun override violations detected. Rewrite to match forced narrative voice."
+                    )
+                style_phase_started = True
+                continue
+
+            if (
+                not args.no_style_retry
+                and style_phase_started
+                and style_retries_used < args.max_style_retries
+                and compliance["score"] < args.style_retry_threshold
+            ):
+                style_feedback = {
+                    "score": compliance["score"],
+                    "deltas": compliance.get("deltas", [])
+                }
+                if controller_overlay and isinstance(tunables, dict):
+                    controller_conf = tunables.get("humanization_controller", {}) if isinstance(tunables.get("humanization_controller", {}), dict) else {}
+                    if controller_conf.get("feedback_enabled", False):
+                        max_feedback_retries = int(controller_conf.get("max_feedback_retries", args.max_style_retries))
+                        if style_retries_used < max_feedback_retries:
+                            overlay_feedback = build_overlay_feedback(
+                                controller_overlay,
+                                filter_author_voice_text(final_md),
+                                controller_conf
+                            )
+                            if overlay_feedback:
+                                style_feedback["humanization_controller"] = overlay_feedback
+                style_retries_used += 1
                 continue
 
             if chunk_index is not None and chunk_total is not None and args.verbose:
