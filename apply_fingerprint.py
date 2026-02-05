@@ -1137,6 +1137,31 @@ def words(text: str) -> List[str]:
     return WORD_RE.findall(text)
 
 
+def normalize_summary(summary: str, max_words: int | None) -> str:
+    if not isinstance(summary, str):
+        return ""
+    summary = " ".join(summary.split()).strip()
+    if not summary:
+        return ""
+    if isinstance(max_words, int) and max_words > 0:
+        tokens = summary.split()
+        if len(tokens) > max_words:
+            summary = " ".join(tokens[:max_words])
+    return summary
+
+
+def build_fallback_summary(text: str, max_words: int | None) -> str:
+    cleaned = filter_author_voice_text(text)
+    tokens = words(cleaned)
+    if not tokens:
+        tokens = words(text)
+    if not tokens:
+        return ""
+    if isinstance(max_words, int) and max_words > 0:
+        tokens = tokens[:max_words]
+    return " ".join(tokens)
+
+
 def _quote_spans(text: str) -> List[tuple[int, int, str]]:
     spans: List[tuple[int, int, str]] = []
     for match in QUOTE_SPAN_RE.finditer(text):
@@ -3300,7 +3325,8 @@ def build_apply_prompt(
     style_feedback: Dict[str, Any] | None = None,
     humanizer_rules: List[Dict[str, Any]] | None = None,
     controller_overlay: Dict[str, Any] | None = None,
-    voice_override: str | None = None
+    voice_override: str | None = None,
+    chunk_summary: Dict[str, Any] | None = None
 ) -> List[Dict[str, str]]:
     # Fill the apply prompt template with runtime data.
     system = get_prompt_value(prompts, "apply", "system")
@@ -3347,6 +3373,20 @@ def build_apply_prompt(
         elif rule:
             user["rules"] = [rule]
         user["voice_override"] = voice_override
+    if chunk_summary:
+        user["chunk_summary"] = chunk_summary
+        if isinstance(user.get("output_format"), dict):
+            user["output_format"]["chunk_summary"] = "string"
+        if isinstance(user.get("rules"), list):
+            summary_words = chunk_summary.get("summary_words")
+            summary_clause = f"~{summary_words} words" if summary_words else "a short (approx. 25-word) summary"
+            user["rules"].append(
+                "Return chunk_summary as plain text (no Markdown). It is ONLY for "
+                "context continuity between chunks and must NOT appear in final_markdown. "
+                f"Keep it to {summary_clause}. Synthesize the prior summary with the current "
+                "chunk in your own words (do not copy previous_summary verbatim). "
+                "Do not introduce new facts."
+            )
 
     return [
         {"role": "system", "content": system},
@@ -3762,7 +3802,10 @@ def main() -> int:
         style_feedback: Dict[str, Any] | None = None,
         for_estimate: bool = False,
         fingerprint_override: Dict[str, Any] | None = None,
-        controller_overlay: Dict[str, Any] | None = None
+        controller_overlay: Dict[str, Any] | None = None,
+        previous_summary: str | None = None,
+        summary_words: int | None = None,
+        summary_enabled: bool = False
     ) -> List[Dict[str, str]]:
         # Build prompts per chunk using local measurements.
         if for_estimate:
@@ -3771,6 +3814,13 @@ def main() -> int:
         else:
             input_meas = compute_measurements(filter_author_voice_text(md_chunk))
         fp_payload = fingerprint_override if isinstance(fingerprint_override, dict) else fingerprint
+        summary_payload = None
+        if summary_enabled:
+            summary_payload = {
+                "enabled": True,
+                "summary_words": summary_words if isinstance(summary_words, int) else None,
+                "previous_summary": previous_summary or ""
+            }
         return build_apply_prompt(
             fp_payload,
             md_chunk,
@@ -3780,14 +3830,18 @@ def main() -> int:
             style_feedback,
             humanizer_rules,
             controller_overlay,
-            args.force_person
+            args.force_person,
+            summary_payload
         )
 
     def rewrite_chunk(
         md_chunk: str,
         chunk_index: int | None = None,
         chunk_total: int | None = None,
-        depth: int = 0
+        depth: int = 0,
+        previous_summary: str | None = None,
+        summary_words: int | None = None,
+        summary_enabled: bool = False
     ) -> tuple[str, Dict[str, Any], Dict[str, Any]]:
         # Rewrite a chunk with optional style retry.
         author_voice = filter_author_voice_text(md_chunk)
@@ -3806,6 +3860,8 @@ def main() -> int:
                     "notes": ["No author-voice content in chunk; preserved verbatim."]
                 }
             }
+            if summary_enabled:
+                out_obj["chunk_summary"] = (previous_summary or "")
             return md_chunk, out_obj, {"score": 1.0, "deltas": []}
         attempts = 0
         fp_overlay = None
@@ -3827,7 +3883,10 @@ def main() -> int:
                 style_feedback,
                 False,
                 fp_overlay,
-                controller_overlay
+                controller_overlay,
+                previous_summary,
+                summary_words,
+                summary_enabled
             )
             input_tokens = estimate_tokens_for_messages(messages)
             last_raw = ""
@@ -3921,14 +3980,25 @@ def main() -> int:
                         print_warn(msg)
                         recovered_chunks: List[str] = []
                         recovered_devs: List[Any] = []
+                        summary_cursor = previous_summary
                         for j, part in enumerate(parts, start=1):
                             if args.verbose:
                                 vprint(f"Rewriting recovery subchunk {j}/{len(parts)}...")
-                            sub_md, sub_obj, _sub_comp = rewrite_chunk(part, None, None, depth + 1)
+                            sub_md, sub_obj, _sub_comp = rewrite_chunk(
+                                part,
+                                None,
+                                None,
+                                depth + 1,
+                                summary_cursor,
+                                summary_words,
+                                summary_enabled
+                            )
                             recovered_chunks.append(sub_md)
                             sub_devs = sub_obj.get("deviations", []) if isinstance(sub_obj, dict) else []
                             if isinstance(sub_devs, list):
                                 recovered_devs.extend(sub_devs)
+                            if summary_enabled and isinstance(sub_obj, dict):
+                                summary_cursor = sub_obj.get("chunk_summary", summary_cursor)
                         merged = "\n\n".join(s.strip() for s in recovered_chunks if isinstance(s, str) and s.strip()).strip()
                         if merged:
                             recovered_obj = {
@@ -3948,6 +4018,9 @@ def main() -> int:
                                 }
                             }
                             recovered_comp = compute_style_compliance(fingerprint, filter_author_voice_text(merged))
+                            if summary_enabled:
+                                fallback_summary = build_fallback_summary(merged, summary_words)
+                                recovered_obj["chunk_summary"] = fallback_summary
                             return merged, recovered_obj, recovered_comp
 
                 # Last resort: preserve the original chunk verbatim and continue.
@@ -3969,6 +4042,8 @@ def main() -> int:
                     }
                 }
                 preserved_comp = compute_style_compliance(fingerprint, filter_author_voice_text(md_chunk))
+                if summary_enabled:
+                    preserved_obj["chunk_summary"] = (previous_summary or "")
                 return md_chunk, preserved_obj, preserved_comp
             raw = last_raw
             usage = last_usage
@@ -4026,6 +4101,15 @@ def main() -> int:
                     attempts += 1
                     continue
 
+            if summary_enabled:
+                summary = out_obj.get("chunk_summary") if isinstance(out_obj, dict) else None
+                if not isinstance(summary, str) or not summary.strip():
+                    summary = build_fallback_summary(final_md, summary_words)
+                summary = normalize_summary(summary, summary_words)
+                out_obj["chunk_summary"] = summary
+                if args.verbose and chunk_index is not None and chunk_total is not None:
+                    vprint(f"Chunk {chunk_index}/{chunk_total} summary words: {len(summary.split())}")
+
             compliance = compute_style_compliance(fingerprint, filter_author_voice_text(final_md))
             if not args.no_style_retry and attempts < args.max_style_retries and compliance["score"] < args.style_retry_threshold:
                 style_feedback = {
@@ -4064,24 +4148,52 @@ def main() -> int:
             last_out = out_obj
             return final_md, out_obj, compliance
 
-    base_messages = build_messages_for_chunk("", None, True)
-    base_tokens = estimate_tokens_for_messages(base_messages)
-    max_input_tokens = max(400, cfg.max_prompt_tokens - base_tokens)
+    summary_enabled = False
+    summary_words = 25
+    max_input_tokens = 0
     min_chunks_when_perturbing = 1
     chunk_split_on = "sentence"
     perturbations_active = False
     if isinstance(tunables, dict):
         chunk_conf = tunables.get("chunking", {})
         if isinstance(chunk_conf, dict):
+            summary_conf = chunk_conf.get("chunk_summary", {})
+            if isinstance(summary_conf, dict):
+                if isinstance(summary_conf.get("enabled"), bool):
+                    summary_enabled = summary_conf.get("enabled")
+                try:
+                    summary_words = int(summary_conf.get("summary_words", summary_words))
+                except (TypeError, ValueError):
+                    summary_words = summary_words
+                summary_words = max(5, min(summary_words, 120))
             cap = chunk_conf.get("max_input_tokens")
-            if isinstance(cap, int) and cap > 0:
-                max_input_tokens = min(max_input_tokens, max(200, cap))
             min_chunks = chunk_conf.get("min_chunks_when_perturbing")
             if isinstance(min_chunks, int) and min_chunks > 0:
                 min_chunks_when_perturbing = min_chunks
             split_on = chunk_conf.get("chunk_split_on")
             if isinstance(split_on, str) and split_on.lower() in ("word", "sentence", "paragraph"):
                 chunk_split_on = split_on.lower()
+    summary_placeholder = None
+    if summary_enabled:
+        summary_placeholder = ("summary " * summary_words).strip()
+    base_messages = build_messages_for_chunk(
+        "",
+        None,
+        True,
+        None,
+        None,
+        summary_placeholder,
+        summary_words,
+        summary_enabled
+    )
+    base_tokens = estimate_tokens_for_messages(base_messages)
+    max_input_tokens = max(400, cfg.max_prompt_tokens - base_tokens)
+    if isinstance(tunables, dict):
+        chunk_conf = tunables.get("chunking", {})
+        if isinstance(chunk_conf, dict):
+            cap = chunk_conf.get("max_input_tokens")
+            if isinstance(cap, int) and cap > 0:
+                max_input_tokens = min(max_input_tokens, max(200, cap))
         humanizer_var = tunables.get("humanizer_variance", {})
         if isinstance(humanizer_var, dict) and humanizer_var.get("enabled", False):
             perturbations_active = True
@@ -4100,15 +4212,26 @@ def main() -> int:
             f"Prompt overhead tokens: {base_tokens}; "
             f"input budget: {max_input_tokens}; input tokens: {input_tokens}"
         )
+        if summary_enabled:
+            vprint(f"Chunk summary chaining enabled: {summary_words} words")
         vprint(
             f"Chunk split strategy: {chunk_split_on} "
             "(fallback to sentence/word if oversized; list lines treated as sentences)"
         )
     force_min_chunks = perturbations_active and min_chunks_when_perturbing > 1
+    summary_active = summary_enabled and (input_tokens > max_input_tokens or force_min_chunks)
     if input_tokens <= max_input_tokens and not force_min_chunks:
         vprint("Calling LLM to apply fingerprint...")
         try:
-            final_md, out_obj, compliance = rewrite_chunk(input_md)
+            final_md, out_obj, compliance = rewrite_chunk(
+                input_md,
+                None,
+                None,
+                0,
+                None,
+                summary_words,
+                False
+            )
         except RuntimeError:
             return 3
         # Ensure any frozen blocks and citation placeholders survive.
@@ -4204,9 +4327,20 @@ def main() -> int:
             vprint(f"Prompt too large ({initial_tokens} tokens); chunking input...")
         elif force_min_chunks and args.verbose:
             vprint(f"Perturbations enabled; enforcing minimum chunk count: {min_chunks_when_perturbing}")
+        def build_messages_for_chunk_est(md_chunk: str, style_feedback=None, for_estimate: bool = False, fingerprint_override=None, controller_overlay=None):
+            return build_messages_for_chunk(
+                md_chunk,
+                style_feedback,
+                for_estimate,
+                fingerprint_override,
+                controller_overlay,
+                summary_placeholder if summary_active else None,
+                summary_words,
+                summary_active
+            )
         chunks = chunk_markdown(
             input_md,
-            build_messages_for_chunk,
+            build_messages_for_chunk_est,
             cfg.max_prompt_tokens,
             max_input_tokens_override=max_input_tokens,
             split_on=chunk_split_on
@@ -4216,12 +4350,23 @@ def main() -> int:
             vprint(f"Filtered out {len(chunks) - len(non_empty)} empty chunk(s).")
         chunks = enforce_min_chunks(input_md, non_empty, min_chunks_when_perturbing) if force_min_chunks else non_empty
         vprint(f"Chunked into {len(chunks)} parts.")
+        running_summary = ""
         for idx, chunk in enumerate(chunks, start=1):
             vprint(f"Rewriting chunk {idx}/{len(chunks)}...")
             try:
-                final_md, out_obj, compliance = rewrite_chunk(chunk, idx, len(chunks))
+                final_md, out_obj, compliance = rewrite_chunk(
+                    chunk,
+                    idx,
+                    len(chunks),
+                    0,
+                    running_summary,
+                    summary_words,
+                    summary_active
+                )
             except RuntimeError:
                 return 3
+            if summary_active and isinstance(out_obj, dict):
+                running_summary = out_obj.get("chunk_summary", running_summary)
             # Ensure any frozen blocks and citation placeholders survive.
             missing_html = [p for p in find_placeholders(chunk, HTML_PLACEHOLDER_RE) if p not in final_md]
             if missing_html:

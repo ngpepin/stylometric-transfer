@@ -130,6 +130,14 @@
       "properties": {
         "max_input_tokens": { "type": "integer", "minimum": 200 },
         "chunk_split_on": { "type": "string", "enum": ["word", "sentence", "paragraph"] },
+        "chunk_summary": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "summary_words": { "type": "integer", "minimum": 5 }
+          },
+          "additionalProperties": false
+        },
         "min_chunks_when_perturbing": { "type": "integer", "minimum": 1 },
         "recovery_split_max_depth": { "type": "integer", "minimum": 0 },
         "recovery_split_min_chars": { "type": "integer", "minimum": 0 },

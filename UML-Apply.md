@@ -113,6 +113,7 @@ start
  :Compute variance-aware chunk size (optional; based on baseline);
  :Choose chunk split strategy (word/sentence/paragraph; fallback to sentence/word if oversized);
  :Enforce minimum chunks when perturbations are enabled (optional);
+ :If chunk-summary chaining enabled, carry forward rolling summary (~N words);
 
 :Strip base64 images;
 :Mask HTML, math, entities, inline code;

@@ -138,6 +138,10 @@
   "chunking": {
     "max_input_tokens": 6000,
     "chunk_split_on": "sentence",
+    "chunk_summary": {
+      "enabled": false,
+      "summary_words": 25
+    },
     "min_chunks_when_perturbing": 2,
     "recovery_split_max_depth": 2,
     "recovery_split_min_chars": 800,

@@ -380,6 +380,12 @@ Smaller chunks tend to improve reliability (especially on flaky endpoints) but c
 
 **Perturbation guardrail.** When perturbations are enabled (controller overlay or stochastic variance), the system enforces a minimum chunk count $K_{\min}$ so variability has room to express; the largest chunks are split until $K_{\min}$ is reached or further splitting would be meaningless.
 
+**Rolling summary for semantic continuity (optional).** When enabled, each chunk asks the LLM to produce a short “gist so far” summary of approximately $S$ words (for example, $S=25$). The summary is *not* emitted in the final output; it is carried forward as a compact semantic thread for the next chunk. The next chunk receives both the prior summary and the new text, then produces a refreshed summary of the combined material. This creates a lightweight semantic memory across chunks without consuming much token budget. In practice, this helps prevent drift in long documents where the LLM would otherwise only see local context. The token budget therefore includes the fixed summary length as part of prompt overhead:
+
+$$T_{\text{base}} = T_{\text{system}} + T_{\text{fingerprint}} + T_{\text{summary}}, \qquad T_{\text{summary}} \approx \\alpha S,$$
+
+where $\\alpha$ converts words to tokens (empirically around 1–1.3 for plain English).
+
 **Worked example.** Suppose $T_{\text{max}}=16000$ and the fingerprint+prompt overhead is $T_{\text{base}}=9000$. Then $T_{\text{in}}=\max(400,7000)=7000$. If `chunking.max_input_tokens=6000`, then $T_{\text{in}}=6000$ and $C_{\text{max}}\approx 24000$ characters. If variance‑aware scaling yields $f=0.85$, then $T_{\text{in}}=\lfloor 0.85\cdot 6000\rfloor=5100$ tokens ($C_{\text{max}}\approx 20400$ chars). At that point, the number of chunks is determined entirely by how much text can be packed under $C_{\text{max}}$, plus any minimum‑chunk enforcement for perturbations.
 
 After rewriting, the system emits the **input** and **output** metric profiles (with the aggregate score) for quick inspection and regression analysis.
@@ -2594,6 +2600,14 @@ Learned approaches retain an advantage when style is expressed in high-dimension
             "paragraph"
           ]
         },
+        "chunk_summary": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "summary_words": { "type": "integer", "minimum": 5 }
+          },
+          "additionalProperties": false
+        },
         "min_chunks_when_perturbing": {
           "type": "integer",
           "minimum": 1
@@ -2725,6 +2739,8 @@ Learned approaches retain an advantage when style is expressed in high-dimension
 - `lexical_avoidance.rare_words_limit`: maximum number of rare words included in `measurements.lexical_avoidance.rare_words`.
 - `chunking.max_input_tokens`: hard cap on input tokens per chunk (after prompt overhead). Lower values increase chunk count but reduce per‑request latency and timeouts.
 - `chunking.chunk_split_on`: primary chunking unit (`word`, `sentence`, or `paragraph`). If a paragraph exceeds the budget, it falls back to sentence splitting for that chunk; if a sentence is still oversized, it falls back to word splitting for that chunk. Bullet/numbered list lines are treated as sentence units.
+- `chunking.chunk_summary.enabled`: when true, each chunk requests a short rolling summary (not included in the final output) and passes it to the next chunk for semantic continuity.
+- `chunking.chunk_summary.summary_words`: target word count for the rolling summary (default 25). Keep small to minimise token overhead.
 - `style_retry.enabled`: enable/disable the delta‑feedback retry pass after measuring style compliance.
 - `style_retry.threshold`: retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold‑based retries, while `1.0` retries unless the output is nearly perfect.
 - `style_retry.max_retries`: maximum number of retry passes (default `1`).
