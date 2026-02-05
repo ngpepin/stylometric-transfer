@@ -140,7 +140,7 @@
     "chunk_split_on": "sentence",
     "chunk_summary": {
       "enabled": true,
-      "summary_words": 25
+      "summary_words": 50
     },
     "min_chunks_when_perturbing": 2,
     "recovery_split_max_depth": 2,
