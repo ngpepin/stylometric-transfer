@@ -1,4 +1,5 @@
 ## Stylometric Profiling and Constraint-Guided Author-Conditioned Style Transfer with Large Language Models (LLMs)
+
 **Repository:** `stylometric-transfer`  
 **Keywords:** stylometry, computational stylistics, authorship attribution, controllable text generation, text style transfer, interpretability
 
@@ -8,9 +9,9 @@
 
 ## Abstract
 
-Stylometric-Transfer offers a practical method for stylometric profiling - extracting an author's writing corpus into an explicit, interpretable JSON artefact (the style fingerprint) - and for meaning-preserving style transfer, rewriting new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement (punctuation rates, sentence-length distributions) with LLM-mediated synthesis, producing human-editable constraints: ranges, histograms, lexicon rules, and rhetorical templates. The fingerprint is formalised as a constraint set, and a constraint-satisfaction decoding view is provided for LLM rewriting, with compliance scoring based on distributional divergences. The framework unifies stylometric transfer and humanisation by quantifying a conflict-resolution layer that filters humanisation guidelines against fingerprint constraints, and by supporting bounded stochastic variance under explicit controls. This design allows for an auditable alternative to latent style embeddings, while remaining consistent with established stylometry and text style transfer research.
+Stylometric-Transfer provides a method for stylometric profiling - extracting an author's corpus into an explicit, interpretable JSON artefact (the style fingerprint) - and for meaning-preserving style transfer, rewriting new text to conform to the fingerprint using a large language model (LLM). The approach combines classic stylometric measurement (punctuation rates, sentence-length distributions) with LLM-mediated synthesis, producing human-editable constraints: ranges, histograms, lexicon rules, and rhetorical templates. The fingerprint is formalised as a constraint set, and a constraint-satisfaction decoding view is provided for LLM rewriting, with compliance scoring based on distributional divergences. The framework unifies stylometric transfer and humanization by quantifying a conflict-resolution layer that filters humanization guidelines against fingerprint constraints, and by supporting bounded stochastic variance under explicit controls. This design offers an auditable alternative to latent style embeddings, remaining consistent with established stylometry and text style transfer research.
 
-**Reader’s guide:** Sections 1–3 outline the system’s purpose and rationale. Section 4 explains the measurements with simple examples. Sections 5–6 describe how those measurements become constraints for rewriting. Section 2.5 provides the detailed humanisation math and chunk-sizing logic. Section 7 connects the ideas to the code. The appendices provide further mathematical and algorithmic detail for expert readers.
+**Reader’s guide:** Sections 1–3 outline the system’s purpose and rationale. Section 4 explains the measurements with simple examples. Sections 5–6 describe how those measurements become constraints for rewriting. Section 2.5 provides the detailed humanization mathematics and chunk-sizing logic. Section 7 connects the ideas to the code. The appendices provide further mathematical and algorithmic detail for expert readers.
 
 ---
 
@@ -20,15 +21,15 @@ Stylometry examines quantitative signals of writing style for tasks such as auth
 
 Text style transfer (TST), by contrast, seeks to transform text so that stylistic properties match a target style, while preserving content. A persistent challenge is separating content from style in the absence of parallel data, which has led to cross-alignment approaches and ongoing debate about evaluation and ethics ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com)).
 
-Stylometry treats an author’s style as a set of measurable habits: sentence length, punctuation frequency, recurring transitions, and words that are rarely used. Style transfer attempts to generate new text as if those habits were followed, without altering meaning. However, ensuring that a model does not introduce stylistic artefacts or factual drift remains difficult. This paper addresses how to make that tension measurable and manageable.
+Stylometry treats an author’s style as a set of measurable habits: sentence length, punctuation frequency, recurring transitions, and words that are rarely used. Style transfer attempts to generate new text as if those habits were followed, without altering meaning. However, ensuring that a model does not introduce stylistic artefacts or factual drift remains difficult. This paper addresses how that tension can be made measurable and manageable.
 
-A hybrid approach is proposed: style is represented explicitly as a stylometric style fingerprint (in JSON), and an LLM acts as a constrained rewriter, guided by both the fingerprint and locally measured statistics from the author corpus and candidate text. Humanisation guidelines are integrated by means of a conflict-resolution layer, which deterministically filters guideline rules when they contradict fingerprint signals or the input’s stylistic structure. Where enabled, bounded stochastic variance applies a small, seeded number of micro-edits to reduce AI-typical uniformity while preserving meaning and constraints.
+A hybrid approach is proposed: style is represented explicitly as a stylometric style fingerprint (in JSON), and an LLM acts as a constrained rewriter, guided by both the fingerprint and locally measured statistics from the author corpus and candidate text. Humanization guidelines are integrated by means of a conflict-resolution layer, which deterministically filters guideline rules when they contradict fingerprint signals or the input’s stylistic structure. Where enabled, bounded stochastic variance applies a small, seeded number of micro-edits to reduce AI-typical uniformity while preserving meaning and constraints.
 
-### 1.1 Stylometry in plain language (what “style” means here)
+### 1.1 Stylometry in Plain Language
 
 Stylometry is best understood as a family of comparisons. The same set of signals is measured on two texts (or on a text and a corpus baseline), and the question is whether the numbers appear to come from the same distribution of writing habits.
 
-In this project, “style” is operationalised as:
+In this project, "style" is operationalised as:
 
 - **Habitual choices:** punctuation density, sentence length dispersion, paragraph cadence, transition habits.
 - **Low-salience lexical defaults:** function-word balance, common collocations, preferred connectives.
@@ -36,19 +37,19 @@ In this project, “style” is operationalised as:
 
 Style is not treated as:
 
-- **Topic** (such as “spacecraft”, “inflation”, “ancient Athens”) or proper-name density.
-- **Facts** (entities, dates, quantities) - these are meaning and must not be fabricated or “smoothed”.
+- **Topic** (such as "spacecraft", "inflation", "ancient Athens") or proper-name density.
+- **Facts** (entities, dates, quantities) - these are meaning and must not be fabricated or "smoothed".
 - **Genre constraints** that derive from the medium rather than the author (Markdown boilerplate, licence notices).
 
-This distinction matters because naïve “style models” often learn topic proxies. A useful mental check: if all named entities are swapped or deleted but grammar and rhythm are retained, does the author still sound like themselves? If so, style rather than topic is likely being measured.
+This distinction matters because naïve "style models" often learn topic proxies. A useful mental check: if all named entities are swapped or deleted but grammar and rhythm are retained, does the author still sound like themselves? If so, style rather than topic is likely being measured.
 
-### 1.2 A taxonomy of stylometric features (why these work)
+### 1.2 A Taxonomy of Stylometric Features
 
 Stylometric features span multiple levels. The system focuses on what is both measurable with low complexity and stable enough to be useful.
 
 1) **Orthography and typography (surface layer):** spelling variants (e.g., Canadian vs US), contractions, dash/ellipsis conventions, heading case, and typographic habits. These are often consistent and editorially relevant.
 
-In the implementation, orthography is **localised at rewrite time**: the fingerprint lexicon is normalised to a US‑baseline for cross‑profile consistency, and a locale‑specific ruleset (from `config.local_spelling_rules.json`) is applied after the LLM rewrite. Hard avoids (`config.avoid.txt`) are treated literally (no spelling normalisation), so any desired spelling variants must be listed explicitly.
+In the implementation, orthography is **localised at rewrite time**: the fingerprint lexicon is normalised to a US baseline for cross-profile consistency, and a locale-specific ruleset (from `config.local_spelling_rules.json`) is applied after the LLM rewrite. Hard avoids (`config.avoid.txt`) are treated literally (no spelling normalisation), so any desired spelling variants must be listed explicitly.
 
 2) **Lexical statistics (word choice layer):** rare words (words that appear but are not repeated) and lexical avoidance (common words that are absent). These are treated as soft signals: they guide the rewrite but should not become brittle prohibitions.
 
@@ -56,9 +57,9 @@ In the implementation, orthography is **localised at rewrite time**: the fingerp
 
 4) **Syntax texture and discourse structure (compositional layer):** paragraph rhythm, sentence-opener patterns, transition placement, and rhetorical move signals (claim, evidence, counterpoint, concession, synthesis). These are particularly useful in style transfer because they shape the reader’s experience without requiring new facts.
 
-The important lesson is not that any one feature “identifies the author”, but that many weak, interpretable features can jointly constrain the rewrite in a way that feels coherent while remaining auditable.
+The important lesson is not that any one feature "identifies the author", but that many weak, interpretable features can jointly constrain the rewrite in a way that feels coherent while remaining auditable.
 
-### 1.3 Why distributions and ranges matter
+### 1.3 Why Distributions and Ranges Matter
 
 Averages are fragile. Two writers can share the same mean sentence length while having very different distributions:
 
@@ -73,53 +74,53 @@ Encoding only the mean can force Writer B into Writer A’s smoothness - an AI-t
 
 In practice, these distributions serve as both a measurement baseline for extracting style and a post-rewrite audit that detects compression, expansion, and other artefacts.
 
-### 1.4 Humanisation, defined carefully
+### 1.4 Humanization
 
-“Humanisation” is used here in a narrow sense:
+"Humanization" is used here in a narrow sense:
 
 > **Reducing AI‑typical artefacts** (over‑regular rhythm, self‑echo, template‑like transitions, suspiciously uniform paragraphing) **without adding facts, changing claims, or hiding provenance**.
 
-It is not intended to defeat detectors or obscure authorship. The design constraint is the opposite: any humanisation mechanism must be explicit, bounded, and observable in a metrics report.
+It is not intended to defeat detectors or obscure authorship. The design constraint is the opposite: any humanization mechanism must be explicit, bounded, and observable in a metrics report.
 
 This definition leads to a practical workflow:
 
 1) Extract an author’s natural variability (distributions, not just averages).
 2) Rewrite with constraints.
 3) Measure the result.
-4) If the rewrite is “too smooth” or self-echoing, apply bounded, logged mechanisms (controller overlays; stochastic micro-operations) that nudge variability toward the author’s baseline rather than toward arbitrary randomness.
+4) If the rewrite is "too smooth" or self-echoing, apply bounded, logged mechanisms (controller overlays; stochastic micro-operations) that nudge variability towards the author’s baseline rather than towards arbitrary randomness.
 
 ### 1.5 Business Strategy and Opportunity
 
-The diffusion of LLM writing systems alters not only how text is produced but also the economics of editorial work. As text becomes cheaper to generate, the binding constraints shift: attention, trust, compliance, and organisational coherence become scarcer and therefore more valuable. Stylometry and quantitative humanisation can be read as managerial responses to that shift - they provide instruments for governance of writing at scale.
+The diffusion of LLM writing systems alters not only how text is produced but also the economics of editorial work. As text becomes cheaper to generate, the binding constraints shift: attention, trust, compliance, and organisational coherence become scarcer and therefore more valuable. Stylometry and quantitative humanization can be read as managerial responses to that shift - they provide instruments for governance of writing at scale.
 
 This section frames the opportunity in management terms: macro drivers, value creation and capture, adoption barriers and complements, and strategic risks and ethics.
 
-#### 1.5.1 Macro drivers: why “writing operations” becomes a strategic capability
+#### 1.5.1 Macro drivers: why "writing operations" becomes a strategic capability
 
 Several converging forces make explicit style control and human-likeness measurement increasingly salient:
 
-- **Supply shock in text production:** organisations can now generate large volumes of drafts, variants, and personalised messages. This makes quality assurance and voice coherence limiting factors.
+- **Supply shock in text production:** organizations can now generate large volumes of drafts, variants, and personalised messages. This makes quality assurance and voice coherence limiting factors.
 - **Rising cost of trust failures:** hallucinated facts, inconsistent policy phrasing, and tone drift carry reputational and legal risk. The managerial problem becomes: how do we control and audit what gets published?
 - **Regulatory and contractual pressure:** sectors such as finance, health, and government are increasingly constrained by record-keeping, disclosure obligations, and controlled language. A measurable style layer supports internal controls and external defensibility.
-- **Channel fragmentation:** brands communicate across web, email, support, social, and internal documentation. A consistent voice is a coordination device; without it, the organisation sounds like many organisations.
+- **Channel fragmentation:** brands communicate across web, email, support, social, and internal documentation. A consistent voice is a coordination device; without it, the organization sounds like many organizations.
 
-In this context, stylometry is not merely an academic method for attribution. It becomes a tool for operationalising “voice” into measurable signals that can be monitored, tuned, and enforced.
+In this context, stylometry is not merely an academic method for attribution. It becomes a tool for operationalising "voice" into measurable signals that can be monitored, tuned, and enforced.
 
 #### 1.5.2 Value creation mechanisms
 
-From a resource-based view, an organisation’s distinctive voice can be treated as an intangible asset. LLMs, however, make imitation cheap at the surface level, which increases the value of systems that preserve and audit the underlying asset. Stylometric fingerprints support three mechanisms:
+From a resource-based view, an organization’s distinctive voice can be treated as an intangible asset. LLMs, however, make imitation cheap at the surface level, which increases the value of systems that preserve and audit the underlying asset. Stylometric fingerprints support three mechanisms:
 
 1) **Editorial productivity without identity dilution:** faster drafting and rewriting, but with explicit constraints that preserve voice and meaning.
-2) **Quality assurance via measurable proxies:** distributional audits (function words, punctuation densities, rhythm) catch “too-smooth” or overly templated artefacts that human editors frequently flag but cannot easily quantify.
-3) **Traceable governance:** a versioned JSON fingerprint is an auditable policy object: it documents what the system believed the style to be, what constraints were prioritised, and where conflicts occurred (via deviations).
+2) **Quality assurance via measurable proxies:** distributional audits (function words, punctuation densities, rhythm) catch "too-smooth" or overly templated artefacts that human editors frequently flag but cannot easily quantify.
+3) **Traceable governance:** a versioned JSON fingerprint is an auditable policy object: it documents what the system believed the style to be, what constraints were prioritized, and where conflicts occurred (via deviations).
 
-Humanisation layers add a complementary capability: they do not aim to “make text undetectable”, but to reduce systematic artefacts (over-regularity, self-echo) that degrade perceived quality. In managerial terms, this is variance management: introducing bounded, author-consistent dispersion so that outputs do not converge to the same generic, model-average cadence.
+Humanization layers add a complementary capability: they do not aim to "make text undetectable", but to reduce systematic artefacts (over-regularity, self-echo) that degrade perceived quality. In managerial terms, this is variance management: introducing bounded, author-consistent dispersion so that outputs do not converge to the same generic, model-average cadence.
 
 #### 1.5.3 Strategic use cases and buyer value
 
 The opportunity spans multiple organisational functions:
 
-- **Brand and communications:** preserve brand voice across campaigns, regions, and agencies; reduce “tone drift” when producing variants.
+- **Brand and communications:** preserve brand voice across campaigns, regions, and agencies; reduce "tone drift" when producing variants.
 - **Knowledge management:** standardise internal documentation and onboarding materials while preserving domain precision; keep technical detail intact.
 - **Customer support:** rewrite responses for clarity and empathy within bounded tone constraints; reduce template-like repetition that triggers user distrust.
 - **Legal and compliance:** enforce hard avoids and controlled phrasing; maintain consistent hedging levels; log deviations for audit.
@@ -129,7 +130,7 @@ Across these domains, the managerial value proposition is to increase throughput
 
 #### 1.5.4 Competitive landscape: explicit fingerprints as a differentiator
 
-Many pipelines for generation rely on latent representations (fine-tuning, adapters, embeddings) that can be powerful but are difficult to inspect. For organisations, this creates governance friction: a latent style vector cannot easily be reviewed by an editor or a compliance officer.
+Many pipelines for generation rely on latent representations (fine-tuning, adapters, embeddings) that can be powerful but are difficult to inspect. For organizations, this creates governance friction: a latent style vector cannot easily be reviewed by an editor or a compliance officer.
 
 An explicit fingerprint positions differently:
 
@@ -137,13 +138,13 @@ An explicit fingerprint positions differently:
 - **Versionability and change control:** fingerprints can be reviewed like policy documents: diffed, approved, rolled back.
 - **Auditability and blame assignment:** when something goes wrong, deviations and measurements provide a partial causal trail.
 
-The explicit-constraint approach trades some peak imitation fidelity for lower coordination and risk costs - a trade many organisations rationally prefer.
+The explicit-constraint approach trades some peak imitation fidelity for lower coordination and risk costs - a trade many organizations rationally prefer.
 
 #### 1.5.5 Adoption barriers and complements
 
 The main barriers are organisational:
 
-- **Defining “voice” operationally:** teams must agree on what matters (clarity, warmth, formality) and accept that some elements are measurable proxies.
+- **Defining "voice" operationally:** teams must agree on what matters (clarity, warmth, formality) and accept that some elements are measurable proxies.
 - **Domain drift and genre shift:** a fingerprint built on op-eds may not transfer cleanly to technical manuals. Governance requires multiple fingerprints or conditional policies.
 - **Human-in-the-loop processes:** high-stakes publishing still benefits from editorial review. The system is best seen as an amplifier and consistency engine, not a replacement.
 - **Infrastructure reliability:** chunking, retries, and timeouts are not implementation details; they shape the feasible operational envelope.
@@ -155,10 +156,10 @@ The most important complement is measurement literacy: users must understand wha
 The strategic opportunity comes with governance risks:
 
 - **Misuse risk:** systems that mimic authorial signatures can be used for impersonation. Guardrails and intended-use policies matter.
-- **Over-optimisation:** if organisations optimise for superficial “human” metrics, they can harm clarity or accuracy. Metrics must remain subordinate to meaning preservation.
-- **Arms-race framing:** treating humanisation as “evading detectors” is ethically fraught and strategically brittle. A better framing is editorial quality: avoid artefacts that readers dislike and that editors reject.
+- **Over-optimisation:** if organizations optimise for superficial "human" metrics, they can harm clarity or accuracy. Metrics must remain subordinate to meaning preservation.
+- **Arms-race framing:** treating humanization as "evading detectors" is ethically fraught and strategically brittle. A better framing is editorial quality: avoid artefacts that readers dislike and that editors reject.
 
-For these reasons, this project makes humanisation explicit, deterministic by default, bounded when stochastic, and always logged. From a management perspective, this is the key design choice: it turns a vague aspiration (“make it sound human”) into an auditable operational capability.
+For these reasons, this project makes humanization explicit, deterministic by default, bounded when stochastic, and always logged. From a management perspective, this is the key design choice: it turns a vague aspiration ("make it sound human") into an auditable operational capability.
 
 ---
 
@@ -176,32 +177,32 @@ For those new to the field, these methods are intentionally simple, relying on c
 
 Non-parallel TST methods, such as cross-alignment, demonstrate that certain stylistic attributes can be changed without parallel sentence pairs ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com)). Recent surveys discuss broad applications alongside challenges in evaluation and ethical risk, including concerns about misuse for impersonation, and support explicit safeguards and transparency in TST pipelines ([arxiv.org](https://arxiv.org/abs/2407.16737?utm_source=chatgpt.com)).
 
-The literature indicates that style is difficult to define precisely. The approach here is to make style explicit and auditable, rather than learned and hidden.
+The literature indicates that style is difficult to define precisely. The approach here is to make style explicit and auditable, rather than learnt and hidden.
 
 ### 2.3 Corpus Size and Diminishing Returns
 
 Stylometric signals stabilise as corpus size grows. A pragmatic rule of thumb: approximately 20–50k words often yields a stable fingerprint for a single author or genre, while around 100k words typically captures most steady signals. If key rates (sentence and paragraph distributions, punctuation per 1k words, function-word profile, stance rates) drift by less than 1–2% after adding another 10–20k words, diminishing returns are likely. Additional data remains valuable when the corpus spans multiple genres or eras, or when capturing sparse phenomena such as rare rhetorical moves or infrequent lexical patterns.
 
-### 2.4 Humanisation-Aware Stylometric Transfer
+### 2.4 Humanization-Aware Stylometric Transfer
 
-Most style-transfer pipelines treat humanisation as a separate editing step. Stylometric-Transfer incorporates humanisation directly into constraint-guided rewriting by formalising a conflict-resolution layer: humanisation guidelines are applied only when they do not violate fingerprint-derived constraints or the input's structural features (such as heading case or inline-header lists). The guideline list is parsed into structured rules by an LLM (with deterministic fallback), then filtered against fingerprint signals before any rewrite prompt is constructed. This produces a single, auditable framework that balances stylistic fidelity with the removal of AI artefacts, rather than relying on post-hoc edits that may diverge from the author’s voice.
+Most style-transfer pipelines treat humanization as a separate editing step. Stylometric-Transfer incorporates humanization directly into constraint-guided rewriting by formalising a conflict-resolution layer: humanization guidelines are applied only when they do not violate fingerprint-derived constraints or the input's structural features (such as heading case or inline-header lists). The guideline list is parsed into structured rules by an LLM (with deterministic fallback), then filtered against fingerprint signals before any rewrite prompt is constructed. This produces a single, auditable framework that balances stylistic fidelity with the removal of AI artefacts, rather than relying on post-hoc edits that may diverge from the author’s voice.
 
-### 2.5 Humanisation Mechanisms and Benefits
+### 2.5 Humanization Mechanisms and Benefits
 
-Humanisation in this system is a set of explicit, inspectable mechanisms designed to target known LLM artefacts while preserving the author’s voice. These mechanisms include:
+Humanization in this system is a set of explicit, inspectable mechanisms designed to target known LLM artefacts while preserving the author’s voice. These mechanisms include:
 
-- **Conflict-filtered guidelines:** generic humanisation rules are only applied when they do not contradict the fingerprint’s statistical baselines (for example, avoiding “don’t use em-dashes” when the author’s corpus uses them frequently).
+- **Conflict-filtered guidelines:** generic humanization rules are only applied when they do not contradict the fingerprint’s statistical baselines (for example, avoiding "don’t use em-dashes" when the author’s corpus uses them frequently).
 - **Mandatory hygiene rules:** optional hard constraints (such as removing em-dashes or replacing emojis) are enforced deterministically and recorded in the deviations log.
-- **Structural preservation:** blockquotes, citations, footnotes, code spans, and (for non-fiction) multi-word quotations are shielded from stylistic edits to prevent false “humanisation” changes in non-authorial content.
+- **Structural preservation:** blockquotes, citations, footnotes, code spans, and (for non-fiction) multi-word quotations are shielded from stylistic edits to prevent false "humanization" changes in non-authorial content.
 - **Bounded stochastic variance:** when enabled, a small, seeded number of micro-edits (for example, swapping transition words or dropping filler terms) introduce controlled irregularity without semantic drift.
 
-The practical benefit is a measurable reduction in AI-typical uniformity while keeping the transformation aligned to the author’s measurable habits. Because the humanisation layer is explicit, deterministic by default, and logged, it can be audited and tuned without introducing opaque behaviour. In short, humanisation is treated as a constrained post-processing step integrated into the same interpretability framework as stylometric profiling itself.
+The practical benefit is a measurable reduction in AI-typical uniformity while keeping the transformation aligned to the author’s measurable habits. Because the humanization layer is explicit, deterministic by default, and logged, it can be audited and tuned without introducing opaque behaviour. In short, humanization is treated as a constrained post-processing step integrated into the same interpretability framework as stylometric profiling itself.
 
-#### 2.5.1 Quantitative humanisation metrics
+#### 2.5.1 Quantitative humanization metrics
 
 When `--metrics` is enabled, a compact quantitative report is emitted for both the input and the output. Let a text contain $N$ word tokens and $V$ unique types. Let $f_i$ be the frequency of type $i$.
 
-The intent is not to “detect AI” in a forensic sense. These metrics are operational proxies for failure modes that practitioners repeatedly observe in LLM rewrites:
+The intent is not to "detect AI" in a forensic sense. These metrics are operational proxies for failure modes that practitioners repeatedly observe in LLM rewrites:
 
 - **Over-regularity:** too even a rhythm, too consistent sentence length, too little local fluctuation.
 - **Self-echo:** repeating the same phrases or n-grams.
@@ -220,7 +221,7 @@ The Maas index is calculated as
 
 $$a^2=\frac{\log N-\log V}{(\log N)^2},$$
 
-with the reported score using its inverse (smaller $a^2$ indicates greater diversity).
+The reported score is calculated using its inverse, so a smaller $a^2$ indicates greater diversity.
 
 **Repetition and distributional diversity**
 
@@ -228,13 +229,13 @@ Let $m_1 = N$ and $m_2=\sum_i f_i^2$. Yule’s $K$ and Simpson’s $D$ are defin
 
 $$K = 10^4 \cdot \frac{m_2-m_1}{m_1^2}, \qquad D=\frac{\sum_i f_i(f_i-1)}{N(N-1)}.$$
 
-Both metrics are inverted for scoring purposes (lower repetition yields a higher score).
+Both metrics are inverted for scoring purposes, meaning lower repetition yields a higher score.
 
 Self-echo repetition is measured using repeated n-grams. For bigrams and trigrams:
 
 $$r_n=\frac{\sum_{g: c_g\ge 3} c_g}{|G_n|}, \qquad r=\frac{r_2+r_3}{2}.$$
 
-The TTR/Herdan/Guiraud/Maas group aims to capture the breadth of distinct words used, whereas the Yule/Simpson/repeat-rate group assesses the concentration of vocabulary and phrasing. In practice, synonym substitution can increase diversity, so these signals are most informative when considered alongside checks for meaning preservation and the author’s baseline.
+The TTR/Herdan/Guiraud/Maas group captures the breadth of distinct words used, whereas the Yule/Simpson/repeat-rate group assesses the concentration of vocabulary and phrasing. In practice, synonym substitution can increase diversity; these signals are most informative when considered alongside checks for meaning preservation and the author’s baseline.
 
 **Burstiness and rhythm**
 
@@ -254,9 +255,9 @@ Function-word entropy is computed analogously using function-word counts. If $P$
 
 $$D_{\mathrm{KL}}(P\|Q)=\sum_i P_i \log_2\frac{P_i}{Q_i}.$$
 
-The score employs a clipped inverse of $D_{\mathrm{KL}}$ (smaller divergence corresponds to a higher score).
+The score uses a clipped inverse of $D_{\mathrm{KL}}$, so smaller divergence corresponds to a higher score.
 
-This family is particularly useful because function words are (a) difficult to control consciously at scale, and (b) notably stable within an author and genre. Persistently high KL divergence across runs often signals that the rewrite is overly aggressive, the input is out-of-domain relative to the fingerprint, or the chunking and constraints encourage paraphrases that inadvertently alter function-word balance.
+This family is particularly useful because function words are difficult to control consciously at scale and notably stable within an author and genre. Persistently high KL divergence across runs often signals that the rewrite is overly aggressive, the input is out-of-domain relative to the fingerprint, or the chunking and constraints encourage paraphrases that inadvertently alter function-word balance.
 
 **Sentence length divergence vs fingerprint**
 
@@ -317,7 +318,7 @@ $$S=100\cdot \frac{\sum_i w_i s_i}{\sum_i w_i}.$$
 
 This produces a compact, interpretable 0–100 score while retaining the underlying per-metric diagnostics for auditability.
 
-Pedagogically, the aggregate score is best regarded as a dashboard indicator rather than a scientific measurement. It is useful for regression testing (to determine whether a change has systematically degraded outputs) and for quickly identifying suspicious runs (for example, an output that is unusually repetitive or unusually flat). It is not intended for comparing unrelated authors, nor should it be used to optimise outputs at the expense of meaning preservation.
+The aggregate score is best regarded as a dashboard indicator rather than a scientific measurement. It is useful for regression testing (to determine whether a change has systematically degraded outputs) and for quickly identifying suspicious runs (such as an output that is unusually repetitive or unusually flat). It is not intended for comparing unrelated authors, nor should it be used to optimise outputs at the expense of meaning preservation.
 
 **How to read the metrics report (practical checklist)**
 
@@ -329,9 +330,9 @@ Pedagogically, the aggregate score is best regarded as a dashboard indicator rat
 
 #### 2.5.3 Corpus baselines and controller overlays
 
-To avoid excessive normalisation that erases an author’s natural variability, the fingerprint can incorporate corpus-derived humanisation baselines (rolling windows). For each metric $m$, the corpus is scanned in windows of size $W$ with stride $S$ and summarised into quantiles $\{p10,p25,p50,p75,p90\}$ plus mean. These baseline distributions are stored in `measurements.humanization_baseline` and withheld from the LLM prompt.
+To avoid excessive normalisation that erases an author’s natural variability, the fingerprint can incorporate corpus-derived humanization baselines (rolling windows). For each metric $m$, the corpus is scanned in windows of size $W$ with stride $S$ and summarised into quantiles $\{p10,p25,p50,p75,p90\}$ plus mean. These baseline distributions are stored in `measurements.humanization_baseline` and withheld from the LLM prompt.
 
-The underlying principle is that human writing is not stationary: within a single author, local passages may be more clipped, more discursive, more list-heavy, or more punctuated than the global average. A single global target can therefore induce the very uniformity that the system seeks to avoid. Windowed baselines make this variability explicit and measurable.
+Human writing is not stationary: within a single author, local passages may be more clipped, more discursive, more list-heavy, or more punctuated than the global average. A single global target can induce the uniformity that the system seeks to avoid. Windowed baselines make this variability explicit and measurable.
 
 During rewriting, a controller overlay can apply chunk-level targets sampled from these baselines. For a metric $m$ and quantile $q$, let $v=\mathcal{Q}_m(q)$ and define a symmetric target band:
 
@@ -341,7 +342,7 @@ Ratios (such as one-sentence paragraph rate) are clamped to $[0,1]$. These per-c
 
 $$\text{deviation} = \frac{|o - \mathrm{clip}(o,[v-w,v+w])|}{\max(\epsilon,2w)} > \tau.$$
 
-In practice, the overlay functions as a gentle nudge rather than a strict constraint: it broadens the set of acceptable outputs by shifting targets within plausible regions of the author’s own distribution. The overlay is computed locally and logged, ensuring it is auditable and reversible. The feedback loop is intentionally bounded to prevent infinite refinement.
+In practice, the overlay functions as a gentle nudge rather than a strict constraint. It broadens the set of acceptable outputs by shifting targets within plausible regions of the author’s own distribution. The overlay is computed locally and logged, ensuring it is auditable and reversible. The feedback loop is intentionally bounded to prevent infinite refinement.
 
 #### 2.5.4 Bounded stochastic variance
 
@@ -351,9 +352,9 @@ $$n_{\text{ops}} = \left\lfloor \mathrm{ops}_{1000}\cdot \frac{N}{1000}\right\rf
 
 Permitted operations (such as `swap_transition`, `drop_filler`) are sampled deterministically from the seed; all applied operations are logged as deviations. This layer is explicit and bounded by design.
 
-The mechanism is intentionally conservative: it aims to reduce obvious templating and repetition, not to introduce stylistic novelty. From an engineering perspective, it provides a deterministic salt that helps break repeated local patterns while remaining easy to audit (the applied operations are explicit).
+The mechanism is intentionally conservative. It aims to reduce obvious templating and repetition, not to introduce stylistic novelty. From an engineering perspective, it provides a deterministic salt that helps break repeated local patterns while remaining easy to audit (the applied operations are explicit).
 
-#### 2.5.5 Chunk sizing and variance-aware splitting (with math)
+#### 2.5.5 Chunk sizing and variance-aware splitting
 
 Chunking is computed prior to any LLM call so the chunk count is deterministic and fully known. Let $T_{\text{max}}$ be the model’s maximum prompt token budget, and $T_{\text{base}}$ the prompt overhead (system, scaffold, fingerprint). The base budget is:
 
@@ -392,7 +393,7 @@ After rewriting, the system emits the input and output metric profiles (with the
 
 **Genre-aware quotation handling:** the pipeline auto-detects fiction versus non-fiction using quote-density signals (multi-word quote spans, quoted-word ratio, and quote-paragraph ratio). In non-fiction, multi-word quotations are excluded from profiling and preserved verbatim during rewriting; in fiction, they remain part of the author’s voice. These thresholds are tunable via `config.tunables.json` (see `fiction_detection.*`) and can be overridden explicitly (`--fiction` / `--non‑fiction`).
 
-For orthography, this means **local spelling rules are not applied to preserved quotations** in non-fiction: quoted passages are masked before rewriting and reinserted verbatim afterward. In fiction, quoted dialogue is rewritten along with surrounding prose and therefore receives the same local spelling normalisation as the rest of the output.
+For orthography, local spelling rules are not applied to preserved quotations in non-fiction: quoted passages are masked before rewriting and reinserted verbatim afterward. In fiction, quoted dialogue is rewritten along with surrounding prose and therefore receives the same local spelling normalisation as the rest of the output.
 
 ---
 
@@ -402,7 +403,7 @@ Let an author corpus comprise a set of documents
 
 $$\mathcal{D} = \{d_1,\dots,d_N\}, \quad d_i \in \Sigma^*$$
 
-where $\Sigma$ is a character alphabet and $\Sigma^*$ denotes the set of all finite strings over that alphabet. In practical terms, each document $d_i$ is treated as a sequence of characters (later tokenised into words and sentences by the measurement layer). The index $N$ simply refers to the number of documents in the corpus.
+where $\Sigma$ is a character alphabet and $\Sigma^*$ denotes the set of all finite strings over that alphabet. In practical terms, each document $d_i$ is treated as a sequence of characters, later tokenised into words and sentences by the measurement layer. The index $N$ simply refers to the number of documents in the corpus.
 
 Define:
 
@@ -412,7 +413,7 @@ Define:
 
 $$y = \mathcal{R}_\theta(x \mid \mathcal{F}).$$
 
-Here, “$\mid \mathcal{F}$” indicates that rewriting is conditioned on the fingerprint: the same input $x$ can produce different outputs depending on the constraints encoded in $\mathcal{F}$. The fingerprint thus becomes the explicit, versionable control surface for the LLM.
+Here, "$\mid \mathcal{F}$" indicates that rewriting is conditioned on the fingerprint: the same input $x$ can produce different outputs depending on the constraints encoded in $\mathcal{F}$. The fingerprint thus becomes the explicit, versionable control surface for the LLM.
 
 The primary constraint is meaning preservation: no new facts, claims, or examples; entities and numerals are retained unless explicitly permitted.
 
@@ -435,7 +436,7 @@ This approach offers interpretability: every reported number can be traced to th
 
 **Author-voice filtering.** Not all text in a corpus reflects the author’s voice. Blockquotes, reference sections, footnotes, inline citations, and boilerplate notices (copyright, terms, privacy) are excluded from measurement and excerpt selection. Additionally, the pipeline detects whether a text is likely fiction or non-fiction. In non-fiction, multi-word quoted passages are treated as quotations and excluded from profiling (and preserved during rewriting), whereas in fiction, quoted dialogue is considered part of the author’s style.
 
-**Why these heuristics are acceptable.** One might ask whether these measurements are scientifically pure. The answer is that they are engineered for a specific purpose. For constraint-guided rewriting, the optimal measurement is one that is (i) stable, (ii) inexpensive to compute, (iii) easy to interpret, and (iv) aligned with editorial recognition of stylistic drift. Metrics that are too fragile or costly will not be practical.
+**Why these heuristics are acceptable.** One might ask whether these measurements are scientifically pure. They are engineered for a specific purpose. For constraint-guided rewriting, the optimal measurement is one that is stable, inexpensive to compute, easy to interpret, and aligned with editorial recognition of stylistic drift. Metrics that are too fragile or costly will not be practical.
 
 ### 4.1 Rate and Density Features
 
@@ -443,7 +444,7 @@ Let $W(d)$ denote an approximate word-token count and $C_e(d)$ the count of an e
 
 $$r_e(d) = 1000 \cdot \frac{C_e(d)}{\max(1, W(d))}.$$
 
-The $\max(1,\cdot)$ guard prevents division by zero on degenerate or heavily filtered text. Normalising to “per 1000 words” makes rates comparable across documents and corpora of different sizes.
+The $\max(1,\cdot)$ guard prevents division by zero on degenerate or heavily filtered text. Normalising to "per 1000 words" makes rates comparable across documents and corpora of different sizes.
 
 **Worked example (rate normalisation).** Suppose a document has $W(d)=2000$ words and $C_{\text{comma}}(d)=120$ commas. Then:
 
@@ -453,7 +454,7 @@ The fingerprint stores targets as tolerance intervals:
 
 $$r_e \in [\underline{r}_e, \overline{r}_e],$$
 
-reflecting intra-author variability across topics and subgenres. Intuitively, the interval indicates that the author’s comma rate typically falls within these bounds, so a rewrite that deviates substantially is likely drifting stylistically (or compressing or expanding the prose).
+reflecting intra-author variability across topics and subgenres. The interval indicates that the author’s comma rate typically falls within these bounds, so a rewrite that deviates substantially is likely drifting stylistically (or compressing or expanding the prose).
 
 ### 4.2 Histogram Features
 
@@ -461,7 +462,7 @@ For sentence lengths $\ell_1,\dots,\ell_m$ (in words), define a binned histogram
 
 $$\mathbf{h} \in \Delta^{B-1}, \quad h_b = \frac{1}{m}\sum_{i=1}^m \mathbf{1}[\ell_i \in \text{bin}(b)],$$
 
-where $\mathbf{1}[\cdot]$ is an indicator function (1 if the condition holds, 0 otherwise), $\Delta^{B-1}$ is the probability simplex (all nonnegative vectors summing to 1), and bins are ordinal intervals (for example, $<10$, 10–17, 18–25, 26–40, $>40$). In effect, the system counts how many sentences fall into each length bin and then normalises by the total number of sentences $m$.
+where $\mathbf{1}[\cdot]$ is an indicator function (1 if the condition holds, 0 otherwise), $\Delta^{B-1}$ is the probability simplex (all nonnegative vectors summing to 1), and bins are ordinal intervals (for example, $<10$, 10–17, 18–25, 26–40, $>40$). The system counts how many sentences fall into each length bin and then normalises by the total number of sentences $m$.
 
 **Worked example (histogram).** Suppose $m=5$ sentence lengths (in words): $\ell = [8, 12, 12, 23, 41]$, and bins are $<10$, 10–17, 18–25, 26–40, $>40$. Then the histogram mass is:
 
@@ -475,7 +476,7 @@ Paragraph rhythm is also measured using the one-sentence paragraph rate:
 
 $$\rho_{1}(d) = \frac{\#\{\text{paragraphs with exactly one sentence}\}}{\max(1,\ \#\{\text{paragraphs}\})}.$$
 
-This rate serves as a stylistic baseline. Excessive one-sentence paragraphs are flagged as an AI artefact only if they exceed the author’s $\rho_1$ range. The essential point is that one-sentence paragraphs are not inherently problematic; they represent a stylistic choice. The fingerprint makes this choice measurable so the system can distinguish authorial habit from LLM overuse.
+This rate serves as a stylistic baseline. Excessive one-sentence paragraphs are flagged as an AI artefact only if they exceed the author’s $\rho_1$ range. One-sentence paragraphs are not inherently problematic; they represent a stylistic choice. The fingerprint makes this choice measurable so the system can distinguish authorial habit from LLM overuse.
 
 **Worked example (one-sentence paragraph rate).** If a document contains 10 paragraphs and 4 have exactly one sentence, then $\rho_1=4/10=0.4$.
 
@@ -495,19 +496,19 @@ $$r_k = 1000 \cdot \frac{\#\{s \in \mathcal{S} : s \text{ contains any marker in
 
 Here $W$ is the corpus (or chunk) word count used for normalisation. Rates are computed for claim, evidence, counterpoint, concession, and synthesis markers. Epistemic stance bands (speculative, probabilistic, assertive, directive) are calculated using simple token lists. These signals are intentionally approximate; they are used to set tolerances, not to classify sentences perfectly.
 
-The pedagogical point is that the system measures tendencies - how frequently a rhetorical move appears - rather than performing full discourse parsing.
+The system measures rhetorical tendencies - specifically, the frequency with which particular moves appear - rather than conducting full discourse parsing.
 
 ### 4.5 Paragraph Cadence and Discourse Marker Position
 
-Let $s_1$ and $s_n$ denote the opening and closing sentences of a paragraph. The system tracks distributions of opening and closing sentence lengths (means and standard deviations) to capture cadence. It also records the position of discourse markers (such as “however” or “therefore”) as start-of-sentence versus mid-sentence rates:
+Let $s_1$ and $s_n$ denote the opening and closing sentences of a paragraph. The system tracks the distributions of opening and closing sentence lengths (means and standard deviations) to capture cadence. It also records the position of discourse markers (such as "however" or "therefore") as start-of-sentence versus mid-sentence rates:
 
 $$r_{\text{start}} = 1000 \cdot \frac{\#\{\text{markers at sentence start}\}}{\max(1, W)}, \quad r_{\text{mid}} = 1000 \cdot \frac{\#\{\text{markers mid‑sentence}\}}{\max(1, W)}.$$
 
-These features help preserve the typical placement of transitions in an author's style. Many writers exhibit strong positional habits (“However,” at the start versus “..., however, ...” mid-sentence). Maintaining these positions often matters more than replicating the precise marker choice.
+These features help preserve the typical placement of transitions in an author's style. Many writers exhibit strong positional habits - for example, "However," at the start versus "..., however, ..." mid-sentence. Maintaining these positions often matters more than replicating the precise marker choice.
 
 ### 4.6 Repetition Signals (Self‑Echo)
 
-AI-generated text frequently repeats phrases locally. To quantify this, the system measures repetition rates for bigrams and trigrams:
+AI-generated text frequently repeats phrases locally. The system quantifies this by measuring repetition rates for bigrams and trigrams:
 
 $$\rho_n = \frac{\sum_{g \in \mathcal{G}_n} \mathbf{1}[c(g) \ge c_{\min}] \cdot c(g)}{\max(1, |\mathcal{G}_n|)},$$
 
@@ -515,7 +516,7 @@ where $\mathcal{G}_n$ is the multiset of n-grams and $c_{\min}$ is a small repea
 
 ### 4.7 Delta-Style Diagnostics (Optional)
 
-Although Stylometric-Transfer is not an authorship attribution system, Delta-style distances serve as diagnostic measures of stylistic proximity. After standardization and Manhattan-style aggregation:
+Stylometric-Transfer is not an authorship attribution system; however, Delta-style distances serve as diagnostic measures of stylistic proximity. After standardization and Manhattan-style aggregation:
 
 $$\Delta(d,d') = \frac{1}{K}\sum_{k=1}^K \left|z_k(d) - z_k(d')\right|,$$
 
@@ -529,10 +530,7 @@ The fingerprint is treated as a set of weighted constraints:
 
 $$\mathcal{F} = \{(\psi_j, \mathcal{C}_j, w_j)\}_{j=1}^J,$$
 
-where:
-- $\psi_j(y)$ is a measurable statistic of output text (for example, comma rate or histogram vector).
-- $\mathcal{C}_j$ is an admissible set (range, divergence tolerance, forbidden list).
-- $w_j$ is a weight (priority).
+where $\psi_j(y)$ is a measurable statistic of output text (for example, comma rate or histogram vector), $\mathcal{C}_j$ is an admissible set (range, divergence tolerance, forbidden list), and $w_j$ is a weight (priority).
 
 This notation clarifies the engineering concept: each constraint is a measurement ($\psi_j$), an admissible region ($\mathcal{C}_j$), and a weight ($w_j$). The system succeeds when it finds an output $y$ whose measurements fall within many admissible regions, with the highest-weight regions satisfied most reliably.
 
@@ -545,9 +543,9 @@ Typical constraint types include:
 
 The JSON format introduces practical control fields, such as `priority_order` and `strictness`, to specify constraint precedence.
 
-**Plain-language explanation:** The fingerprint functions as a weighted checklist. Certain items are strict (for example, “never use em-dashes”); others are soft (such as “prefer shorter sentences”). The system monitors adherence to each requirement.
+In plain language, the fingerprint functions as a weighted checklist. Certain items are strict (for example, "never use em-dashes"), while others are soft (such as "prefer shorter sentences"). The system monitors adherence to each requirement.
 
-**Constraint normalization and controller overlays:** To keep constraints compact and interpretable, the system deterministically de-duplicates `rewrite_policy` clauses and filters `priority_order` to short, token-like entries. In addition, a corpus-derived variability baseline can drive per-chunk target overlays during rewriting: a deterministic controller samples quantiles of within-author variability (for example, sentence length or punctuation density) and nudges chunk-level targets so the output reflects natural intra-author dispersion without altering the core fingerprint. When perturbations are enabled (controller overlays or stochastic variance), the pipeline enforces a minimum chunk count so variability can be expressed. These overlays are applied locally and logged for auditability.
+Constraint normalization and controller overlays keep constraints compact and interpretable. The system deterministically de-duplicates `rewrite_policy` clauses and filters `priority_order` to short, token-like entries. A corpus-derived variability baseline can drive per-chunk target overlays during rewriting: a deterministic controller samples quantiles of within-author variability (for example, sentence length or punctuation density) and nudges chunk-level targets so the output reflects natural intra-author dispersion without altering the core fingerprint. When perturbations are enabled (controller overlays or stochastic variance), the pipeline enforces a minimum chunk count so variability can be expressed. These overlays are applied locally and logged for auditability.
 
 ---
 
@@ -563,17 +561,15 @@ Let $p_\theta(y\mid x)$ denote the model’s conditional probability of output $
 
 $$\max_{y \in \mathcal{Y}} \; \log p_\theta(y \mid x) - \lambda\, \mathcal{L}_{style}(y;\mathcal{F}) - \mu\,\mathcal{L}_{sem}(y;x),$$
 
-where:
-- $\mathcal{L}_{style}$ penalizes deviation from the style fingerprint.
-- $\mathcal{L}_{sem}$ penalizes semantic drift (estimated conservatively via invariants or, optionally, semantic similarity models).
+where $\mathcal{L}_{style}$ penalizes deviation from the style fingerprint and $\mathcal{L}_{sem}$ penalizes semantic drift (estimated conservatively via invariants or, optionally, semantic similarity models).
 
-Pedagogically, $\log p_\theta(y\mid x)$ reflects the model’s fluency preference, while $\mathcal{L}_{style}$ and $\mathcal{L}_{sem}$ are penalties that pull the output toward the desired style and meaning. The hyperparameters $\lambda$ and $\mu$ control the trade-off between “what the model would naturally say” and “what is required.”
+Here, $\log p_\theta(y\mid x)$ reflects the model’s fluency preference, while $\mathcal{L}_{style}$ and $\mathcal{L}_{sem}$ are penalties that pull the output towards the desired style and meaning. The hyperparameters $\lambda$ and $\mu$ control the trade-off between what the model would naturally say and what is required.
 
 A typical decomposition is:
 
 $$\mathcal{L}_{style}(y;\mathcal{F}) = \sum_{j=1}^J w_j\, \ell_j(\psi_j(y), \mathcal{C}_j).$$
 
-This expresses style loss as a weighted sum of per-constraint penalties. If a particular constraint is crucial (for example, orthography, hard avoids, or a tight sentence-length range), it receives higher weight and therefore dominates the loss.
+This expresses style loss as a weighted sum of per-constraint penalties. If a particular constraint is crucial - for example, orthography, hard avoids, or a tight sentence-length range - it receives higher weight and therefore dominates the loss.
 
 Examples of penalties include:
 
@@ -628,7 +624,7 @@ This is the same soft-constrained objective as before, but restricted to feasibl
 
 ### 6.3 Practical Constraint-Satisfaction Decoding Procedure
 
-In practice, exact constrained decoding over $\mathcal{Y}_{hard}$ is rarely available in production language models. Stylometric-Transfer approximates constraint satisfaction through instruction prompting, self-audit, and repair.
+Exact constrained decoding over $\mathcal{Y}_{hard}$ is rarely available in production language models. Stylometric-Transfer approximates constraint satisfaction through instruction prompting, self-audit, and repair.
 
 A practical approximation proceeds as follows:
 
@@ -651,7 +647,7 @@ The normalization $\sum_j w_j=1$ makes the weighted sum interpretable: it become
 
 $$\sum_j w_js_j = 0.5\cdot 0.9 + 0.2\cdot 0.7 + 0.3\cdot 0.8 = 0.83.$$
 
-If $\sigma$ is identity-with-clipping, then $S=0.83$. This reads as “83% compliant under these weighted checks.”
+If $\sigma$ is identity-with-clipping, then $S=0.83$. This reads as "83% compliant under these weighted checks."
 
 Examples include:
 
@@ -664,7 +660,7 @@ Here $\kappa_j$ turns a raw penalty into a unitless score: if the penalty equals
 - **Histogram score** (KL):
 $$s_j(y) = \exp\big(-\alpha_j\, D_{KL}(\mathbf{h}^*\|\mathbf{h}(y))\big).$$
 
-The exponential mapping converts a divergence into a score: small divergences yield scores near 1, while large divergences decay smoothly toward 0. The parameter $\alpha_j$ controls how sharply the score drops.
+The exponential mapping converts a divergence into a score: small divergences yield scores near 1, while large divergences decay smoothly towards 0. The parameter $\alpha_j$ controls how sharply the score drops.
 
 - **Lexicon hard constraint score**:
 $$s_j(y)=\mathbf{1}[\text{no forbidden term appears}].$$
@@ -680,21 +676,21 @@ This section links the theoretical framework to the codebase. Readers seeking a 
 The repository provides:
 
 1. **Local measurement stage**
-   - Sentence-length histogram
-   - Paragraph-length histogram
-   - Punctuation rates per 1,000 words
-   - Contraction, dash, and ellipsis signals
-   - Frequent n-grams (diagnostic lexicon hints)
+- Sentence-length histogram
+- Paragraph-length histogram
+- Punctuation rates per 1,000 words
+- Contraction, dash, and ellipsis signals
+- Frequent n-grams (diagnostic lexicon hints)
 
 2. **LLM synthesis stage**
-   - Schema-guided, JSON-only prompting
-   - Embedding of measurements verbatim
-   - Automated JSON repair if parsing fails
-   - Deterministic de-duplication of verbose `rewrite_policy` clauses and token filtering for `priority_order`
+- Schema-guided, JSON-only prompting
+- Embedding of measurements verbatim
+- Automated JSON repair if parsing fails
+- Deterministic de-duplication of verbose `rewrite_policy` clauses and token filtering for `priority_order`
 
 3. **Rewrite stage**
-   - Fingerprint, input measurements, and markdown text
-   - JSON output: rewritten markdown, deviations, and self-check
+- Fingerprint, input measurements, and markdown text
+- JSON output: rewritten markdown, deviations, and self-check
 
 These design choices reflect stylometric traditions that favour interpretable features, as well as concerns about evaluation and ethical risk in text style transfer ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com)).
 
@@ -722,33 +718,33 @@ Recommended safeguards:
 
 This project is intentionally pragmatic: it aims for auditable control rather than maximum imitation fidelity. That design choice yields predictable strengths (interpretability, editability, local grounding) and equally predictable limitations. This section summarises the important ones, with emphasis on practical risks.
 
-### 9.1 Stylometry limitations
+### 9.1 Stylometry Limitations
 
-**Genre and domain dependence.** Many stylometric signals are not “author essence”; they are genre constraints. A newspaper leader, a technical manual, and a literary short story produce different punctuation rates, sentence distributions, and function-word profiles even for the same writer. If the input is out-of-domain relative to the corpus used to build the fingerprint, the system can only satisfy some constraints without threatening meaning preservation. In practice, this manifests as more deviations, more retries, or an overly conservative rewrite.
+**Genre and domain dependence.** Stylometric signals are often genre constraints rather than "author essence." A newspaper leader, a technical manual, and a literary short story produce different punctuation rates, sentence distributions, and function-word profiles - even for the same writer. If the input is out-of-domain relative to the corpus used to build the fingerprint, the system can only satisfy some constraints without threatening meaning preservation. In practice, this manifests as more deviations, more retries, or an overly conservative rewrite.
 
-**Topic and named-entity leakage.** Frequent n-grams and “common phrases” are especially vulnerable to domination by topical entities (people, places, organizations). Deterministic filtering and blacklist strategies reduce this, but cannot eliminate the underlying issue: a corpus can be stylistically consistent yet topically narrow. The solution is not more filtering alone; it is also broader corpora (within the same genre) or a higher-level representation of lexical preference (for example, conceptual rather than named entities).
+**Topic and named-entity leakage.** Frequent n-grams and "common phrases" are especially vulnerable to domination by topical entities (people, places, organizations). Deterministic filtering and blacklist strategies reduce this, but cannot eliminate the underlying issue: a corpus can be stylistically consistent yet topically narrow. The solution is not more filtering alone; it is also broader corpora (within the same genre) or a higher-level representation of lexical preference (for example, conceptual rather than named entities).
 
-**Sparse features and small corpora.** Rare rhetorical moves, rare punctuation events (such as semicolons), and “rare words” require sufficient data to stabilise. For small corpora, estimates are noisy and can lead to brittle targets. The project mitigates this by favouring ranges and histograms over point targets, but sparse phenomena remain difficult.
+**Sparse features and small corpora.** Rare rhetorical moves, rare punctuation events (such as semicolons), and "rare words" require sufficient data to stabilise. For small corpora, estimates are noisy and can lead to brittle targets. The project mitigates this by favouring ranges and histograms over point targets, but sparse phenomena remain difficult.
 
 **Language and tokenization assumptions.** The measurement layer is intentionally lightweight; it uses heuristic sentence and paragraph splitting and simple token counting. This is robust for plain English prose but less reliable for mixed scripts, heavy mathematics, tables, code-dense documents, or languages with different punctuation conventions. Where segmentation fails, all downstream metrics (and therefore targets) inherit the error.
 
-**Interpretability versus completeness.** “Explicit and simple” measurements omit many subtle signals: syntax trees, discourse relations, register shifts, pragmatic implicatures, and long-range narrative structure. These omissions are deliberate for auditability, but they limit what can be captured quantitatively.
+**Interpretability versus completeness.** "Explicit and simple" measurements omit many subtle signals: syntax trees, discourse relations, register shifts, pragmatic implicatures, and long-range narrative structure. These omissions are deliberate for auditability, but they limit what can be captured quantitatively.
 
-### 9.2 Humanization limitations
+### 9.2 Humanization Limitations
 
-**Humanization is not a single axis.** “Human-like” prose is not a stable target: authors differ, genres differ, and even within one document the distribution shifts (opening versus closing, dialogue versus exposition, summary versus detail). Any single scalar score necessarily compresses nuance and should be treated as a monitoring signal, not an optimisation objective.
+**Humanization is not a single axis.** "Human-like" prose is not a stable target: authors differ, genres differ, and even within one document the distribution shifts (opening versus closing, dialogue versus exposition, summary versus detail). Any single scalar score necessarily compresses nuance and should be treated as a monitoring signal, not an optimisation objective.
 
-**Metric gaming and Goodhart’s law.** If an operator tunes prompts or post-processing to maximise the aggregate score $S$, the system may learn to “game” the proxies (for example, add synonym churn to boost diversity, or inject punctuation to raise entropy) without improving the text. The project defends against this by (a) keeping meaning preservation and structural invariants primary, (b) logging per-metric diagnostics, and (c) bounding perturbations. Nonetheless, the risk is intrinsic to proxy scoring.
+**Metric gaming and Goodhart’s law.** If an operator tunes prompts or post-processing to maximise the aggregate score $S$, the system may learn to "game" the proxies (for example, add synonym churn to boost diversity, or inject punctuation to raise entropy) without improving the text. The project defends against this by keeping meaning preservation and structural invariants primary, logging per-metric diagnostics, and bounding perturbations. Nonetheless, the risk is intrinsic to proxy scoring.
 
 **Local edits can cause global drift.** Micro-operations and controller overlays are designed to be small, but they can interact: a swap of transition words can change sentence boundaries; punctuation edits can change clause structure; a change in paragraphing can affect cadence metrics. The system therefore keeps the perturbation budget low and uses chunk-level overlays rather than global optimisation, but complex interactions remain possible.
 
 **Chunk boundary artefacts.** Chunking is essential for reliability, but it can introduce boundary effects: repeated openers at chunk starts, inconsistent local voice, or over-compression in smaller chunks. Variance-aware chunking and minimum-chunk enforcement mitigate this, but there is no free lunch: smaller chunks improve reliability, larger chunks improve coherence.
 
-**Quotations are ambiguous.** The fiction versus non-fiction heuristic treats multi-word quotes as quotations in non-fiction, but real documents contain mixed modes (quoted slogans, reported speech, epigraphs, and stylised “air quotes”). The system allows explicit overrides, but automatic classification will sometimes be incorrect.
+**Quotations are ambiguous.** The fiction versus non-fiction heuristic treats multi-word quotes as quotations in non-fiction, but real documents contain mixed modes (quoted slogans, reported speech, epigraphs, and stylised "air quotes"). The system allows explicit overrides, but automatic classification will sometimes be incorrect.
 
-**Hard hygiene rules can be stylistically incorrect.** Deterministic bans (such as “no em dashes”) increase consistency across outputs, but they can conflict with the author’s authentic style. The project treats these as optional tunables because they are editorial choices, not stylometric truths.
+**Hard hygiene rules can be stylistically incorrect.** Deterministic bans (such as "no em dashes") increase consistency across outputs, but they can conflict with the author’s authentic style. The project treats these as optional tunables because they are editorial choices, not stylometric truths.
 
-### 9.3 LLM and systems limitations
+### 9.3 LLM and Systems Limitations
 
 **Model variability and endpoint reliability.** Even with fixed prompts, LLMs can be nondeterministic (sampling, backend variation), and endpoints can be slow or unreliable (timeouts, transient 5xx). The pipeline uses retries and bounded refinement loops, but it cannot guarantee that every request succeeds within a fixed time budget.
 
@@ -756,13 +752,13 @@ This project is intentionally pragmatic: it aims for auditable control rather th
 
 **Evaluation remains multi-objective.** The system optimises for multiple goals: meaning preservation, adherence to explicit style constraints, reduced AI-typical artefacts, and Markdown validity. These goals sometimes conflict. The project’s design makes those conflicts explicit (via priorities and deviations), but it cannot eliminate them.
 
-**Comparison context.** Many production-grade pipelines combine LLMs with training-time specialisation, agentic critique loops, or detector-guided objectives. Stylometric-Transfer deliberately prioritises auditability and explicit control; Appendix F provides a structured comparison against common "best-of-class" alternatives and where each tends to win.
+**Comparison context.** Many production-grade pipelines combine LLMs with training-time specialisation, agentic critique loops, or detector-guided objectives. Stylometric-Transfer deliberately prioritizes auditability and explicit control; Appendix F provides a structured comparison against common "best-of-class" alternatives and where each tends to win.
 
 ---
 
 ## 10. Conclusion
 
-For newcomers, the main point is that classic stylometry and modern language models can be combined without sacrificing interpretability. For experts, the contribution is a concrete, auditable constraint model and a measurable conflict-resolution layer unifying stylometric transfer and humanisation.
+For newcomers, the main point is that classic stylometry and modern language models can be combined without sacrificing interpretability. For experts, the contribution is a concrete, auditable constraint model and a measurable conflict-resolution layer unifying stylometric transfer and humanization.
 
 Stylometric-Transfer connects classic stylometry and LLM-based rewriting by pairing interpretable, versionable style models with constraint-guided generation. The explicit JSON fingerprint enhances auditability and editorial control, drawing on established stylometric measurement and style transfer research ([press.uchicago.edu](https://press.uchicago.edu/ucp/books/book/distributed/I/bo5667096.html?utm_source=chatgpt.com)).
 
@@ -803,9 +799,7 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
             texts.append(t)
 
     M ← compute_measurements(texts)
-        # includes: sentence/paragraph histograms, punctuation rates,
-        # contractions/oxford comma, function words, stance signals,
-        # sentence-openers/templates, n-grams
+        # includes sentence and paragraph histograms, punctuation rates, contractions and oxford comma, function words, stance signals, sentence-openers/templates, n-grams
 
     if phrase_validation_enabled:
         V ← prefilter_proper_names(M.common_phrases)
@@ -815,14 +809,12 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
     E ← pick_representative_excerpts(files, char_budget=B, voice_scoring=on)
     L ← load_lexicon_hints(optional)
 
-    prompt ← build_fingerprint_prompt(schema=S, measurements=M, excerpts=E,
-                                      lexicon_hints=L, model=C.model)
+    prompt ← build_fingerprint_prompt(schema=S, measurements=M, excerpts=E, lexicon_hints=L, model=C.model)
     if prompt_too_large(prompt, C.max_prompt_tokens):
         batches ← chunk_excerpts(E, budget=C.max_prompt_tokens)
         partials ← []
         for b in batches:
-            prompt_b ← build_fingerprint_prompt(schema=S, measurements=M, excerpts=b,
-                                                lexicon_hints=L, model=C.model)
+            prompt_b ← build_fingerprint_prompt(schema=S, measurements=M, excerpts=b, lexicon_hints=L, model=C.model)
             raw_b ← call_llm_chat_completions(prompt_b, C)
             partials.append(parse_or_repair(raw_b))
         F ← partials[0]
@@ -841,9 +833,8 @@ procedure FINGERPRINT_STYLE(archive A, output_path out, llm_config C):
         F ← parse_json(raw2)
 
     enforce_invariants:
-    # enforce invariants
     F.schema_version ← default_if_missing(F.schema_version, "1.0.0")
-    F.measurements ← M  # embed verbatim
+    F.measurements ← M
 
     write_json(out, F)
     return F
@@ -865,18 +856,16 @@ procedure APPLY_FINGERPRINT(fingerprint F, markdown_path in, output_path out, ll
     x ← strip_base64_images(x)
     x ← mask_non_voice_blocks(x)  # blockquotes, references, footnotes (and multi‑word quotes if non‑fiction)
     x ← mask_inline_citations(x)
-    Mx ← compute_measurements(filter_non_voice(x))  # non‑fiction excludes multi‑word quotes
+    Mx ← compute_measurements(filter_non_voice(x))
     Hraw ← load_humanizer_guidelines(optional)
-    H ← parse_humanizer_rules_llm(Hraw)  # default
+    H ← parse_humanizer_rules_llm(Hraw)
     if H is empty:
         H ← parse_humanizer_rules_regex(Hraw)
     H ← filter_conflicting(H, F.measurements, F.targets)
 
     style_feedback ← null
     for r in 0..R:
-        prompt ← build_rewrite_prompt(fingerprint=F, input_measurements=Mx,
-                                      input_text=x, style_feedback=style_feedback,
-                                      humanizer_guidelines=H)
+        prompt ← build_rewrite_prompt(fingerprint=F, input_measurements=Mx, input_text=x, style_feedback=style_feedback, humanizer_guidelines=H)
         raw ← call_llm_chat_completions(prompt, C)
 
         if is_valid_json(raw):
@@ -885,7 +874,7 @@ procedure APPLY_FINGERPRINT(fingerprint F, markdown_path in, output_path out, ll
             obj ← parse_json(call_llm_chat_completions(build_json_repair_prompt(raw), C))
 
         y ← obj.final_markdown
-        y ← restore_placeholders(y)  # non-voice blocks, citations, base64
+        y ← restore_placeholders(y)
         audit ← style_compliance(F.measurements, y)
         if audit.score ≥ τ or r == R:
             break
@@ -917,7 +906,7 @@ procedure REWRITE_WITH_ITERATIVE_REPAIR(fingerprint F, input x, llm_config C, ma
 end procedure
 ```
 
-### A.4 Worked micro-examples (manual calculation)
+### A.4 Worked micro-examples
 
 This section presents small examples that reflect the code's operations, allowing readers to verify calculations directly.
 
@@ -943,7 +932,7 @@ $$B_s=\sigma/\mu \approx 0.57.$$
 
 ## Appendix B. Formal Constrained Decoding Framing
 
-This section reframes decoding as a constrained optimisation or Markov decision process. For those unfamiliar with the formalism, the key point is that the LLM is directed by measurable constraints, not latent embeddings.
+This section reframes decoding as a constrained optimisation or Markov decision process. For readers unfamiliar with the formalism, the key point is that the LLM is directed by measurable constraints, not latent embeddings.
 
 ### B.1 Constrained Maximum A Posteriori Decoding
 
@@ -1000,7 +989,7 @@ This section specifies divergence metrics and acceptance thresholds, each mapped
 
 ### C.1 Metric Families
 
-#### (1) Rate Constraints (scalar)
+#### (1) Rate constraints
 
 Given a target interval $[a,b]$ and observed value $v$:
 
@@ -1010,11 +999,13 @@ Score:
 
 $$s_r(v) = \exp(-\alpha_r \cdot \text{viol}_r(v))$$
 
-Mapped JSON paths: - `/targets/punctuation/comma_density_per_100w` - `/targets/orthography/contractions_rate`
+Mapped JSON paths:
+- `/targets/punctuation/comma_density_per_100w`
+- `/targets/orthography/contractions_rate`
 
 ---
 
-#### (2) Histogram Constraints (sentence / paragraph)
+#### (2) Histogram constraints
 
 The primary metric is the L1 histogram distance:
 
@@ -1024,11 +1015,13 @@ Score:
 
 $$s_h = 1 - \min(1, d_h)$$
 
-Mapped JSON: - `/targets/sentence/length_words/distribution` - `/targets/paragraph/length_sentences`
+Mapped JSON:
+- `/targets/sentence/length_words/distribution`
+- `/targets/paragraph/length_sentences`
 
 ---
 
-#### (3) Lexicon Constraints
+#### (3) Lexicon constraints
 
 Hard constraints:
 
@@ -1038,11 +1031,14 @@ Soft constraints:
 
 $$s_{lex}^{soft} = \exp(-\alpha_{lex} \cdot |f_y - f^*|)$$
 
-Mapped JSON: - `/lexicon/avoid_words` - `/lexicon/avoid_phrases` - `/lexicon/preferred_phrases`
+Mapped JSON:
+- `/lexicon/avoid_words`
+- `/lexicon/avoid_phrases`
+- `/lexicon/preferred_phrases`
 
 ---
 
-#### (4) Function‑Word and Stance Signals
+#### (4) Function‑word and stance signals
 
 For each rate signal (such as `hedge_rate`, `first_person_rate`), the relative deviation is:
 
@@ -1052,7 +1048,9 @@ Score:
 
 $$s_s = 1 - \min(1, d_s)$$
 
-Mapped JSON: - `/measurements/function_words` - `/measurements/stance_signals`
+Mapped JSON:
+- `/measurements/function_words`
+- `/measurements/stance_signals`
 
 ---
 
@@ -1065,10 +1063,6 @@ $$S(y;\mathcal{F}) = \sum_{j=1}^J w_j s_j(y)$$
 If weights are not provided, use the unweighted mean:
 
 $$S(y;\mathcal{F}) = \\frac{1}{J} \sum_{j=1}^J s_j(y)$$
-
-Acceptance levels:
-
-Here’s the corrected formatting for your tables and section:
 
 Acceptance levels:
 
@@ -1096,6 +1090,7 @@ Mapped JSON:
 | Forbidden lexicon | indicator | must satisfy |
 
 ----
+
 ### C.4 Iterative Repair Stopping Rule
 
 Let $S_t$ denote the score at iteration $t$. The process stops when:
@@ -1154,7 +1149,7 @@ $$\text{meaning preservation} \succ \text{lexicon} \succ \text{sentence rhythm} 
 
 This ordering is verbalised to ensure that stylistic fidelity does not override semantic fidelity.
 
-**Bounded stochastic variance.** When enabled, `controls.humanizer_variance` allows a limited number of seeded micro‑operations (such as transition swaps or filler drops) per 1000 words. These edits are constrained, logged, and subordinate to the fingerprint, introducing human‑like irregularity without semantic drift.
+Bounded stochastic variance, when enabled, allows a limited number of seeded micro‑operations (such as transition swaps or filler drops) per 1000 words. These edits are constrained, logged, and subordinate to the fingerprint, introducing human‑like irregularity without semantic drift.
 
 ---
 
@@ -1314,7 +1309,7 @@ Thus the fingerprint need not be complete to be effective.
 
 The system explicitly models and detects the principal failure classes.
 
-### D.8.1 Semantic Drift
+### D.8.1 Semantic drift
 
 Detected by:
 - entity mismatch  
@@ -1325,7 +1320,7 @@ Policy:
 - semantic constraints are hard  
 - drift triggers rejection and repair  
 
-### D.8.2 Over-fitting to Constraints
+### D.8.2 Over-fitting to sonstraints
 
 Symptoms:
 - unnaturally uniform sentence lengths  
@@ -1341,7 +1336,7 @@ Mitigation:
 - stochastic sampling  
 - soft penalties  
 
-### D.8.3 Constraint Incompatibility
+### D.8.3 Constraint incompatibility
 
 Occurs when:
 - input content structure is incompatible with author rhythm  
@@ -1490,7 +1485,7 @@ The system imposes a partial order:
 
 $$\text{meaning} \succ \text{lexicon} \succ \text{structure} \succ \text{punctuation} \succ \text{templates}$$
 
-This ensures that, in the event of conflict, feasibility is prioritised.
+This ensures that, in the event of conflict, feasibility is prioritized.
 
 ---
 
@@ -1538,9 +1533,9 @@ Empirically, rapid convergence (within one to three iterations) is observed in m
 
 Feasibility may fail in several situations:
 
-1. **Extremely short texts**: There are insufficient degrees of freedom for histogram control.
-2. **Highly constrained technical content**: Semantic invariants dominate stylistic degrees of freedom.
-3. **Overly tight tolerances**: $\tau_j < \epsilon_j$.
+1. Extremely short texts: There are insufficient degrees of freedom for histogram control.
+2. Highly constrained technical content: Semantic invariants dominate stylistic degrees of freedom.
+3. Overly tight tolerances: $\tau_j < \epsilon_j$.
 
 In such cases, Stylometric-Transfer reports deviation, relaxes the lowest-priority constraints, and guarantees semantic correctness.
 
@@ -1558,7 +1553,7 @@ This perspective clarifies the necessity of tolerances, the ill-posed nature of 
 
 ---
 
-## Appendix F. Comparison with Fine-Tuning, LoRA, and Latent Style Embedding Approaches
+## Appendix F. Comparison with Fine-Tuning, LoRA
 
 This section places Stylometric-Transfer in the context of existing approaches to author-style modelling and controlled generation, with emphasis on transparency and editorial control.
 
@@ -1590,7 +1585,7 @@ by adjusting base parameters $\theta \to \theta'$.
 ### Limitations
 
 - Style representation is entirely implicit.
-- Learned stylistic features cannot be inspected.
+- Learnt stylistic features cannot be inspected.
 - No partial control; sentence rhythm and lexicon cannot be weighted separately.
 - Catastrophic forgetting is a risk.
 - Retraining is expensive for each author.
@@ -1609,7 +1604,7 @@ with no parameter updates, an explicit admissible region, and post-hoc auditing.
 
 ### Mechanism
 
-Low-rank matrices $\Delta W$ are learned so that
+Low-rank matrices $\Delta W$ are learnt so that
 
 $$h' = h + \Delta W h$$
 
@@ -1641,7 +1636,7 @@ A vector
 
 $$z_{style} \in \mathbb{R}^d$$
 
-is learned, and generation is conditioned as
+is learnt, and generation is conditioned as
 
 $$p(y\mid x,z_{style})$$
 
@@ -1699,53 +1694,53 @@ Stylometric-Transfer requires only enough data to estimate low-variance statisti
 
 ## F.7 Transferability and Compositionality
 
-Latent methods encounter difficulties when combining multiple authors, interpolating interpretable features, or transferring style across domains. Stylometric-Transfer supports
-
-- Convex combinations of fingerprints, selective inheritance of features, and domain-specific constraint relaxation are central mechanisms.
+Latent methods encounter difficulties when combining multiple authors, interpolating interpretable features, or transferring style across domains. Stylometric-Transfer supports convex combinations of fingerprints, selective inheritance of features, and domain-specific constraint relaxation as central mechanisms.
 
 Formally, fingerprints compose as
 
 $$\mathcal{F}_\lambda = \lambda \mathcal{F}_1 + (1-\lambda)\mathcal{F}_2$$
 
-at the level of histogram mixtures, range interpolation, and lexicon unions.
+`controls.humanizer_variance`
+
+At the level of histogram mixtures, range interpolation, and lexicon unions, Stylometric-Transfer operates by making style constraints explicit.
 
 ---
 
 ## F.8 Interpretability and Scientific Value
 
-From a scientific perspective, fine-tuning learns unknown features, embeddings encode unlabeled dimensions, and Stylometric-Transfer recovers measurable linguistic variables. This enables hypothesis testing, ablation studies, stylistic causality analysis, and reproducible experiments.
+From a scientific standpoint, fine-tuning uncovers unknown features, embeddings encode unlabelled dimensions, and Stylometric-Transfer recovers measurable linguistic variables. This approach enables hypothesis testing, ablation studies, stylistic causality analysis, and reproducible experiments.
 
 ---
 
 ## F.9 Summary
 
-Stylometric-Transfer differs fundamentally from existing approaches by externalising style as explicit constraints, avoiding training and latent embeddings, enabling auditability and editorial control, and supporting theoretical analysis of feasibility and convergence. Rather than learning what style is, it defines where style may reside in feature space.
+Stylometric-Transfer diverges from existing methods by externalising style as explicit constraints, avoiding training and latent embeddings, enabling auditability and editorial control, and supporting theoretical analysis of feasibility and convergence. It defines where style may reside in feature space, rather than learning what style is.
 
 ---
 
-## F.10 Comparison to "best-of-class" practical pipelines
+## F.10 Comparison to practical pipelines
 
-In practice, teams rarely deploy a single pure paradigm. "Best-of-class" systems typically combine several ingredients: a powerful instruction-tuned LLM, guardrails for structure and meaning, some form of evaluation (automatic and human), and, when budgets allow, training-time specialization (fine-tuning or adapters).
+In practice, teams seldom deploy a single pure paradigm. Systems regarded as "best-of-class" typically combine several elements: an instruction-tuned LLM, guardrails for structure and meaning, some form of evaluation (automatic and human), and, when budgets permit, training-time specialisation (fine-tuning or adapters).
 
-The table below compares Stylometric-Transfer to common high-performing alternatives as they are typically used in the field. The goal is not to claim superiority, but to clarify tradeoffs.
+The table below compares Stylometric-Transfer to common high-performing alternatives as they are typically used in the field. The intention is not to claim superiority, but to clarify trade-offs.
 
 | Approach (typical) | Strengths | Weaknesses | When it tends to win |
 | --- | --- | --- | --- |
-| Prompt-only style steering (LLM + "write like X") | Lowest engineering cost; fast iteration; can be surprisingly good for broad register shifts | Non-auditable; fragile to prompt drift; hard to reproduce; style can collapse into generic LLM voice; meaning drift is common without extra checks | Casual rewrites; low-stakes editing; early prototyping |
+| Prompt-only style steering (LLM + "write like X") | Lowest engineering cost; fast iteration; can be effective for broad register shifts | Non-auditable; fragile to prompt drift; hard to reproduce; style can collapse into generic LLM voice; meaning drift is common without extra checks | Casual rewrites; low-stakes editing; early prototyping |
 | Agentic / iterative editing (LLM + critique loops) | Better compliance via self-critique; can catch formatting/consistency errors; flexible to new constraints | More latency/cost; can over-edit and introduce drift; "improvement" can be subjective and unstable | Long documents where structure matters; when a human reviewer is in the loop |
-| Fine-tuned author or domain model | Highest imitation fidelity in-domain; less prompt overhead; can be fast at inference once trained | Opaque; expensive to train and update; difficult to verify what changed; risky for impersonation; hard to parameterize partial style knobs | Narrow, stable domain with large data; high-volume generation; strict internal style guides |
-| LoRA/adapters for style or domain | Cheaper than full fine-tune; modular; can switch adapters | Still opaque; style dimensions entangled; multiple adapters can conflict; auditability remains limited | Medium-scale specialization; internal domain conditioning |
-| Latent style embeddings + conditional generation | Compact conditioning; can interpolate styles; integrates with learned pipelines | Hard to interpret; evaluation difficult; risk of content leakage into style vector | Research settings; controlled datasets; style mixing experiments |
-| Detector-guided "humanization" optimization | Can target a specific detector or proxy; easy to define an objective | Highly vulnerable to Goodhart's law; may produce adversarial artifacts; can harm meaning and readability | When the objective is explicitly "reduce detector score" (not recommended for general writing) |
-| **Stylometric-Transfer (this work)** | Explicit, versionable constraints; local grounding; stable reproducibility; clear deviation reporting; integrates humanization as auditable mechanisms | Limited ceiling on subtle stylistic phenomena; depends on LLM compliance; chunking introduces boundary effects; heuristics can mis-segment | When auditability matters; when tunable controls are needed; when per-author JSON artifacts are preferred over opaque weights |
+| Fine-tuned author or domain model | Highest imitation fidelity in-domain; less prompt overhead; can be fast at inference once trained | Opaque; expensive to train and update; difficult to verify what changed; risky for impersonation; hard to parameterise partial style knobs | Narrow, stable domain with large data; high-volume generation; strict internal style guides |
+| LoRA/adapters for style or domain | Cheaper than full fine-tune; modular; can switch adapters | Still opaque; style dimensions entangled; multiple adapters can conflict; auditability remains limited | Medium-scale specialisation; internal domain conditioning |
+| Latent style embeddings + conditional generation | Compact conditioning; can interpolate styles; integrates with learnt pipelines | Hard to interpret; evaluation difficult; risk of content leakage into style vector | Research settings; controlled datasets; style mixing experiments |
+| Detector-guided "humanization" optimisation | Can target a specific detector or proxy; easy to define an objective | Highly vulnerable to Goodhart's law; may produce adversarial artefacts; can harm meaning and readability | When the objective is explicitly "reduce detector score" (not recommended for general writing) |
+| **Stylometric-Transfer (this work)** | Explicit, versionable constraints; local grounding; stable reproducibility; clear deviation reporting; integrates humanization as auditable mechanisms | Limited ceiling on subtle stylistic phenomena; depends on LLM compliance; chunking introduces boundary effects; heuristics can mis-segment | When auditability matters; when tunable controls are needed; when per-author JSON artefacts are preferred over opaque weights |
 
-### F.10.1 Why explicit constraints can be competitive
+### F.10.1 Explicit constraints in practice
 
-Two practical observations explain why explicit constraints can compete with more "powerful" learned approaches in real deployments. First, human-in-the-loop editing benefits from inspectability. When a rewrite is not quite right, a JSON fingerprint and a deviations report make it clear which knob to turn. In contrast, a fine-tuned model offers few actionable levers beyond retraining or prompt adjustment. Second, many style differences are low-dimensional and stable. In many domains, the biggest wins come from a handful of stable signals - sentence rhythm, punctuation, discourse markers, function-word balance, and a small set of lexical preferences. Making those explicit yields predictable control even if it does not capture every subtlety.
+Two practical observations explain why explicit constraints can compete with more "powerful" learnt approaches in real deployments. First, human-in-the-loop editing benefits from inspectability. When a rewrite is not quite right, a JSON fingerprint and a deviations report make it clear which parameter to adjust. In contrast, a fine-tuned model offers few actionable levers beyond retraining or prompt adjustment. Second, many style differences are low-dimensional and stable. In many domains, the most discernible gains stem from a handful of stable signals - sentence rhythm, punctuation, discourse markers, function-word balance, and a small set of lexical preferences. Making those explicit yields predictable control, even if it does not capture every subtlety.
 
-### F.10.2 Where best-of-class learned approaches remain ahead
+### F.10.2 Where learnt approaches retain an advantage
 
-Learned approaches retain an advantage when style is expressed in high-dimensional ways that are hard to capture with lightweight metrics: nuanced syntactic alternations, idiomatic collocations, long-range narrative structure, and pragmatic implicature. In such regimes, explicit constraints may approximate the outer shell of the voice (cadence and surface markers) without fully reproducing the deeper texture.
+Learnt approaches retain an advantage when style is expressed in high-dimensional ways that are difficult to capture with lightweight metrics: nuanced syntactic alternations, idiomatic collocations, long-range narrative structure, and pragmatic implicature. In such regimes, explicit constraints may approximate the outer shell of the voice (cadence and surface markers) without fully reproducing the deeper texture.
 
 ---
 
@@ -2240,7 +2235,7 @@ Learned approaches retain an advantage when style is expressed in high-dimension
 
 ---
 
-## Appendix H. Tunables schema (config.tunables.json)
+## Appendix H. Tunables schema
 
 `config.tunables.json` provides deterministic control over humanizer conflict thresholds and basic sanity checks, such as line-count change warnings, during style application. When a fingerprint is generated, the current tunables are optionally embedded under `metadata.extraction.tunables_snapshot` to preserve the exact settings used for provenance. The following schema outlines the supported keys and types:
 
@@ -2465,40 +2460,40 @@ Learned approaches retain an advantage when style is expressed in high-dimension
 }
 ```
 
-**Attribution:** Humanization guidelines are adapted from the humanizer skill in softaworks/agent-toolkit by @leonardocouy.
+Humanization guidelines are adapted from the humanizer skill in softaworks/agent-toolkit by @leonardocouy.
 
-### H.1 Tunable definitions (interpretation)
+### H.1 Tunable definitions
 
-- `em_dash_keep_rate`: if the fingerprint’s em dash rate (per 1000 words) meets or exceeds this value, the rule to avoid em dashes is set aside as conflicting.
-- `hedge_keep_rate`: if the fingerprint’s hedging rate (per 1000 words) meets or exceeds this value, rules discouraging hedging are set aside.
-- `first_person_keep_rate`: if the fingerprint’s first person rate (per 1000 words) is below this value (or pronoun preferences avoid first person), rules requiring first person are set aside.
-- `contractions_avoid_threshold`: if the fingerprint’s contraction rate (per 1000 words) meets or exceeds this value, the rule to avoid contractions is set aside.
-- `contractions_use_threshold`: if the fingerprint’s contraction rate (per 1000 words) is below this value, the rule to use contractions is set aside.
+- `em_dash_keep_rate`: if the fingerprint’s em dash rate (per 1,000 words) meets or exceeds this value, the rule to avoid em dashes is set aside as conflicting.
+- `hedge_keep_rate`: if the fingerprint’s hedging rate (per 1,000 words) meets or exceeds this value, rules discouraging hedging are set aside.
+- `first_person_keep_rate`: if the fingerprint’s first person rate (per 1,000 words) is below this value (or pronoun preferences avoid first person), rules requiring first person are set aside.
+- `contractions_avoid_threshold`: if the fingerprint’s contraction rate (per 1,000 words) meets or exceeds this value, the rule to avoid contractions is set aside.
+- `contractions_use_threshold`: if the fingerprint’s contraction rate (per 1,000 words) is below this value, the rule to use contractions is set aside.
 - `heading_title_case_keep_rate`: if the input Markdown’s heading Title Case ratio meets or exceeds this value, the rule to avoid Title Case headings is set aside.
-- `boldface_keep_per_1000w`: if boldface density (per 1000 words) meets or exceeds this value, the rule to avoid boldface is set aside.
+- `boldface_keep_per_1000w`: if boldface density (per 1,000 words) meets or exceeds this value, the rule to avoid boldface is set aside.
 - `inline_header_list_keep_rate`: if the ratio of inline-header list items (such as `- **Label:**`) meets or exceeds this value, the rule to avoid inline-header lists is set aside.
 - `avoid_em_dashes`: when true, em dashes are always removed in the final output (mandatory humanizer control).
 - `normalize_double_quotes`: when true, curly double quotes are normalised to straight quotes after rewriting.
 - `emoji_policy`: `remove`, `replace`, or `none`. `replace` swaps emojis with conventional monochrome symbols when possible, otherwise removes them.
-- `force_local_spelling`: locale override for spelling normalisation applied after rewriting (`none`, `canadian`, `australian`, `british`, `us`). Uses rules in `config.local_spelling_rules.json`.
-- `humanizer_variance.enabled`: enables bounded stochastic micro‑variation during application.
+- `force_local_spelling`: locale override for spelling normalisation applied after rewriting (`none`, `canadian`, `australian`, `british`, `us`). Rules in `config.local_spelling_rules.json` are applied.
+- `humanizer_variance.enabled`: enables bounded stochastic micro-variation during application.
 - `humanizer_variance.seed`: RNG seed for deterministic runs.
-- `humanizer_variance.max_ops_per_1000w`: maximum number of micro‑operations per 1000 words. The recommended starting point is `0.5`; `0.5–1.5` is generally safe. Values above `2.0` can introduce noise unless the input is highly repetitive.
-- `humanizer_variance.allowed_ops`: allowed micro‑operations (for example, `swap_transition`, `drop_filler`). It is advisable to begin with `["swap_transition", "drop_filler"]`, add operations gradually, and keep the list short to avoid compounding randomness.
+- `humanizer_variance.max_ops_per_1000w`: maximum number of micro-operations per 1,000 words. The recommended starting point is `0.5`; `0.5–1.5` is generally safe. Values above `2.0` can introduce noise unless the input is highly repetitive.
+- `humanizer_variance.allowed_ops`: allowed micro-operations (for example, `swap_transition`, `drop_filler`). It is advisable to begin with `["swap_transition", "drop_filler"]`, add operations gradually, and keep the list short to avoid compounding randomness.
 - `humanization_metrics.weights`: optional weighting for the 0–100 aggregate humanization score. Any metric assigned a weight of 0 is excluded.
 - `lexical_signals.rare_words_limit`: maximum number of rare words included in `measurements.lexical_signals.rare_words`.
 - `lexical_avoidance.rare_words_limit`: maximum number of rare words included in `measurements.lexical_avoidance.rare_words`.
-- `chunking.max_input_tokens`: hard cap on input tokens per chunk (after prompt overhead). Lower values increase chunk count but reduce per‑request latency and timeouts.
+- `chunking.max_input_tokens`: hard cap on input tokens per chunk (after prompt overhead). Lower values increase chunk count but reduce per-request latency and timeouts.
 - `chunking.chunk_split_on`: primary chunking unit (`word`, `sentence`, or `paragraph`). If a paragraph exceeds the budget, it falls back to sentence splitting for that chunk; if a sentence is still oversized, it falls back to word splitting for that chunk. Bullet or numbered list lines are treated as sentence units.
 - `chunking.chunk_summary.enabled`: when true, each chunk requests a short rolling summary (not included in the final output) and passes it to the next chunk for semantic continuity.
 - `chunking.chunk_summary.summary_words`: target word count for the rolling summary (default 25). Keep small to minimise token overhead.
-- `style_retry.enabled`: enable or disable the delta‑feedback retry pass after measuring style compliance.
-- `style_retry.threshold`: retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold‑based retries, while `1.0` retries unless the output is nearly perfect.
+- `style_retry.enabled`: enable or disable the delta-feedback retry pass after measuring style compliance.
+- `style_retry.threshold`: retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold-based retries, while `1.0` retries unless the output is nearly perfect.
 - `style_retry.max_retries`: maximum number of retry passes (default `1`).
 - `section_restore.enabled`: enable or disable restoring missing sections after rewrite.
 - `section_restore.max_restore_sections`: maximum number of missing sections to restore (0 disables restoration).
 - `section_restore.heading_similarity_threshold`: fuzzy heading match threshold for considering a rewritten heading present.
-- `section_restore.signature_similarity_threshold`: content‑signature similarity threshold for matching a section by its opening content.
+- `section_restore.signature_similarity_threshold`: content-signature similarity threshold for matching a section by its opening content.
 - `section_restore.signature_min_overlap`: minimum number of overlapping signature tokens required for a content match.
 - `line_count_warn_pct`: if the output line count changes by this percentage or more, a warning is issued for possible missing or expanded content.
 - `word_count_warn_pct`: if the output word count changes by this percentage or more, a warning is issued for possible missing or expanded content.
@@ -2506,65 +2501,65 @@ Learned approaches retain an advantage when style is expressed in high-dimension
 
 ---
 
-## Appendix I. Stylometry + Humanization FAQ and Glossary (a practical reference)
+## Appendix I. Stylometry And HUMANIZATION: faq And glossary
 
 This appendix is intentionally verbose and is intended for readers seeking clarity between textbook definitions and code.
 
-### I.1 Glossary (terms used throughout the paper and the code)
+### I.1 Glossary
 
-**Author‑voice text** The portion of a document assumed to represent the author’s own prose rather than quoted material, references, footnotes, or boilerplate. The project filters non‑author‑voice regions before measuring style and before requesting a rewrite.
+**Author-voice text** The portion of a document assumed to represent the author’s own prose rather than quoted material, references, footnotes, or boilerplate. The project filters non-author-voice regions before measuring style and before requesting a rewrite.
 
-**Token / type** A *token* refers to one occurrence of a word; a *type* is a unique word form. If the text is “cats chase cats”, then $N=3$ tokens and $V=2$ types.
+**Token / type** A *token* refers to one occurrence of a word; a *type* is a unique word form. If the text is "cats chase cats", then $N=3$ tokens and $V=2$ types.
 
-**Rate per 1000 words** A normalised count: $r = 1000 \cdot C / W$. This rescales event counts (commas, semicolons, hedges) so that texts of different lengths become comparable.
+**Rate per 1,000 words** A normalised count: $r = 1000 \cdot C / W$. This rescales event counts (commas, semicolons, hedges) so that texts of different lengths become comparable.
 
-**Histogram (probability distribution)** A vector of bin probabilities $\mathbf{h}$ such that $\sum_b h_b = 1$. Histograms are used for sentence‑length and paragraph‑length distributions because “shape” matters (variance and tails) even when means match.
+**Histogram (probability distribution)** A vector of bin probabilities $\mathbf{h}$ such that $\sum_b h_b = 1$. Histograms are used for sentence-length and paragraph-length distributions because "shape" matters (variance and tails) even when means match.
 
-**Entropy** A measure of spread. If probabilities are $p_i$, then $H=-\sum_i p_i\log p_i$. High entropy means “many categories are used fairly evenly”; low entropy means “mass is concentrated in a few categories”. In this project, entropy is used as a proxy for variety (punctuation variety; function‑word variety; character‑trigram texture).
+**Entropy** A measure of spread. If probabilities are $p_i$, then $H=-\sum_i p_i\log p_i$. High entropy means "many categories are used fairly evenly"; low entropy means "mass is concentrated in a few categories". In this project, entropy is used as a proxy for variety (punctuation variety; function-word variety; character-trigram texture).
 
-**KL divergence** If $P$ is an observed distribution and $Q$ is a reference distribution, then: $$D_{\\mathrm{KL}}(P\\|Q)=\\sum_i P_i\\log\\frac{P_i}{Q_i}.$$ It is asymmetric. In operational terms: it penalises “surprising under $Q$” mass in $P$. The project uses KL‑derived measures to quantify how far a rewrite drifts from the fingerprint in distributional features.
+**KL divergence** If $P$ is an observed distribution and $Q$ is a reference distribution, then: $$D_{\\mathrm{KL}}(P\\|Q)=\\sum_i P_i\\log\\frac{P_i}{Q_i}.$$ It is asymmetric. In operational terms: it penalises "surprising under $Q$" mass in $P$. The project uses KL-derived measures to quantify how far a rewrite drifts from the fingerprint in distributional features.
 
-**Jensen–Shannon divergence (JSD)** A symmetric, smoothed divergence derived from KL: $$\\mathrm{JSD}(P,Q)=\\tfrac{1}{2}D_{\\mathrm{KL}}(P\\|M)+\\tfrac{1}{2}D_{\\mathrm{KL}}(Q\\|M), \\quad M=\\tfrac{1}{2}(P+Q).$$ JSD is bounded and tends to be easier to interpret as a “distance‑like” score for histograms.
+**Jensen–Shannon divergence (JSD)** A symmetric, smoothed divergence derived from KL: $$\\mathrm{JSD}(P,Q)=\\tfrac{1}{2}D_{\\mathrm{KL}}(P\\|M)+\\tfrac{1}{2}D_{\\mathrm{KL}}(Q\\|M), \\quad M=\\tfrac{1}{2}(P+Q).$$ JSD is bounded and tends to be easier to interpret as a "distance-like" score for histograms.
 
 **Burstiness (coefficient of variation)** For a length sequence $\\ell$, burstiness is $B = \\sigma(\\ell)/\\mu(\\ell)$. It measures variability relative to the mean. LLM outputs often have artificially low burstiness; many human authors do not.
 
-**Self‑echo** Repeated n‑grams within a text (often beyond what the topic justifies). This paper uses repeated bigram/trigram rates as a proxy.
+**Self-echo** Repeated n-grams within a text (often beyond what the topic justifies). This paper uses repeated bigram/trigram rates as a proxy.
 
-**Humanization metric** A quantitative proxy intended to detect and reduce AI‑typical artefacts. In this system, metrics are for engineering feedback, not forensic detection.
+**Humanization metric** A quantitative proxy intended to detect and reduce AI-typical artefacts. In this system, metrics are for engineering feedback, not forensic detection.
 
-**Humanization baseline** Intra‑corpus variability extracted from the author’s corpus and used to produce per‑chunk controller overlays (small target nudges that encourage natural dispersion).
+**Humanization baseline** Intra-corpus variability extracted from the author’s corpus and used to produce per-chunk controller overlays (small target nudges that encourage natural dispersion).
 
-**Controller overlay** A per‑chunk adjustment to target ranges (for example, nudging sentence‑length mean toward a sampled quantile of the corpus distribution) intended to introduce author‑like variability without random drift. It is deterministic given a seed and tunables.
+**Controller overlay** A per-chunk adjustment to target ranges (for example, nudging sentence-length mean towards a sampled quantile of the corpus distribution) intended to introduce author-like variability without random drift. It is deterministic given a seed and tunables.
 
-**Bounded stochastic variance** Seeded micro‑edits (small operations) applied under strict caps (operations per 1000 words, allowed operation set). The word “bounded” is key: it is designed to be auditable and prevent runaway randomness.
+**Bounded stochastic variance** Seeded micro-edits (small operations) applied under strict caps (operations per 1,000 words, allowed operation set). The word "bounded" is key: it is designed to be auditable and prevent runaway randomness.
 
-**Chunking** Splitting input Markdown into smaller parts so each LLM call stays within a token budget. Chunking is not just a performance hack; it affects distributional control. Smaller chunks reduce per‑call timeouts and allow more local variability, but can increase risk of global inconsistencies if constraints are not managed carefully.
+**Chunking** Splitting input Markdown into smaller parts so each LLM call stays within a token budget. Chunking is not just a performance hack; it affects distributional control. Smaller chunks reduce per-call timeouts and allow more local variability, but can increase risk of global inconsistencies if constraints are not managed carefully.
 
 **Deviation report** A structured record of constraint conflicts, style drifts, and any deterministic fixups applied after the LLM output. Deviations are the audit trail.
 
-### I.2 FAQ (questions a careful reader may ask)
+### I.2 FAQ
 
-**Q: Why does stylometry often focus on function words?** Because function words are frequent, relatively topic‑invariant, and difficult to consciously control. If two texts match on many topic words but diverge strongly on function‑word balance and connective habits, the style is plausibly different even if the topic is the same.
+**Q: Why does stylometry often focus on function words?** Function words are frequent, relatively topic-invariant, and difficult to consciously control. If two texts match on many topic words but diverge strongly on function-word balance and connective habits, the style is plausibly different even if the topic is the same.
 
-**Q: Why use per‑1000‑word rates rather than raw counts?** Raw counts scale with length and can be misleading. Normalisation makes style density comparable. It also makes a rewrite audit meaningful: if a 2,000‑word text has 120 commas, the comma density is 60 per 1000 words. If the rewrite has 30 commas, density is 15 per 1000 words, signalling compression or a shift to simpler sentence structure.
+**Q: Why use per-1,000-word rates rather than raw counts?** Raw counts scale with length and can be misleading. Normalisation makes style density comparable. It also makes a rewrite audit meaningful: if a 2,000-word text has 120 commas, the comma density is 60 per 1,000 words. If the rewrite has 30 commas, density is 15 per 1,000 words, signalling compression or a shift to simpler sentence structure.
 
-**Q: Why store histograms instead of just mean and standard deviation?** Because the distribution’s tails often carry stylistic meaning. Many authors occasionally produce very short or very long sentences. LLMs tend to regress to the middle. A histogram preserves where the mass sits across bins, which is a more direct representation of rhythm than a single mean.
+**Q: Why store histograms instead of just mean and standard deviation?** The distribution’s tails often carry stylistic meaning. Many authors occasionally produce very short or very long sentences. LLMs tend to regress to the middle. A histogram preserves where the mass sits across bins, which is a more direct representation of rhythm than a single mean.
 
-**Q: If the corpus contains quotations, why filter them at all?** Because quotations can represent other voices and content. For non‑fiction, long quoted passages are typically the speech of sources, not the author’s own style. For fiction, quoted dialogue is part of the author’s craft and should usually be included. The project therefore detects fiction versus non‑fiction and changes the quote‑handling policy accordingly, with an explicit message and manual overrides.
+**Q: If the corpus contains quotations, why filter them at all?** Quotations can represent other voices and content. For non-fiction, long quoted passages are typically the speech of sources, not the author’s own style. For fiction, quoted dialogue is part of the author’s craft and should usually be included. The project therefore detects fiction versus non-fiction and changes the quote-handling policy accordingly, with an explicit message and manual overrides.
 
-**Q: Why not use a full syntactic parser or a transformer embedding for deeper style?** You can, but you pay for it: dependencies, latency, fragility, and reduced auditability. The philosophy here is to measure what you can defend. A smaller set of stable, interpretable features often provides more engineering leverage than a high‑dimensional embedding whose drift is hard to diagnose.
+**Q: Why not use a full syntactic parser or a transformer embedding for deeper style?** You can, but you pay for it: dependencies, latency, fragility, and reduced auditability. The philosophy here is to measure what you can defend. A smaller set of stable, interpretable features often provides more engineering leverage than a high-dimensional embedding whose drift is hard to diagnose.
 
 **Q: Is the humanization score a detector?** No. It is a dashboard metric. It is meant to indicate whether the rewrite became more uniform, more repetitive, or more distributionally distant from the fingerprint. It should be interpreted like a unit test: a failing unit test does not prove your program is wrong in every way, but it is a useful signal that something is off.
 
-**Q: Why do you sometimes want more chunks than token limits require?** Because variability is easier to express locally. If you want a high sentence‑length standard deviation, rewriting an entire document as one chunk can push the model toward a smooth compromise style. Smaller chunks allow the controller overlay to sample different quantiles across chunks (deterministically), producing natural dispersion while still keeping within global constraints.
+**Q: Why do you sometimes want more chunks than token limits require?** Variability is easier to express locally. If you want a high sentence-length standard deviation, rewriting an entire document as one chunk can push the model towards a smooth compromise style. Smaller chunks allow the controller overlay to sample different quantiles across chunks (deterministically), producing natural dispersion while still keeping within global constraints.
 
-**Q: Doesn’t chunking risk losing coherence or dropping content?** Yes, and the project treats this as a first‑class failure mode. It provides: (i) deterministic preservation of protected regions (blockquotes, references, footnotes, citations), (ii) line, word, and paragraph change warnings, and (iii) optional section restoration when headings go missing. Chunking is therefore paired with post‑rewrite checks rather than treated as a blind splitting strategy.
+**Q: Doesn’t chunking risk losing coherence or dropping content?** Yes, and the project treats this as a first-class failure mode. It provides: (i) deterministic preservation of protected regions (blockquotes, references, footnotes, citations), (ii) line, word, and paragraph change warnings, and (iii) optional section restoration when headings go missing. Chunking is therefore paired with post-rewrite checks rather than treated as a blind splitting strategy.
 
-**Q: Why keep an explicit JSON fingerprint rather than fine‑tune a model?** Because an explicit fingerprint is inspectable, editable, and versionable. It gives editorial authority: you can see what the system believes about the author’s style and change it.
+**Q: Why keep an explicit JSON fingerprint rather than fine-tune a model?** An explicit fingerprint is inspectable, editable, and versionable. It gives editorial authority: you can see what the system believes about the author’s style and change it.
 
 Fine-tuning and latent embeddings offer considerable potential; nonetheless, they present challenges for auditability and interpretability, often conflating content, stylistic features, and safety-related behaviours.
 
-The most common stylometric error is topic leakage - where signals attributed to "style" are, in fact, reflections of the author's preferred subject matter. Over-confidence presents another risk: stylometric scores may be mistaken for definitive proof, rather than recognised as probabilistic and context-dependent indicators. The approach outlined here attempts to address both pitfalls by filtering out proper-name phrases from lexical signals and focusing on ranges and distributions rather than single thresholds.
+The most common stylometric error is topic leakage - where signals attributed to "style" are, in fact, reflections of the author's preferred subject matter. Over-confidence presents another risk: stylometric scores may be mistaken for definitive proof, rather than recognized as probabilistic and context-dependent indicators. The approach outlined here attempts to address both pitfalls by filtering out proper-name phrases from lexical signals and focusing on ranges and distributions rather than single thresholds.
 
 Significant changes in word count following a rewrite should be regarded as a potential threat to meaning preservation. A marked reduction may suggest summarisation, while substantial expansion could imply the introduction of extraneous detail. In such cases, the deviations report and count-change warnings ought to prompt manual review or the tightening of constraints (for instance, by adjusting chunk size, retry thresholds, or imposing stricter requirements to preserve structure).
 
