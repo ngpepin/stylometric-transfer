@@ -1174,10 +1174,25 @@ def normalize_summary(summary: str, max_words: int | None) -> str:
     summary = " ".join(summary.split()).strip()
     if not summary:
         return ""
-    # Deterministic cleanup: avoid "this passage/section/chunk" phrasing for prior context.
-    summary = re.sub(r"\\bthis\\s+passage\\b", "the previous passage", summary, flags=re.IGNORECASE)
-    summary = re.sub(r"\\bthis\\s+section\\b", "the previous section", summary, flags=re.IGNORECASE)
-    summary = re.sub(r"\\bthis\\s+chunk\\b", "the previous chunk", summary, flags=re.IGNORECASE)
+    # Deterministic cleanup: avoid "this passage/section/..." phrasing for prior context.
+    context_nouns = (
+        "passage", "section", "chunk", "text", "document", "paper", "article",
+        "report", "excerpt", "chapter", "part", "segment", "portion", "appendix",
+        "material", "content", "discussion", "analysis", "overview", "summary"
+    )
+    for noun in context_nouns:
+        summary = re.sub(
+            rf"\\bthis\\s+{noun}\\b",
+            f"the previous {noun}",
+            summary,
+            flags=re.IGNORECASE
+        )
+        summary = re.sub(
+            rf"\\bthe\\s+{noun}\\b",
+            f"the previous {noun}",
+            summary,
+            flags=re.IGNORECASE
+        )
     summary = re.sub(r"\\bin\\s+this\\s+summary\\b", "in the previous summary", summary, flags=re.IGNORECASE)
     if isinstance(max_words, int) and max_words > 0:
         tokens = summary.split()
