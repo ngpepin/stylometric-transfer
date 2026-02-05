@@ -4212,6 +4212,20 @@ def main() -> int:
                     )
 
             compliance = compute_style_compliance(fingerprint, filter_author_voice_text(final_md))
+            if args.verbose and chunk_index is not None and chunk_total is not None:
+                comp_score = compliance.get("score")
+                if isinstance(comp_score, (int, float)):
+                    vprint(
+                        f"Chunk {chunk_index}/{chunk_total} attempt {attempts + 1} "
+                        f"compliance score: {comp_score:.3f} "
+                        f"(threshold {args.style_retry_threshold})"
+                    )
+                else:
+                    vprint(
+                        f"Chunk {chunk_index}/{chunk_total} attempt {attempts + 1} "
+                        f"compliance score: {comp_score} "
+                        f"(threshold {args.style_retry_threshold})"
+                    )
             if not args.no_style_retry and attempts < args.max_style_retries and compliance["score"] < args.style_retry_threshold:
                 style_feedback = {
                     "score": compliance["score"],
