@@ -288,6 +288,14 @@ class TestV17XRegression(unittest.TestCase):
         self.assertIn("color", normalized)
         self.assertIn("center", normalized)
 
+    def test_avoidance_normalizes_ise_ize_noun_forms_to_us(self) -> None:
+        rules = af.load_local_spelling_rules()
+        tokens = {"humanisation", "organisation", "reprioritisation"}
+        normalized = af.normalize_tokens_for_avoidance(tokens, rules)
+        self.assertIn("humanization", normalized)
+        self.assertIn("organization", normalized)
+        self.assertIn("reprioritization", normalized)
+
     def test_fingerprint_lexicon_us_normalization(self) -> None:
         rules = fs.load_local_spelling_rules()
         fingerprint = {
@@ -324,6 +332,14 @@ class TestV17XRegression(unittest.TestCase):
         self.assertIn("tire", updated.lower())
         self.assertIn("while", updated.lower())
         self.assertIn("spelled", updated.lower())
+
+    def test_force_local_spelling_handles_ise_ize_noun_forms(self) -> None:
+        rules = af.load_local_spelling_rules()
+        text = "Humanisation and organisation improved after reprioritisation."
+        updated, _ = af.enforce_local_spelling(text, "canadian", rules)
+        self.assertIn("humanization", updated.lower())
+        self.assertIn("organization", updated.lower())
+        self.assertIn("reprioritization", updated.lower())
 
     def test_pronoun_override_debug_format(self) -> None:
         debug = af.format_pronoun_override_debug(

@@ -1247,7 +1247,11 @@ def build_local_spelling_map(rules: Dict[str, Any], locale: str) -> Dict[str, st
                 continue
             for suffix in suffixes:
                 if isinstance(suffix, str):
-                    mapping[(variant_base + suffix).lower()] = target_base + suffix
+                    src_regular, src_drop = _spelling_forms_for_suffix(variant_base, suffix)
+                    dst_regular, dst_drop = _spelling_forms_for_suffix(target_base, suffix)
+                    mapping[src_regular.lower()] = dst_regular
+                    if src_drop:
+                        mapping[src_drop.lower()] = dst_drop or dst_regular
     for entry in context_variants:
         variants = entry.get("variants") if isinstance(entry, dict) else None
         if not isinstance(variants, dict):
@@ -1306,6 +1310,20 @@ def _replace_with_suffix(word: str, base_us: str, base_ca: str, suffixes: list[s
         if lower == base_us + suffix:
             return _apply_case(word, base_ca + suffix), True
     return word, False
+
+
+# Function: Return spelling forms for base+suffix, including optional dropped-e inflection.
+def _spelling_forms_for_suffix(base: str, suffix: str) -> tuple[str, str | None]:
+    regular = base + suffix
+    dropped = None
+    if (
+        suffix
+        and base.endswith("e")
+        and suffix[0].lower() in {"a", "e", "i", "o", "u", "y"}
+        and len(base) > 1
+    ):
+        dropped = base[:-1] + suffix
+    return regular, dropped
 
 
 # Function: Heuristic verb detection from adjacent tokens.
@@ -1394,7 +1412,11 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
             for suffix in suffixes:
                 if not isinstance(suffix, str):
                     continue
-                suffix_map[(variant_base + suffix).lower()] = target_base + suffix
+                src_regular, src_drop = _spelling_forms_for_suffix(variant_base, suffix)
+                dst_regular, dst_drop = _spelling_forms_for_suffix(target_base, suffix)
+                suffix_map[src_regular.lower()] = dst_regular
+                if src_drop:
+                    suffix_map[src_drop.lower()] = dst_drop or dst_regular
 
     word_re = re.compile(r"[A-Za-z][A-Za-z']+")
     matches = list(word_re.finditer(text))
@@ -5536,6 +5558,11 @@ def main() -> int:
                 and style_retries_used < args.max_style_retries
                 and compliance["score"] < args.style_retry_threshold
             ):
+                if args.verbose and chunk_index is not None and chunk_total is not None:
+                    vprint(
+                        f"Chunk {chunk_index}/{chunk_total} below threshold; "
+                        f"retrying (style retry {style_retries_used + 1}/{args.max_style_retries})."
+                    )
                 style_feedback = {
                     "score": compliance["score"],
                     "deltas": compliance.get("deltas", [])

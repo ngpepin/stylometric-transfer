@@ -380,6 +380,20 @@ def build_local_spelling_map(rules: Dict[str, Any], locale: str) -> Dict[str, st
     suffix_variants = rules_conf.get("suffix_variants", []) if isinstance(rules_conf.get("suffix_variants", []), list) else []
     context_variants = rules_conf.get("context_variants", []) if isinstance(rules_conf.get("context_variants", []), list) else []
     mapping: Dict[str, str] = {}
+
+    # Build suffix forms, including optional dropped-e inflection (e.g., organize + ation -> organization).
+    def _spelling_forms_for_suffix(base: str, suffix: str) -> tuple[str, str | None]:
+        regular = base + suffix
+        dropped = None
+        if (
+            suffix
+            and base.endswith("e")
+            and suffix[0].lower() in {"a", "e", "i", "o", "u", "y"}
+            and len(base) > 1
+        ):
+            dropped = base[:-1] + suffix
+        return regular, dropped
+
     for entry in direct_variants:
         variants = entry.get("variants") if isinstance(entry, dict) else None
         if not isinstance(variants, dict):
@@ -403,7 +417,11 @@ def build_local_spelling_map(rules: Dict[str, Any], locale: str) -> Dict[str, st
                 continue
             for suffix in suffixes:
                 if isinstance(suffix, str):
-                    mapping[(variant_base + suffix).lower()] = target_base + suffix
+                    src_regular, src_drop = _spelling_forms_for_suffix(variant_base, suffix)
+                    dst_regular, dst_drop = _spelling_forms_for_suffix(target_base, suffix)
+                    mapping[src_regular.lower()] = dst_regular
+                    if src_drop:
+                        mapping[src_drop.lower()] = dst_drop or dst_regular
     for entry in context_variants:
         variants = entry.get("variants") if isinstance(entry, dict) else None
         if not isinstance(variants, dict):

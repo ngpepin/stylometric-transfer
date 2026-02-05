@@ -161,7 +161,7 @@
   },
   "style_retry": {
     "enabled": true,
-    "threshold": 0.65,
+    "threshold": 0.60,
     "max_retries": 3,
     "voice_max_retries": 2
   },
