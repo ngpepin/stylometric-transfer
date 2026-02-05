@@ -3457,6 +3457,8 @@ def build_apply_prompt(
                 f"Keep it to {summary_clause}. Synthesize the prior summary with the current "
                 "chunk in your own words (do not copy previous_summary verbatim). "
                 "Describe the content (events, topics, claims) rather than describing the task. "
+                "Treat previous_summary as referring to the previous passage; do not refer to it as "
+                "\"this passage\" or \"this section\" unless the current chunk is explicitly the subject. "
                 "Do not mention rewriting, the prompt, or the model. "
                 "Do not introduce new facts."
             )
