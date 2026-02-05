@@ -492,7 +492,6 @@ seems	5.240
 thinking	5.240
 town	5.240
 wants	5.240
-de	5.230
 department	5.230
 energy	5.230
 fight	5.230
