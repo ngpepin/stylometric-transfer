@@ -325,6 +325,67 @@ class TestV17XRegression(unittest.TestCase):
         self.assertIn("while", updated.lower())
         self.assertIn("spelled", updated.lower())
 
+    def test_pronoun_override_debug_format(self) -> None:
+        debug = af.format_pronoun_override_debug(
+            {
+                "mode": "first",
+                "allowed_count": 4,
+                "violations": {"second_person": 2, "third_person": 7},
+                "ignored_non_subject": {"third_person_non_subject": 3},
+            }
+        )
+        self.assertIn("mode=first", debug)
+        self.assertIn("allowed_count=4", debug)
+        self.assertIn("second_person=2", debug)
+        self.assertIn("third_person=7", debug)
+        self.assertIn("third_person_non_subject=3", debug)
+
+    def test_pronoun_override_first_person_allows_third_person_object(self) -> None:
+        text = "I had to help him when he was injured."
+        eval_obj = af.evaluate_pronoun_override(text, "first")
+        # "him" is object-like and should not be counted as a violation.
+        self.assertGreaterEqual(eval_obj.get("ignored_non_subject", {}).get("third_person_non_subject", 0), 1)
+        # "he was" is subject-like and should still count as a violation.
+        self.assertGreaterEqual(eval_obj.get("violations", {}).get("third_person", 0), 1)
+
+    def test_pronoun_override_first_person_subject_violation(self) -> None:
+        text = "She opened the door, and I followed."
+        eval_obj = af.evaluate_pronoun_override(text, "first")
+        self.assertGreaterEqual(eval_obj.get("violations", {}).get("third_person", 0), 1)
+
+    def test_pronoun_override_handles_contractions(self) -> None:
+        text = "I'm ready, but she's late."
+        eval_obj = af.evaluate_pronoun_override(text, "first")
+        self.assertGreaterEqual(eval_obj.get("allowed_count", 0), 1)
+        self.assertGreaterEqual(eval_obj.get("violations", {}).get("third_person", 0), 1)
+
+    def test_pronoun_override_quality_prefers_fewer_violations(self) -> None:
+        low = {"allowed_count": 2, "violations": {"third_person": 1}}
+        high = {"allowed_count": 1, "violations": {"third_person": 3}}
+        self.assertGreater(af.pronoun_override_quality(low), af.pronoun_override_quality(high))
+
+    def test_pronoun_override_quality_tiebreaks_by_allowed_count(self) -> None:
+        a = {"allowed_count": 5, "violations": {"third_person": 2}}
+        b = {"allowed_count": 3, "violations": {"third_person": 2}}
+        self.assertGreater(af.pronoun_override_quality(a), af.pronoun_override_quality(b))
+
+    def test_pronoun_override_first_person_svo_object_pattern(self) -> None:
+        text = "I saw her and thanked them for helping me."
+        eval_obj = af.evaluate_pronoun_override(text, "first")
+        self.assertEqual(eval_obj.get("violations", {}).get("third_person", 0), 0)
+        self.assertGreaterEqual(eval_obj.get("ignored_non_subject", {}).get("third_person_non_subject", 0), 2)
+
+    def test_pronoun_override_first_person_preposition_object(self) -> None:
+        text = "We spoke to them before the meeting."
+        eval_obj = af.evaluate_pronoun_override(text, "first")
+        self.assertEqual(eval_obj.get("violations", {}).get("third_person", 0), 0)
+        self.assertGreaterEqual(eval_obj.get("ignored_non_subject", {}).get("third_person_non_subject", 0), 1)
+
+    def test_pronoun_override_first_person_nonstandard_subject_object_form(self) -> None:
+        text = "Him and I left early."
+        eval_obj = af.evaluate_pronoun_override(text, "first")
+        self.assertGreaterEqual(eval_obj.get("violations", {}).get("third_person", 0), 1)
+
     def test_local_spelling_skips_proper_noun_and_path(self) -> None:
         rules = af.load_local_spelling_rules()
         text = "The ColorGuard brand filed C:\\Program Files\\ColorGuard\\readme.txt."

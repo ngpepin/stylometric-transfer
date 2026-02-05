@@ -4396,41 +4396,240 @@ def apply_pronoun_override(fingerprint: Dict[str, Any], mode: str | None) -> Non
 
 # Function: Evaluate pronoun override.
 def evaluate_pronoun_override(text: str, mode: str) -> Dict[str, Any]:
-    tokens = [t.lower() for t in words(text)]
-    first_person = {"i","me","my","mine","we","us","our","ours"}
-    second_person = {"you","your","yours"}
-    third_person = {"he","him","his","she","her","hers","they","them","their","theirs"}
+    # Normalize token-like forms so contractions map to their pronoun root.
+    def normalize_pronoun_token(tok: str) -> str:
+        t = tok.lower()
+        if t in {"i", "we", "you", "he", "she", "they", "it", "me", "us", "him", "her", "them"}:
+            return t
+        if "'" in t:
+            root = t.split("'", 1)[0]
+            if root in {"i", "we", "you", "he", "she", "they", "it"}:
+                return root
+        return t
 
-    # Function: Count hits.
-    def count_hits(word_set: set[str]) -> int:
-        return sum(1 for t in tokens if t in word_set)
+    pronoun_person: Dict[str, str] = {
+        "i": "first", "me": "first", "my": "first", "mine": "first", "myself": "first",
+        "we": "first", "us": "first", "our": "first", "ours": "first", "ourselves": "first",
+        "you": "second", "your": "second", "yours": "second", "yourself": "second", "yourselves": "second",
+        "he": "third", "him": "third", "his": "third", "himself": "third",
+        "she": "third", "her": "third", "hers": "third", "herself": "third",
+        "they": "third", "them": "third", "their": "third", "theirs": "third", "themselves": "third",
+        "it": "third", "its": "third", "itself": "third",
+    }
+    subject_forms = {"i", "we", "you", "he", "she", "they", "it"}
+    object_forms = {"me", "us", "him", "her", "them"}
+    possessive_det_forms = {"my", "your", "his", "her", "our", "their", "its"}
 
-    allowed: set[str]
-    avoid_sets: Dict[str, set[str]]
-    mode_label = mode
-    if mode == "first":
-        allowed = first_person
-        avoid_sets = {"second_person": second_person, "third_person": third_person}
-    elif mode == "second":
-        allowed = second_person
-        avoid_sets = {"first_person": first_person, "third_person": third_person}
+    # Rough lexical cues to detect clause starts and predicate context.
+    auxiliary_or_main_verbs = {
+        "am", "is", "are", "was", "were", "be", "been", "being",
+        "have", "has", "had", "do", "does", "did",
+        "can", "could", "will", "would", "shall", "should", "may", "might", "must",
+    }
+    common_prepositions = {
+        "to", "for", "with", "from", "of", "by", "on", "in", "at", "into", "onto",
+        "over", "under", "about", "through", "across", "between", "among", "against",
+        "toward", "towards", "without", "within", "before", "after", "during", "around",
+    }
+    common_transitive_verbs = {
+        "help", "see", "know", "tell", "ask", "call", "watch", "hear", "find", "keep",
+        "give", "show", "send", "bring", "take", "leave", "love", "hate", "trust",
+        "support", "follow", "join", "thank", "warn", "teach", "remind", "meet",
+        "chase", "save", "move", "lead", "guide", "blame", "praise", "inform",
+    }
+    determiners = {"a", "an", "the", "this", "that", "these", "those", "some", "any", "each", "every"}
+    sentence_boundary = {".", "!", "?", ";", ":"}
+    pronoun_token_re = re.compile(r"[A-Za-z]+(?:'[A-Za-z]+)?")
+    punct_token_re = re.compile(r"[.!?,;:()\\[\\]{}\"“”‘’\\-]")
+    stream = re.findall(r"[A-Za-z]+(?:'[A-Za-z]+)?|[.!?,;:()\[\]{}\"“”‘’\-]", text)
+
+    mode_label = mode if mode in {"first", "second", "third"} else "third"
+    if mode_label == "first":
+        disallowed = {"second", "third"}
+    elif mode_label == "second":
+        disallowed = {"first", "third"}
     else:
-        mode_label = "third"
-        allowed = third_person
-        avoid_sets = {"first_person": first_person, "second_person": second_person}
+        disallowed = {"first", "second"}
 
-    allowed_count = count_hits(allowed)
+    allowed_count = 0
     violations: Dict[str, int] = {}
-    for label, words_set in avoid_sets.items():
-        count = count_hits(words_set)
-        if count:
-            violations[label] = count
+    ignored_non_subject: Dict[str, int] = {}
+
+    # Function: Find previous lexical token (word) inside current clause.
+    def prev_word(idx: int) -> str:
+        j = idx - 1
+        while j >= 0:
+            tok = stream[j]
+            if punct_token_re.fullmatch(tok):
+                if tok in sentence_boundary:
+                    break
+                j -= 1
+                continue
+            if pronoun_token_re.fullmatch(tok):
+                return normalize_pronoun_token(tok)
+            j -= 1
+        return ""
+
+    # Function: Find next lexical token (word) inside current clause.
+    def next_word(idx: int) -> str:
+        j = idx + 1
+        while j < len(stream):
+            tok = stream[j]
+            if punct_token_re.fullmatch(tok):
+                if tok in sentence_boundary:
+                    break
+                j += 1
+                continue
+            if pronoun_token_re.fullmatch(tok):
+                return normalize_pronoun_token(tok)
+            j += 1
+        return ""
+
+    # Function: Is a word likely functioning as a finite/main verb here?
+    def is_verb_like(word: str) -> bool:
+        if not word:
+            return False
+        if word in auxiliary_or_main_verbs or word in common_transitive_verbs:
+            return True
+        if word in determiners or word in possessive_det_forms or word in pronoun_person:
+            return False
+        if re.match(r".*(ed|ing|en)$", word):
+            return True
+        # Conservative fallback for present-tense verb morphology.
+        if re.match(r".*(es|s)$", word) and len(word) > 3:
+            return True
+        return False
+
+    # Function: Check if token starts a clause-like region.
+    def is_clause_start(idx: int) -> bool:
+        if idx == 0:
+            return True
+        j = idx - 1
+        while j >= 0:
+            tok = stream[j]
+            if punct_token_re.fullmatch(tok):
+                if tok in sentence_boundary or tok in {",", "(", "[", "{", "\"", "“", "”"}:
+                    return True
+                j -= 1
+                continue
+            if pronoun_token_re.fullmatch(tok):
+                return tok.lower() in {"and", "but", "or", "so", "yet", "nor", "that", "because", "if", "when", "while", "although", "though"}
+            j -= 1
+        return True
+
+    # Function: Is this pronoun token likely acting as a grammatical subject?
+    def is_subject_like(idx: int, raw_tok: str, norm_tok: str) -> bool:
+        clause_start = is_clause_start(idx)
+        prev_sig = prev_word(idx)
+        nxt = next_word(idx)
+
+        # Core subject pronoun heuristic.
+        if norm_tok in subject_forms:
+            if clause_start:
+                return True
+            if nxt and is_verb_like(nxt):
+                return True
+            return False
+
+        # Object pronouns are normally object/complement roles, but in non-standard
+        # constructions ("Him and I ...", "Him was ...") they can still be subjects.
+        if norm_tok in object_forms:
+            if clause_start and (is_verb_like(nxt) or nxt in {"and", "or"}):
+                return True
+            if prev_sig in common_prepositions:
+                return False
+            if prev_sig and is_verb_like(prev_sig):
+                return False
+            return False
+
+        # Possessive determiners/possessive pronouns should not be treated as subject triggers.
+        return False
+
+    for idx, raw_tok in enumerate(stream):
+        if not pronoun_token_re.fullmatch(raw_tok):
+            continue
+        norm_tok = normalize_pronoun_token(raw_tok)
+        person = pronoun_person.get(norm_tok)
+        if not person:
+            continue
+
+        # Track target-person pronoun coverage regardless of role.
+        if person == mode_label:
+            allowed_count += 1
+
+        if person not in disallowed:
+            continue
+
+        subject_like = is_subject_like(idx, raw_tok, norm_tok)
+
+        if subject_like:
+            label = f"{person}_person"
+            violations[label] = int(violations.get(label, 0)) + 1
+        else:
+            # Keep diagnostics for disallowed pronouns that were allowed because they were likely
+            # object/possessive references to other entities.
+            label = f"{person}_person_non_subject"
+            ignored_non_subject[label] = int(ignored_non_subject.get(label, 0)) + 1
 
     return {
         "mode": mode_label,
         "allowed_count": allowed_count,
-        "violations": violations
+        "violations": violations,
+        "ignored_non_subject": ignored_non_subject,
     }
+
+
+# Function: Render pronoun override diagnostics for verbose logging.
+def format_pronoun_override_debug(override_eval: Dict[str, Any]) -> str:
+    mode = str(override_eval.get("mode", "unknown"))
+    allowed_count = override_eval.get("allowed_count")
+    violations = override_eval.get("violations")
+    parts: List[str] = [f"mode={mode}"]
+    if isinstance(allowed_count, int):
+        parts.append(f"allowed_count={allowed_count}")
+    if isinstance(violations, dict) and violations:
+        violation_parts: List[str] = []
+        for label in ("first_person", "second_person", "third_person"):
+            count = violations.get(label)
+            if isinstance(count, int) and count > 0:
+                violation_parts.append(f"{label}={count}")
+        for label, count in violations.items():
+            if label in {"first_person", "second_person", "third_person"}:
+                continue
+            if isinstance(count, int) and count > 0:
+                violation_parts.append(f"{label}={count}")
+        if violation_parts:
+            parts.append("violations[" + ", ".join(violation_parts) + "]")
+    ignored = override_eval.get("ignored_non_subject")
+    if isinstance(ignored, dict) and ignored:
+        ignored_parts: List[str] = []
+        for label in ("first_person_non_subject", "second_person_non_subject", "third_person_non_subject"):
+            count = ignored.get(label)
+            if isinstance(count, int) and count > 0:
+                ignored_parts.append(f"{label}={count}")
+        for label, count in ignored.items():
+            if label in {"first_person_non_subject", "second_person_non_subject", "third_person_non_subject"}:
+                continue
+            if isinstance(count, int) and count > 0:
+                ignored_parts.append(f"{label}={count}")
+        if ignored_parts:
+            parts.append("ignored[" + ", ".join(ignored_parts) + "]")
+    return "; ".join(parts)
+
+
+# Function: Score pronoun override quality for best-attempt selection.
+def pronoun_override_quality(override_eval: Dict[str, Any]) -> tuple[int, int]:
+    violations = override_eval.get("violations")
+    total_violations = 0
+    if isinstance(violations, dict):
+        for count in violations.values():
+            if isinstance(count, int) and count > 0:
+                total_violations += count
+    allowed_count = override_eval.get("allowed_count")
+    if not isinstance(allowed_count, int):
+        allowed_count = 0
+    # Higher is better: fewer violations first, then more allowed pronouns.
+    return (-total_violations, allowed_count)
 
 
 # Function: CLI entry point.
@@ -4887,6 +5086,11 @@ def main() -> int:
         best_md: str | None = None
         best_out: Dict[str, Any] | None = None
         best_comp: Dict[str, Any] | None = None
+        best_voice_key: tuple[int, int] | None = None
+        best_voice_attempt = 0
+        best_voice_md: str | None = None
+        best_voice_out: Dict[str, Any] | None = None
+        best_voice_eval: Dict[str, Any] | None = None
         fp_overlay = None
         controller_overlay = None
         if isinstance(tunables, dict):
@@ -5148,12 +5352,21 @@ def main() -> int:
             if args.force_person and not args.no_style_retry:
                 voice_text = filter_author_voice_text(final_md)
                 override_eval = evaluate_pronoun_override(voice_text, args.force_person)
+                voice_key = pronoun_override_quality(override_eval)
+                if best_voice_key is None or voice_key > best_voice_key:
+                    best_voice_key = voice_key
+                    best_voice_attempt = attempt_global
+                    best_voice_md = final_md
+                    best_voice_out = out_obj
+                    best_voice_eval = override_eval
                 if override_eval.get("violations") and voice_retries_used < args.max_style_retries:
                     if args.verbose and chunk_index is not None and chunk_total is not None:
+                        reason = format_pronoun_override_debug(override_eval)
                         vprint(
                             f"Chunk {chunk_index}/{chunk_total} pronoun override violations; "
                             f"retrying (voice retry {voice_retries_used + 1}/{args.max_style_retries})."
                         )
+                        vprint(f"  Pronoun override detail: {reason}")
                     style_feedback = {
                         "pronoun_override": override_eval,
                         "notes": [
@@ -5162,6 +5375,24 @@ def main() -> int:
                     }
                     voice_retries_used += 1
                     continue
+                if (
+                    override_eval.get("violations")
+                    and voice_retries_used >= args.max_style_retries
+                    and best_voice_md is not None
+                    and best_voice_out is not None
+                    and best_voice_eval is not None
+                    and best_voice_key is not None
+                    and voice_key < best_voice_key
+                ):
+                    final_md = best_voice_md
+                    out_obj = best_voice_out
+                    override_eval = best_voice_eval
+                    if args.verbose and chunk_index is not None and chunk_total is not None:
+                        vprint(
+                            f"Chunk {chunk_index}/{chunk_total} using best voice attempt "
+                            f"{best_voice_attempt} over attempt {attempt_global} after voice retries exhausted."
+                        )
+                        vprint(f"  Pronoun override detail: {format_pronoun_override_debug(override_eval)}")
 
             if summary_enabled:
                 llm_summary = out_obj.get("chunk_summary") if isinstance(out_obj, dict) else None
@@ -5252,6 +5483,12 @@ def main() -> int:
                     style_feedback.setdefault("notes", []).append(
                         "Pronoun override violations detected. Rewrite to match forced narrative voice."
                     )
+                    if args.verbose and chunk_index is not None and chunk_total is not None:
+                        reason = format_pronoun_override_debug(override_eval)
+                        vprint(
+                            f"Chunk {chunk_index}/{chunk_total} carrying pronoun override "
+                            f"violations into style feedback: {reason}"
+                        )
                 style_phase_started = True
                 continue
 
