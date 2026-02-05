@@ -85,7 +85,11 @@
         "allowed_metrics": { "type": "array", "items": { "type": "string" } },
         "feedback_enabled": { "type": "boolean" },
         "feedback_tolerance": { "type": "number", "minimum": 0 },
-        "max_feedback_retries": { "type": "integer", "minimum": 0 }
+        "max_feedback_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum number of style-retry passes that include controller-overlay delta feedback. Does not increase total retry attempts."
+        }
       },
       "additionalProperties": false
     },
@@ -173,9 +177,21 @@
     "style_retry": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "threshold": { "type": "number", "minimum": 0, "maximum": 1 },
-        "max_retries": { "type": "integer", "minimum": 0 }
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable threshold-based style retry loop in apply mode."
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Retry when compliance score is below this threshold."
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Retry budget per loop. In forced-person mode, voice and style loops each use this cap with separate counters."
+        }
       },
       "additionalProperties": false
     },

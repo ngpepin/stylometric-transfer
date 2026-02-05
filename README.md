@@ -455,7 +455,7 @@ Example (defaults shown):
 - `humanization_controller.allowed_metrics` (array): which overlay metrics are used (e.g., `sentence_length_mean`, `sentence_length_stdev`, `one_sentence_paragraph_rate`, `comma_density_per_100w`, `punctuation_semicolons_per_1000w`).
 - `humanization_controller.feedback_enabled` (boolean): when true, style retry feedback includes overlay‑mismatch guidance.
 - `humanization_controller.feedback_tolerance` (float): how far outside the overlay range the output must be before controller feedback is added (fraction of range).
-- `humanization_controller.max_feedback_retries` (integer): cap on how many retries will include controller feedback.
+- `humanization_controller.max_feedback_retries` (integer): cap on how many style-retry passes include controller-overlay feedback. This does not create extra retries by itself.
 - `lexical_signals.rare_words_limit` (integer): maximum number of rare words to include in `measurements.lexical_signals.rare_words`.
 - `lexical_avoidance.rare_words_limit` (integer): maximum number of absent common words (from `config.common_words.txt`) to include in `measurements.lexical_avoidance.rare_words`.
 - `controls_normalization.rewrite_policy.jaccard_threshold` (0–1): similarity threshold for considering two rewrite-policy clauses duplicates (lower = more aggressive de‑dup).
@@ -485,7 +485,7 @@ Example (defaults shown):
 - `chunking.variance_aware.max_factor` (float): maximum multiplier applied to `max_input_tokens` when variance is low.
 - `style_retry.enabled` (boolean): enable/disable the delta‑feedback retry pass after measuring style compliance.
 - `style_retry.threshold` (0–1): retry when compliance score is below this threshold (default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold-based retries, while `1.0` retries unless the output is nearly perfect.
-- `style_retry.max_retries` (integer): maximum number of retry passes (default `2`).
+- `style_retry.max_retries` (integer): maximum retry passes for each retry loop (voice loop and style loop when `--1st-person/--2nd-person/--3rd-person` is enabled; style loop only otherwise).
 - `section_restore.enabled` (boolean): enable/disable restoration of missing sections detected after rewriting.
 - `section_restore.max_restore_sections` (integer): maximum number of missing sections to restore (0 disables restoration).
 - `section_restore.heading_similarity_threshold` (0–1): fuzzy heading match threshold for considering a rewritten heading “present”.
@@ -496,6 +496,37 @@ Example (defaults shown):
 - `paragraph_count_warn_pct` (%): if the output paragraph count changes by this percentage or more, a console warning is emitted to review for missing or expanded content.
 
 All thresholds are conservative defaults. Lowering a threshold increases the likelihood of a conflict (more rules dropped). Raising a threshold makes the humanizer rules more permissive.
+
+**Retry semantics (clear execution order)**
+
+- `config.llm.json:max_retries`:
+  Applies to each HTTP call to the LLM endpoint (`chat_completions`). It retries transport/transient failures (timeouts, 429/5xx, connection errors) with exponential backoff.
+- `config.llm.json:backoff_base_seconds` / `backoff_max_seconds`:
+  Controls the sleep schedule for the transport retries above.
+- `config.llm.json:max_retries` (second use in apply path):
+  The chunk-rewrite loop also uses this budget to recover invalid model payloads (for example missing/empty `final_markdown`), re-calling the model before falling back to split recovery or verbatim preserve.
+- `style_retry.enabled`:
+  Enables/disables threshold-based style retry logic entirely.
+- `style_retry.threshold`:
+  If local compliance score is below threshold, a style retry pass is attempted (subject to `style_retry.max_retries`).
+- `style_retry.max_retries`:
+  Sets retry budget per loop in apply mode:
+  - Without forced person: style loop gets up to this many retries after the first attempt.
+  - With forced person (`--1st-person`, `--2nd-person`, `--3rd-person`): a voice loop and a style loop each use this cap (separate counters), so total retries can be additive.
+- `humanization_controller.max_feedback_retries`:
+  Caps only how many style retries carry controller-overlay delta feedback. It does not increase retry count; it only changes feedback content.
+
+**Practical counting model (per chunk)**
+
+- Base attempt is always 1.
+- Style-only mode: up to `1 + style_retry.max_retries` attempts.
+- Forced-person mode:
+  - Voice loop can consume up to `style_retry.max_retries` additional attempts.
+  - Style loop can then consume up to `style_retry.max_retries` additional attempts.
+  - Total attempts can therefore approach `2 + 2 * style_retry.max_retries` (plus transport retries inside each call).
+- Each attempt may itself contain up to `1 + config.llm.max_retries` transport attempts at HTTP level.
+
+In verbose mode, per-chunk logs show attempt number, compliance score, threshold, and whether best-attempt replacement was used after retries were exhausted.
 
 ---
 

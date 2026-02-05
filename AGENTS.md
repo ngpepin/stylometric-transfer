@@ -76,13 +76,14 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Strip embedded BASE64 images before prompt and re-insert after rewrite
     - Call LLM with fingerprint + measurements
     - Enforce preservation of meaning
-    - Score style compliance locally and retry once by default with delta feedback (disable with `--no-style-retry`)
+    - Score style compliance locally and retry with delta feedback (disable with `--no-style-retry`)
     - Apply `general-guidelines.md` humanizer rules when available, using an LLM parser by default then deterministically filtering out conflicts (disable with `--no-humanizer-llm-parse` or `--no-humanizer-guidelines`)
     - Cache parsed humanizer rules in `humanizer_rules.cache.json` (script directory) and re-parse only when guidelines change
     - Sanitize trailing parenthetical/comma qualifiers in headings when enabled (humanizer_mandatory)
     - Normalize verbose/duplicative `controls.rewrite_policy` clauses and filter `priority_order` when loading a fingerprint
     - Normalize lexical avoidance checks to US spelling for matching, then apply local spelling to final output
     - Return rewritten text and deviations
+    - In verbose mode, report per-chunk attempt scores and when best-attempt selection overrides the last attempt
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
   - Overrides: `--1st-person` / `--2nd-person` / `--3rd-person` force narrative voice regardless of fingerprint
@@ -101,7 +102,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Stores API configuration
   - OpenAI‑compatible
   - `max_prompt_tokens` controls chunking for large prompts (defaults to `max_tokens`)
-  - `max_retries` / `backoff_*` control exponential backoff on transient LLM failures
+  - `max_retries` / `backoff_*` control exponential backoff on transient LLM failures (transport-level retries per HTTP call)
   - Optional `lexicon_hints.json` can be used to inject preferred/avoided phrases into fingerprinting
 - `config.tunables.json`
   - Overrides humanizer conflict thresholds for `apply_fingerprint.py`
@@ -109,6 +110,8 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Includes mandatory humanizer controls (em‑dash ban, emoji policy, heading qualifier sanitization)
   - Includes bounded stochastic variance controls (seeded micro‑operations)
   - Includes style retry controls (delta‑feedback retries)
+  - `style_retry.max_retries` is applied per retry loop (voice and style loops are separate counters when forced-person mode is used)
+  - `humanization_controller.max_feedback_retries` only caps how many style retries include controller-overlay feedback; it does not increase retry count
   - Includes humanization metric weights for the aggregate 0–100 score
   - Includes corpus-derived humanization baseline settings (rolling windows embedded in fingerprints for auditability; stripped from what the LLM sees during rewriting)
   - Includes humanization controller overlays (per-chunk target variation derived from baseline)
