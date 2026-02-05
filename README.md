@@ -6,16 +6,8 @@
 
 In practical terms, the system enables an LLM to apply a specified writing style to any text input. It performs stylometric profiling and humanization on writing samples, then uses constraint-guided author-style transfer for a target document. A style "fingerprint" is built from the writing corpus using classic stylometric measurements and graph structure, and that fingerprint is applied via an LLM to rewrite any text.
 
-Comments are encouraged.
-
-Further details are available in `Article-Teaching-Machines-to-Write-Like-You.md` and `Research-Paper.md`.
-
-<p align="center">
-  <img src="media/fingerprint-example.png" width="900">
-  <br/>
-  <em>An example fingerprint (output from show_fingerprint.py)</em>
-</p>
-
+Unlike fine-tuning or opaque embeddings, the system uses an **explicit, versionable JSON style model** that can be inspected, edited, audited, and reused.
+A **humanization-aware conflict-resolution layer** integrates humanizer guidelines directly into the rewrite step, without violating the fingerprint’s style constraints.
 
 This repository includes:
 - `fingerprint_style.py`: extracts a **style fingerprint (stylometric profile)** from a writing archive
@@ -24,20 +16,30 @@ This repository includes:
 - `prompts.json`: externalized prompt templates used by both scripts (edit here to adjust behaviour)
 - `scripts/`: bash wrappers for invoking the Python entry points
 
-Unlike fine-tuning or opaque embeddings, the system uses an **explicit, versionable JSON style model** that can be inspected, edited, audited, and reused.
-A **humanization-aware conflict-resolution layer** integrates humanizer guidelines directly into the rewrite step, without violating the fingerprint’s style constraints.
+Further details are available in `Article-Teaching-Machines-to-Write-Like-You.md` and `Research-Paper.md`.
+
+Comments/contributions are encouraged and appreciated.
 
 ---
 ## License
 
 PolyForm Noncommercial License 1.0.0. This project is licensed under the **PolyForm Noncommercial License 1.0.0** (see `LICENSE.md`).
 
-**Key points (plain English):**
-- **Noncommercial only**: Use, modification, and redistribution are permitted for **noncommercial purposes**.
-- **Commercial use requires permission**: Any **commercial** use (including paid products or services incorporating this code) requires **explicit permission from the author**.
-- **Attribution required**: Redistribution or use of substantial portions of this project must include **clear credit** and preserve the license/notice requirements described in `LICENSE.md`.
+Key points:
+- Noncommercial only: Use, modification, and redistribution are permitted for noncommercial purposes.
+- Commercial use requires permission: Any commercial use (including paid products or services incorporating this code) requires explicit permission from the author.
+- Attribution required: Redistribution or use of substantial portions of this project must include clear credit and preserve the license/notice requirements described in `LICENSE.md`.
 
-For commercial use, contact the author to discuss licensing.
+For commercial use, contact the author to discuss potential participation and/or licensing.
+
+---
+
+<p align="center">
+  <img src="media/fingerprint-example.png" width="800">
+  <br/>
+  <em>An example fingerprint (output from show_fingerprint.py)</em>
+</p>
+
 
 ---
 ## Table of Contents

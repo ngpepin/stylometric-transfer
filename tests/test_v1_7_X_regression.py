@@ -341,6 +341,34 @@ class TestV17XRegression(unittest.TestCase):
         self.assertIn("organization", updated.lower())
         self.assertIn("reprioritization", updated.lower())
 
+    def test_force_local_spelling_guarded_preserves_nonfiction_multiword_quotes(self) -> None:
+        rules = af.load_local_spelling_rules()
+        text = (
+            "## Humanisation\n\n"
+            "\"humanisation should stay as-is\"\n\n"
+            "Humanisation should normalize outside protected quotes."
+        )
+        updated, _ = af.enforce_local_spelling_guarded(
+            text,
+            "canadian",
+            rules,
+            preserve_multiword_quotes=True,
+        )
+        self.assertIn("## Humanization", updated)
+        self.assertIn("\"humanisation should stay as-is\"", updated)
+        self.assertIn("Humanization should normalize outside protected quotes.", updated)
+
+    def test_force_local_spelling_guarded_converts_quotes_in_fiction_mode(self) -> None:
+        rules = af.load_local_spelling_rules()
+        text = "\"humanisation in dialogue should normalize\""
+        updated, _ = af.enforce_local_spelling_guarded(
+            text,
+            "canadian",
+            rules,
+            preserve_multiword_quotes=False,
+        )
+        self.assertIn("humanization in dialogue should normalize", updated.lower())
+
     def test_pronoun_override_debug_format(self) -> None:
         debug = af.format_pronoun_override_debug(
             {

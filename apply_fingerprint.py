@@ -1495,6 +1495,14 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
             "window": int(entry.get("window", 6))
         }
         context_rules.append(rule)
+    # Fast membership check so title-case words that are known spelling variants are still normalized.
+    context_variant_tokens: set[str] = set()
+    for rule in context_rules:
+        variants = rule.get("variants")
+        if isinstance(variants, dict):
+            for variant in variants.values():
+                if isinstance(variant, str):
+                    context_variant_tokens.add(variant.lower())
     for idx, match in enumerate(matches):
         start, end = match.start(), match.end()
         word = match.group(0)
@@ -1515,8 +1523,14 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
             parts.append(word)
             continue
         if word[:1].isupper() and not _is_sentence_start(start):
-            parts.append(word)
-            continue
+            lower_word = word.lower()
+            if (
+                lower_word not in direct_map
+                and lower_word not in suffix_map
+                and lower_word not in context_variant_tokens
+            ):
+                parts.append(word)
+                continue
         # Avoid changing a word that is part of a larger alnum token (e.g., snake_case, hex IDs).
         prev_ch = text[start - 1] if start > 0 else ""
         next_ch = text[end] if end < len(text) else ""
@@ -1641,6 +1655,38 @@ def enforce_local_spelling(text: str, locale: str, rules: Dict[str, Any]) -> tup
         parts.append(word)
     parts.append(text[last:])
     return "".join(parts), replacements
+
+
+# Function: Enforce local spelling while preserving protected regions.
+def enforce_local_spelling_guarded(
+    text: str,
+    locale: str,
+    rules: Dict[str, Any],
+    preserve_multiword_quotes: bool = False,
+) -> tuple[str, int]:
+    # Guard deterministic post-processing so non-voice/citation/code regions remain verbatim.
+    if not text or locale == "none":
+        return text, 0
+    guarded_text, base64_map = strip_base64_images(text)
+    guarded_text, frozen_map = mask_non_voice_blocks(guarded_text)
+    guarded_text, html_map = mask_html(guarded_text)
+    guarded_text, math_map = mask_math_notation(guarded_text)
+    guarded_text, entity_map = mask_html_entities(guarded_text)
+    guarded_text, inline_code_map = mask_inline_code(guarded_text)
+    quote_map: Dict[str, str] = {}
+    if preserve_multiword_quotes:
+        guarded_text, quote_map = mask_quoted_passages(guarded_text)
+    guarded_text, citation_map = mask_inline_citations(guarded_text)
+    guarded_text, replacements = enforce_local_spelling(guarded_text, locale, rules)
+    guarded_text = restore_placeholders(guarded_text, citation_map)
+    guarded_text = restore_placeholders(guarded_text, quote_map)
+    guarded_text = restore_placeholders(guarded_text, inline_code_map)
+    guarded_text = restore_placeholders(guarded_text, entity_map)
+    guarded_text = restore_placeholders(guarded_text, math_map)
+    guarded_text = restore_placeholders(guarded_text, html_map)
+    guarded_text = restore_placeholders(guarded_text, frozen_map)
+    guarded_text = restore_base64_images(guarded_text, base64_map, find_base64_placeholders(guarded_text))
+    return guarded_text, replacements
 
 
 # Function: Check whether heading or list line.
@@ -4863,10 +4909,11 @@ def main() -> int:
                 DEFAULT_MAX_STYLE_RETRIES
             )
     if args.verbose and not args.no_style_retry:
+        max_chunk_attempts = 1 + args.max_style_retries + (max_voice_retries if args.force_person else 0)
         vprint(
             "Retry budgets: "
-            f"voice={max_voice_retries}, style={args.max_style_retries}, "
-            f"threshold={args.style_retry_threshold:.3f}"
+            f"voice retries={max_voice_retries}, style retries={args.max_style_retries}, "
+            f"max chunk attempts={max_chunk_attempts}, threshold={args.style_retry_threshold:.3f}"
         )
 
     humanizer_rules: List[Dict[str, Any]] = []
@@ -5165,6 +5212,7 @@ def main() -> int:
             vprint(f"Controller overlay for chunk {chunk_index}/{chunk_total}: {controller_overlay}")
         style_feedback: Dict[str, Any] | None = None
         last_out: Dict[str, Any] = {}
+        max_chunk_attempts = 1 + args.max_style_retries + (max_voice_retries if args.force_person else 0)
         while True:
             attempt_global += 1
             messages = build_messages_for_chunk(
@@ -5499,13 +5547,13 @@ def main() -> int:
                 comp_score = compliance.get("score")
                 if isinstance(comp_score, (int, float)):
                     vprint(
-                        f"Chunk {chunk_index}/{chunk_total} attempt {attempt_no} "
+                        f"Chunk {chunk_index}/{chunk_total} attempt {attempt_no}/{max_chunk_attempts} "
                         f"compliance score: {comp_score:.3f} "
                         f"(threshold {args.style_retry_threshold})"
                     )
                 else:
                     vprint(
-                        f"Chunk {chunk_index}/{chunk_total} attempt {attempt_no} "
+                        f"Chunk {chunk_index}/{chunk_total} attempt {attempt_no}/{max_chunk_attempts} "
                         f"compliance score: {comp_score} "
                         f"(threshold {args.style_retry_threshold})"
                     )
@@ -6165,6 +6213,21 @@ def main() -> int:
                 "diagnostics": diag
             })
         final_md = "\n".join(lines).strip()
+    # Section restoration can reintroduce original orthography; enforce locale spelling once more
+    # on mutable regions only so preserved non-voice blocks and protected quotes stay verbatim.
+    if force_local_spelling != "none":
+        final_md, post_restore_replacements = enforce_local_spelling_guarded(
+            final_md,
+            force_local_spelling,
+            local_spelling_rules,
+            preserve_multiword_quotes=(not fiction_mode),
+        )
+        if post_restore_replacements:
+            all_deviations.append({
+                "rule_or_field": "orthography.local_spelling",
+                "reason": f"Re-applied {force_local_spelling} spelling after section restoration.",
+                "count": post_restore_replacements,
+            })
     line_count_in = len(original_input_md.splitlines())
     line_count_out = len(final_md.splitlines())
     line_change_pct = ((line_count_out - line_count_in) / max(1, line_count_in)) * 100.0
