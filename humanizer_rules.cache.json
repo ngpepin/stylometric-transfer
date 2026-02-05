@@ -1,11 +1,11 @@
 {
   "rules": [
     {
-      "title": "Signs of Soulless Writing",
-      "problem": "Writing that is technically clean but lacks personality, opinions, or human voice.",
+      "title": "Soulless Writing",
+      "problem": "Sterile, voiceless writing lacks human personality, even if technically clean.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "personality"
+      "category": "Personality and Soul"
     },
     {
       "title": "Undue Emphasis on Significance, Legacy, and Broader Trends",
@@ -28,7 +28,7 @@
         "deeply rooted"
       ],
       "source": "llm",
-      "category": "content"
+      "category": "Content Patterns"
     },
     {
       "title": "Undue Emphasis on Notability and Media Coverage",
@@ -40,7 +40,7 @@
         "active social media presence"
       ],
       "source": "llm",
-      "category": "content"
+      "category": "Content Patterns"
     },
     {
       "title": "Superficial Analyses with -ing Endings",
@@ -55,7 +55,7 @@
         "showcasing..."
       ],
       "source": "llm",
-      "category": "content"
+      "category": "Content Patterns"
     },
     {
       "title": "Promotional and Advertisement-like Language",
@@ -79,7 +79,7 @@
         "stunning"
       ],
       "source": "llm",
-      "category": "content"
+      "category": "Content Patterns"
     },
     {
       "title": "Vague Attributions and Weasel Words",
@@ -92,20 +92,32 @@
         "several sources/publications"
       ],
       "source": "llm",
-      "category": "content"
+      "category": "Content Patterns"
     },
     {
       "title": "Outline-like \"Challenges and Future Prospects\" Sections",
       "problem": "Many LLM-generated articles include formulaic \"Challenges\" sections.",
       "words_to_watch": [
-        "Despite its...",
-        "faces several challenges...",
+        "Despite its... faces several challenges...",
         "Despite these challenges",
         "Challenges and Legacy",
         "Future Outlook"
       ],
       "source": "llm",
-      "category": "content"
+      "category": "Content Patterns"
+    },
+    {
+      "title": "Heading Qualifiers and Parenthetical Asides",
+      "problem": "LLMs add explanatory qualifiers in headings instead of integrating them into the title.",
+      "words_to_watch": [
+        "(why this matters)",
+        "(quick fix)",
+        "(defined carefully)",
+        ", explained",
+        ", in brief"
+      ],
+      "source": "llm",
+      "category": "Content Patterns"
     },
     {
       "title": "Overused \"AI Vocabulary\" Words",
@@ -120,22 +132,21 @@
         "enhance",
         "fostering",
         "garner",
-        "highlight",
+        "highlight (verb)",
         "interplay",
-        "intricate",
-        "intricacies",
-        "key",
-        "landscape",
+        "intricate/intricacies",
+        "key (adjective)",
+        "landscape (abstract noun)",
         "pivotal",
         "showcase",
-        "tapestry",
+        "tapestry (abstract noun)",
         "testament",
-        "underscore",
+        "underscore (verb)",
         "valuable",
         "vibrant"
       ],
       "source": "llm",
-      "category": "language"
+      "category": "Language and Grammar Patterns"
     },
     {
       "title": "Avoidance of \"is\"/\"are\" (Copula Avoidance)",
@@ -145,77 +156,77 @@
         "boasts/features/offers [a]"
       ],
       "source": "llm",
-      "category": "language"
+      "category": "Language and Grammar Patterns"
     },
     {
       "title": "Negative Parallelisms",
       "problem": "Constructions like \"Not only...but...\" or \"It's not just about..., it's...\" are overused.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "language"
+      "category": "Language and Grammar Patterns"
     },
     {
       "title": "Rule of Three Overuse",
       "problem": "LLMs force ideas into groups of three to appear comprehensive.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "language"
+      "category": "Language and Grammar Patterns"
     },
     {
       "title": "Elegant Variation (Synonym Cycling)",
       "problem": "AI has repetition-penalty code causing excessive synonym substitution.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "language"
+      "category": "Language and Grammar Patterns"
     },
     {
       "title": "False Ranges",
       "problem": "LLMs use \"from X to Y\" constructions where X and Y aren't on a meaningful scale.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "language"
+      "category": "Language and Grammar Patterns"
     },
     {
       "title": "Em Dash Overuse",
       "problem": "LLMs use em dashes (—) more than humans, mimicking \"punchy\" sales writing.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "style"
+      "category": "Style Patterns"
     },
     {
       "title": "Overuse of Boldface",
       "problem": "AI chatbots emphasize phrases in boldface mechanically.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "style"
+      "category": "Style Patterns"
     },
     {
       "title": "Inline-Header Vertical Lists",
       "problem": "AI outputs lists where items start with bolded headers followed by colons.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "style"
+      "category": "Style Patterns"
     },
     {
       "title": "Title Case in Headings",
       "problem": "AI chatbots capitalize all main words in headings.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "style"
+      "category": "Style Patterns"
     },
     {
       "title": "Emojis",
-      "problem": "AI chatbots often decorate headings or bullet points with emojis.",
+      "problem": "AI chatbots often decorate headings or bullet points with emojis. These should be removed entirely or replaced with more conventional black and white symbols used in publications.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "style"
+      "category": "Style Patterns"
     },
     {
       "title": "Curly Quotation Marks",
       "problem": "ChatGPT uses curly quotes (“...”) instead of straight quotes (\"...\").",
       "words_to_watch": [],
       "source": "llm",
-      "category": "style"
+      "category": "Style Patterns"
     },
     {
       "title": "Collaborative Communication Artifacts",
@@ -230,7 +241,7 @@
         "here is a..."
       ],
       "source": "llm",
-      "category": "communication"
+      "category": "Communication Patterns"
     },
     {
       "title": "Knowledge-Cutoff Disclaimers",
@@ -242,14 +253,14 @@
         "based on available information..."
       ],
       "source": "llm",
-      "category": "communication"
+      "category": "Communication Patterns"
     },
     {
       "title": "Sycophantic/Servile Tone",
       "problem": "Overly positive, people-pleasing language.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "communication"
+      "category": "Communication Patterns"
     },
     {
       "title": "Filler Phrases",
@@ -263,25 +274,25 @@
         "It is important to note that the data shows"
       ],
       "source": "llm",
-      "category": "filler"
+      "category": "Filler and Hedging"
     },
     {
       "title": "Excessive Hedging",
       "problem": "Over-qualifying statements.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "filler"
+      "category": "Filler and Hedging"
     },
     {
       "title": "Generic Positive Conclusions",
       "problem": "Vague upbeat endings.",
       "words_to_watch": [],
       "source": "llm",
-      "category": "filler"
+      "category": "Filler and Hedging"
     }
   ],
   "parser": "llm",
-  "generated_at": "2026-01-26T23:04:49Z",
+  "generated_at": "2026-02-05T17:45:01Z",
   "source_path": "/home/npepin/Projects/stylometric-transfer/general-guidelines.md",
-  "source_mtime": 1769468652.8919082
+  "source_mtime": 1770311316.8592732
 }
