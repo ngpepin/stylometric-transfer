@@ -579,7 +579,8 @@ If `general-guidelines.md` is present in the repository root or next to the scri
 
 Pronoun override flags let you force the narrative voice regardless of the fingerprint: `--1st-person`, `--2nd-person`, or `--3rd-person`.
 
-`--local-spelling {none|canadian|australian|british|us}` overrides `humanizer_mandatory.force_local_spelling` for a single run.
+`--local-spelling {none|canadian|australian|british|us}` overrides `humanizer_mandatory.force_local_spelling` for a single run.  
+`--seed [int]` overrides `humanizer_variance.seed` for a single run (`0` or omitted value = random seed). The override also drives controller‑overlay sampling so both systems remain aligned.
 
 Example (British spelling with mixed contexts):
 

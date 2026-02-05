@@ -665,7 +665,8 @@ def build_controller_overlay(
     fingerprint: Dict[str, Any],
     tunables: Dict[str, Any] | None,
     chunk_index: int | None,
-    chunk_text: str
+    chunk_text: str,
+    seed_override: int | None = None
 ) -> tuple[Dict[str, Any] | None, Dict[str, Any] | None]:
     if not isinstance(fingerprint, dict):
         return None, None
@@ -706,6 +707,8 @@ def build_controller_overlay(
     max_width = float(conf.get("max_width", 6.0))
 
     seed = int(conf.get("seed", 0))
+    if seed_override is not None:
+        seed = int(seed_override)
     if chunk_index is not None:
         seed += int(chunk_index)
     else:
@@ -4167,6 +4170,14 @@ def main() -> int:
         help="Override tunables humanizer_mandatory.force_local_spelling for this run"
     )
     ap.add_argument(
+        "--seed",
+        nargs="?",
+        const=0,
+        type=int,
+        default=None,
+        help="Override tunables humanizer_variance.seed for this run (0 or omitted value = random seed)"
+    )
+    ap.add_argument(
         "--no-style-retry",
         action="store_true",
         help="Disable the style compliance retry pass"
@@ -4254,6 +4265,16 @@ def main() -> int:
         script_tunables = Path(__file__).resolve().parent / TUNABLES_FILENAME
         args.tunables = cwd_tunables if cwd_tunables.exists() else script_tunables
     tunables = load_tunables(args.tunables if args.tunables.exists() else None)
+    variance_seed_override: int | None = None
+    if args.seed is not None:
+        if args.seed == 0:
+            variance_seed_override = random.SystemRandom().randint(1, 2**31 - 1)
+            if args.verbose:
+                vprint(f"Humanizer variance seed override (random): {variance_seed_override}")
+        else:
+            variance_seed_override = int(args.seed)
+            if args.verbose:
+                vprint(f"Humanizer variance seed override (CLI): {variance_seed_override}")
     if args.max_prompt_tokens is not None:
         # Allow CLI override for chunking threshold.
         cfg.max_prompt_tokens = args.max_prompt_tokens
@@ -4540,7 +4561,8 @@ def main() -> int:
                 fingerprint,
                 tunables,
                 chunk_index,
-                md_chunk
+                md_chunk,
+                variance_seed_override
             )
         if controller_overlay and args.verbose:
             vprint(f"Controller overlay for chunk {chunk_index}/{chunk_total}: {controller_overlay}")
@@ -4724,6 +4746,12 @@ def main() -> int:
                 variance = tunables.get("humanizer_variance", {}) if isinstance(tunables.get("humanizer_variance", {}), dict) else {}
             if isinstance(variance, dict) and variance.get("enabled"):
                 seed = int(variance.get("seed", 0))
+                if variance_seed_override is not None:
+                    seed = variance_seed_override
+                if chunk_index is not None:
+                    seed += int(chunk_index)
+                else:
+                    seed += abs(hash(md_chunk)) % 100000
                 max_ops_per_1000w = float(variance.get("max_ops_per_1000w", 0.0))
                 allowed_ops = variance.get("allowed_ops", ["swap_transition", "drop_filler"])
                 if isinstance(allowed_ops, list):
