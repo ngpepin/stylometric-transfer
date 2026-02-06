@@ -25,6 +25,7 @@
         "avoid_em_dashes": { "type": "boolean" },
         "emoji_policy": { "type": "string", "enum": ["remove", "replace", "none"] },
         "normalize_double_quotes": { "type": "boolean" },
+        "normalize_single_quotes": { "type": "boolean" },
         "heading_case_normalization": { "type": "string", "enum": ["automatic", "identical", "by-level"] },
         "heading_case_by_level": {
           "type": "object",
@@ -60,6 +61,132 @@
           "type": "string",
           "enum": ["none", "canadian", "australian", "british", "us"],
           "description": "Legacy single setting. If split settings are absent, this value is used for both LLM and deterministic rules."
+        }
+      },
+      "additionalProperties": false
+    },
+    "perplexity_level": {
+      "type": "string",
+      "enum": ["default", "low", "medium", "high"]
+    },
+    "perplexity_profiles": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": "object",
+          "properties": {
+            "humanizer_variance": {
+              "type": "object",
+              "properties": {
+                "max_ops_per_1000w": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "humanization_controller": {
+              "type": "object",
+              "properties": {
+                "quantiles": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 } },
+                "range_pct": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "chunking": {
+              "type": "object",
+              "properties": {
+                "max_input_tokens": { "type": "integer", "minimum": 200 },
+                "min_chunks_when_perturbing": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "low": {
+          "type": "object",
+          "properties": {
+            "humanizer_variance": {
+              "type": "object",
+              "properties": {
+                "max_ops_per_1000w": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "humanization_controller": {
+              "type": "object",
+              "properties": {
+                "quantiles": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 } },
+                "range_pct": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "chunking": {
+              "type": "object",
+              "properties": {
+                "max_input_tokens": { "type": "integer", "minimum": 200 },
+                "min_chunks_when_perturbing": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "medium": {
+          "type": "object",
+          "properties": {
+            "humanizer_variance": {
+              "type": "object",
+              "properties": {
+                "max_ops_per_1000w": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "humanization_controller": {
+              "type": "object",
+              "properties": {
+                "quantiles": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 } },
+                "range_pct": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "chunking": {
+              "type": "object",
+              "properties": {
+                "max_input_tokens": { "type": "integer", "minimum": 200 },
+                "min_chunks_when_perturbing": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "high": {
+          "type": "object",
+          "properties": {
+            "humanizer_variance": {
+              "type": "object",
+              "properties": {
+                "max_ops_per_1000w": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "humanization_controller": {
+              "type": "object",
+              "properties": {
+                "quantiles": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 } },
+                "range_pct": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "chunking": {
+              "type": "object",
+              "properties": {
+                "max_input_tokens": { "type": "integer", "minimum": 200 },
+                "min_chunks_when_perturbing": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

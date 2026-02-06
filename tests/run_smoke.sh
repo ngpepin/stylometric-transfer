@@ -64,6 +64,7 @@ mkdir -p "$ARTIFACTS_DIR"
 "$ROOT_DIR/tests/run_v1_1_0_regression.sh"
 "$ROOT_DIR/tests/run_v1_5_X_regression.sh"
 "$ROOT_DIR/tests/run_v1_7_X_regression.sh"
+"$ROOT_DIR/tests/run_v1_8_X_regression.sh"
 
 if [[ "$RUN_LLM_TESTS" -eq 1 ]]; then
   # LLM connectivity smoke test (requires API config).

@@ -81,6 +81,7 @@ ANSI_YELLOW = "\x1b[33m"
 ANSI_RESET = "\x1b[0m"
 QUOTE_MODE: str | None = None
 DEFAULT_MAX_STYLE_RETRIES = 1
+PERPLEXITY_LEVELS = ("default", "low", "medium", "high")
 DEFAULT_TUNABLES = {
     "humanizer_conflicts": {
         "em_dash_keep_rate": 0.5,
@@ -95,6 +96,8 @@ DEFAULT_TUNABLES = {
     "humanizer_mandatory": {
         "avoid_em_dashes": False,
         "emoji_policy": "remove",
+        "normalize_double_quotes": True,
+        "normalize_single_quotes": True,
         "force_local_spelling_LLM": "none",
         "force_local_spelling_rules": "none",
         "heading_case_normalization": "by-level",
@@ -109,6 +112,61 @@ DEFAULT_TUNABLES = {
             "h8": "automatic"
         },
         "preserve_proper_name_case": True
+    },
+    "perplexity_level": "default",
+    "perplexity_profiles": {
+        "default": {
+            "humanizer_variance": {
+                "max_ops_per_1000w": 0.5
+            },
+            "humanization_controller": {
+                "quantiles": [0.25, 0.5, 0.75],
+                "range_pct": 0.15
+            },
+            "chunking": {
+                "max_input_tokens": 5750,
+                "min_chunks_when_perturbing": 2
+            }
+        },
+        "low": {
+            "humanizer_variance": {
+                "max_ops_per_1000w": 1.0
+            },
+            "humanization_controller": {
+                "quantiles": [0.2, 0.5, 0.8],
+                "range_pct": 0.2
+            },
+            "chunking": {
+                "max_input_tokens": 5200,
+                "min_chunks_when_perturbing": 3
+            }
+        },
+        "medium": {
+            "humanizer_variance": {
+                "max_ops_per_1000w": 1.5
+            },
+            "humanization_controller": {
+                "quantiles": [0.15, 0.5, 0.85],
+                "range_pct": 0.25
+            },
+            "chunking": {
+                "max_input_tokens": 4700,
+                "min_chunks_when_perturbing": 4
+            }
+        },
+        "high": {
+            "humanizer_variance": {
+                "max_ops_per_1000w": 2.0
+            },
+            "humanization_controller": {
+                "quantiles": [0.1, 0.5, 0.9],
+                "range_pct": 0.3
+            },
+            "chunking": {
+                "max_input_tokens": 4200,
+                "min_chunks_when_perturbing": 5
+            }
+        }
     },
     "section_restore": {
         "enabled": True,
@@ -275,6 +333,46 @@ def load_tunables(path: Path | None = None) -> Dict[str, Any]:
     except Exception:
         pass
     return dict(DEFAULT_TUNABLES)
+
+
+# Function: Normalize configured perplexity level token.
+def normalize_perplexity_level(value: Any) -> str:
+    level = str(value).strip().lower()
+    if level not in PERPLEXITY_LEVELS:
+        return "default"
+    return level
+
+
+# Function: Resolve and apply perplexity profile overrides.
+def apply_perplexity_profile(
+    tunables: Dict[str, Any],
+    level_override: str | None = None,
+) -> tuple[Dict[str, Any], str, Dict[str, Any]]:
+    if not isinstance(tunables, dict):
+        return dict(DEFAULT_TUNABLES), "default", {}
+    configured_level = normalize_perplexity_level(tunables.get("perplexity_level", "default"))
+    effective_level = normalize_perplexity_level(level_override) if level_override else configured_level
+
+    profiles = tunables.get("perplexity_profiles", {})
+    if not isinstance(profiles, dict):
+        profiles = {}
+    profile = profiles.get(effective_level, {})
+    if not isinstance(profile, dict):
+        profile = {}
+    merged = deep_merge_dict(tunables, profile)
+    merged["perplexity_level"] = effective_level
+
+    hv_conf = merged.get("humanizer_variance", {}) if isinstance(merged.get("humanizer_variance", {}), dict) else {}
+    hc_conf = merged.get("humanization_controller", {}) if isinstance(merged.get("humanization_controller", {}), dict) else {}
+    chunk_conf = merged.get("chunking", {}) if isinstance(merged.get("chunking", {}), dict) else {}
+    knob_values = {
+        "humanizer_variance.max_ops_per_1000w": hv_conf.get("max_ops_per_1000w"),
+        "humanization_controller.quantiles": hc_conf.get("quantiles"),
+        "humanization_controller.range_pct": hc_conf.get("range_pct"),
+        "chunking.max_input_tokens": chunk_conf.get("max_input_tokens"),
+        "chunking.min_chunks_when_perturbing": chunk_conf.get("min_chunks_when_perturbing"),
+    }
+    return merged, effective_level, knob_values
 
 
 # Function: Resolve style/voice retry budgets from tunables and CLI.
@@ -1016,6 +1114,12 @@ def should_normalize_double_quotes(tunables: Dict[str, Any] | None) -> bool:
     return bool(mandatory.get("normalize_double_quotes", False))
 
 
+# Function: Decide whether to normalize single quotes.
+def should_normalize_single_quotes(tunables: Dict[str, Any] | None) -> bool:
+    mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
+    return bool(mandatory.get("normalize_single_quotes", True))
+
+
 # Function: Read heading qualifier sanitization settings.
 def get_heading_qualifier_sanitize_conf(
     tunables: Dict[str, Any] | None
@@ -1115,6 +1219,7 @@ def enforce_no_em_dashes(text: str) -> tuple[str, int]:
 
 
 DOUBLE_QUOTE_CHARS = ("“", "”", "„", "‟", "«", "»")
+SINGLE_QUOTE_CHARS = ("‘", "’", "‚", "‛", "‹", "›")
 LOCAL_SPELLING_RULES_FILENAME = "config.local_spelling_rules.json"
 
 
@@ -1126,6 +1231,17 @@ def enforce_straight_double_quotes(text: str) -> tuple[str, int]:
     if count == 0:
         return text, 0
     trans = {ord(ch): ord('"') for ch in DOUBLE_QUOTE_CHARS}
+    return text.translate(trans), count
+
+
+# Function: Enforce straight single quotes while leaving backticks unchanged.
+def enforce_straight_single_quotes(text: str) -> tuple[str, int]:
+    if not text:
+        return text, 0
+    count = sum(text.count(ch) for ch in SINGLE_QUOTE_CHARS)
+    if count == 0:
+        return text, 0
+    trans = {ord(ch): ord("'") for ch in SINGLE_QUOTE_CHARS}
     return text.translate(trans), count
 
 
@@ -5431,6 +5547,12 @@ def main() -> int:
         help="Override tunables humanizer_mandatory.force_local_spelling_rules for this run"
     )
     ap.add_argument(
+        "--perplexity",
+        choices=list(PERPLEXITY_LEVELS),
+        default=None,
+        help="Override tunables perplexity_level for this run (default|low|medium|high)"
+    )
+    ap.add_argument(
         "--seed",
         nargs="?",
         const=0,
@@ -5527,6 +5649,20 @@ def main() -> int:
         script_tunables = Path(__file__).resolve().parent / TUNABLES_FILENAME
         args.tunables = cwd_tunables if cwd_tunables.exists() else script_tunables
     tunables = load_tunables(args.tunables if args.tunables.exists() else None)
+    tunables, perplexity_level, perplexity_knobs = apply_perplexity_profile(tunables, args.perplexity)
+    print(f"Perplexity level: {perplexity_level}")
+    if args.verbose:
+        if args.perplexity:
+            vprint(f"Perplexity override: {args.perplexity} (CLI)")
+        vprint(
+            "Perplexity knobs: "
+            f"humanizer_variance.max_ops_per_1000w={perplexity_knobs.get('humanizer_variance.max_ops_per_1000w')}, "
+            f"humanization_controller.quantiles={perplexity_knobs.get('humanization_controller.quantiles')}, "
+            f"humanization_controller.range_pct={perplexity_knobs.get('humanization_controller.range_pct')}, "
+            f"chunking.max_input_tokens={perplexity_knobs.get('chunking.max_input_tokens')}, "
+            "chunking.min_chunks_when_perturbing="
+            f"{perplexity_knobs.get('chunking.min_chunks_when_perturbing')}"
+        )
     variance_seed_override: int | None = None
     if args.seed is not None:
         if args.seed == 0:
@@ -5598,6 +5734,7 @@ def main() -> int:
     apply_pronoun_override(fingerprint, args.force_person)
     forbid_em_dashes = should_forbid_em_dashes(tunables)
     normalize_double_quotes = should_normalize_double_quotes(tunables)
+    normalize_single_quotes = should_normalize_single_quotes(tunables)
     sanitize_heading_qualifiers, heading_allowlist_raw = get_heading_qualifier_sanitize_conf(tunables)
     heading_allowlist = compile_heading_allowlist(heading_allowlist_raw) if sanitize_heading_qualifiers else []
     heading_case_mode, heading_case_by_level, preserve_proper_name_case = get_heading_case_normalization_conf(tunables)
@@ -5671,6 +5808,8 @@ def main() -> int:
                 vprint("Hard constraint active: em dashes are forbidden (humanizer_mandatory).")
             if normalize_double_quotes:
                 vprint("Hard constraint active: double quotes will be normalized to straight quotes (humanizer_mandatory).")
+            if normalize_single_quotes:
+                vprint("Hard constraint active: single quotes will be normalized to straight quotes (humanizer_mandatory).")
             if sanitize_heading_qualifiers:
                 allowlist_note = f" (allowlist: {len(heading_allowlist)} pattern(s))" if heading_allowlist else ""
                 vprint(
@@ -6156,6 +6295,14 @@ def main() -> int:
                         "rule_or_field": "punctuation.double_quotes",
                         "reason": "Curly double quotes normalized to straight quotes (humanizer_mandatory).",
                         "count": replaced_quotes
+                    })
+            if normalize_single_quotes:
+                final_md, replaced_single_quotes = enforce_straight_single_quotes(final_md)
+                if replaced_single_quotes:
+                    out_obj.setdefault("deviations", []).append({
+                        "rule_or_field": "punctuation.single_quotes",
+                        "reason": "Curly single quotes normalized to straight quotes (humanizer_mandatory).",
+                        "count": replaced_single_quotes
                     })
             if sanitize_heading_qualifiers:
                 final_md, sanitized_headings = enforce_heading_qualifiers(final_md, heading_allowlist)

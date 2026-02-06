@@ -13,6 +13,7 @@
     "avoid_em_dashes": true,
     "emoji_policy": "replace",
     "normalize_double_quotes": true,
+    "normalize_single_quotes": true,
     "heading_case_normalization": "by-level",
     "heading_case_by_level": {
       "h1": "title-case",
@@ -31,6 +32,61 @@
     },
     "force_local_spelling_LLM": "us",
     "force_local_spelling_rules": "canadian"
+  },
+  "perplexity_level": "default",
+  "perplexity_profiles": {
+    "default": {
+      "humanizer_variance": {
+        "max_ops_per_1000w": 0.5
+      },
+      "humanization_controller": {
+        "quantiles": [0.25, 0.5, 0.75],
+        "range_pct": 0.15
+      },
+      "chunking": {
+        "max_input_tokens": 5750,
+        "min_chunks_when_perturbing": 2
+      }
+    },
+    "low": {
+      "humanizer_variance": {
+        "max_ops_per_1000w": 1.0
+      },
+      "humanization_controller": {
+        "quantiles": [0.2, 0.5, 0.8],
+        "range_pct": 0.2
+      },
+      "chunking": {
+        "max_input_tokens": 5200,
+        "min_chunks_when_perturbing": 3
+      }
+    },
+    "medium": {
+      "humanizer_variance": {
+        "max_ops_per_1000w": 1.5
+      },
+      "humanization_controller": {
+        "quantiles": [0.15, 0.5, 0.85],
+        "range_pct": 0.25
+      },
+      "chunking": {
+        "max_input_tokens": 4700,
+        "min_chunks_when_perturbing": 4
+      }
+    },
+    "high": {
+      "humanizer_variance": {
+        "max_ops_per_1000w": 2.0
+      },
+      "humanization_controller": {
+        "quantiles": [0.1, 0.5, 0.9],
+        "range_pct": 0.3
+      },
+      "chunking": {
+        "max_input_tokens": 4200,
+        "min_chunks_when_perturbing": 5
+      }
+    }
   },
   "humanizer_variance": {
     "enabled": true,

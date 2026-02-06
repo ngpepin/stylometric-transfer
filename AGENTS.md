@@ -92,7 +92,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
   - Overrides: `--1st-person` / `--2nd-person` / `--3rd-person` force narrative voice regardless of fingerprint
-  - Runtime overrides: `--local-spelling {none|canadian|australian|british|us}` (applies to both LLM + deterministic rules), `--local-spelling-llm ...`, `--local-spelling-rules ...`, and `--seed [N]` (omitted value or `0` => random run seed)
+  - Runtime overrides: `--local-spelling {none|canadian|australian|british|us}` (applies to both LLM + deterministic rules), `--local-spelling-llm ...`, `--local-spelling-rules ...`, `--perplexity {default|low|medium|high}`, and `--seed [N]` (omitted value or `0` => random run seed)
 
 - `scripts/fingerprint_style.sh`, `scripts/apply_fingerprint.sh`, and `scripts/show_fingerprint.sh`
   - Bash wrappers around the Python entry points
@@ -115,7 +115,7 @@ Avoid ambiguous terms like “clone” in public documentation.
 - `config.tunables.json`
   - Overrides humanizer conflict thresholds for `apply_fingerprint.py`
   - See README for per‑field explanations and defaults
-  - Includes mandatory humanizer controls (em‑dash ban, emoji policy, heading qualifier sanitization, heading-case normalization mode)
+  - Includes mandatory humanizer controls (em‑dash ban, emoji policy, curly-quote normalization for single/double quotes, heading qualifier sanitization, heading-case normalization mode)
   - Includes bounded stochastic variance controls (seeded micro‑operations)
   - Includes style retry controls (delta‑feedback retries) with separate voice/style caps in forced-person mode
   - `style_retry.max_retries` caps style-loop retries; `style_retry.voice_max_retries` (optional) independently caps voice-loop retries in forced-person mode
@@ -124,6 +124,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Includes corpus-derived humanization baseline settings (rolling windows embedded in fingerprints for auditability; stripped from what the LLM sees during rewriting)
   - Includes humanization controller overlays (per-chunk target variation derived from baseline)
   - Includes chunking caps (max input tokens per chunk), split strategy (`chunk_split_on`), and rolling chunk summaries for semantic continuity
+  - Includes perplexity presets (`perplexity_level` + per-level profile overrides) that tune bounded variability and chunking knobs
   - Includes minimum chunk counts when perturbations are enabled
   - Includes chunk-recovery split controls when the LLM repeatedly returns invalid output
   - Includes variance-aware chunk sizing (smaller chunks for higher-variance styles)
@@ -440,6 +441,7 @@ Regression suite:
 - `tests/test_v1_1_0_regression.py` (run via `./tests/run_v1_1_0_regression.sh`; executed automatically by `run_smoke.sh`)
 - `tests/test_v1_5_X_regression.py` (run via `./tests/run_v1_5_X_regression.sh`; executed automatically by `run_smoke.sh`)
 - `tests/test_v1_7_X_regression.py` (run via `./tests/run_v1_7_X_regression.sh`; executed automatically by `run_smoke.sh`)
+- `tests/test_v1_8_X_regression.py` (run via `./tests/run_v1_8_X_regression.sh`; executed automatically by `run_smoke.sh`)
 
 ---
 
