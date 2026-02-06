@@ -176,7 +176,7 @@
     "enabled": true,
     "threshold": 0.60,
     "max_retries": 2,
-    "voice_max_retries": 2
+    "voice_max_retries": 1
   },
   "section_restore": {
     "enabled": true,

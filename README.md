@@ -522,6 +522,36 @@ Example (`config.tunables.json` project configuration example):
 - `humanization_controller.feedback_tolerance` (float): how far outside the overlay range the output must be before controller feedback is added (fraction of range).
 - `humanization_controller.max_feedback_retries` (integer): cap on how many style-retry passes include controller-overlay feedback. This does not create extra retries by itself.
 
+<u>Increasing output variability ("perplexity")</u>
+
+This project does not compute classic language-model perplexity directly. In practice, when users ask for "higher perplexity" they usually mean: the output feels less uniform and less template-like (more natural variation in rhythm, punctuation, transitions, and local phrasing) without changing meaning.
+
+Recommended workflow:
+
+1. Measure first (so you can see whether changes help).
+   - Run `apply_fingerprint.py ... --metrics -v` and compare the printed humanization metrics and aggregate 0-100 score for input vs output.
+
+2. Increase bounded stochastic variation (fastest knob, meaning-preserving when kept small).
+   - Increase `humanizer_variance.max_ops_per_1000w` in small steps:
+     - `0.5 -> 1.0 -> 1.5` (stop if the output starts to feel noisy or meaning shifts).
+   - Use `--seed 0` (or `--seed` with no value) to randomize the seed for that run, so repeated runs do not converge on the same micro-edits.
+
+3. Increase per-chunk variability targets (controller overlays).
+   - Expand `humanization_controller.quantiles` to include more extremes, e.g.:
+     - `[0.25, 0.5, 0.75] -> [0.15, 0.5, 0.85]` (or add `[0.10, 0.90]` for stronger variation).
+   - If overlays feel too weak, increase `humanization_controller.range_pct` modestly:
+     - `0.15 -> 0.20` or `0.25`.
+   - Why: each chunk receives slightly different distribution targets, so the output can express variability across the document without relying on arbitrary randomness.
+
+4. Give perturbations more "surface area" (optional).
+   - Lower `chunking.max_input_tokens` so a long document becomes more chunks (more overlay samples, more variance opportunities).
+   - If the input is short but you still want perturbations to have room, raise `chunking.min_chunks_when_perturbing` (for example, `2 -> 3`).
+   - Tradeoff: more chunks means more LLM calls and more opportunities for coherence drift; chunk summaries help, but you still pay latency.
+
+5. Last resort: increase model randomness.
+   - Slightly increase `temperature` in `config.llm.json` (for example, `0.2 -> 0.3` or `0.4`).
+   - Tradeoff: this increases global sampling variance, which can increase semantic drift risk. Prefer the bounded mechanisms above first.
+
 **Lexical Lists (`lexical_signals`, `lexical_avoidance`)**
 *These limits control how many lexical signals and avoidance candidates are retained.*
 - `lexical_signals.rare_words_limit` (integer): maximum number of rare words to include in `measurements.lexical_signals.rare_words`.
@@ -545,6 +575,35 @@ Example (`config.tunables.json` project configuration example):
 - `fiction_detection.quoted_ratio_min` (float 0–1): minimum fraction of words inside multi‑word quotes to classify as fiction (lower = more likely fiction).
 - `fiction_detection.quote_para_ratio_min` (float 0–1): minimum fraction of paragraphs starting with a quote to classify as fiction (lower = more likely fiction).
 - `fiction_detection.quoted_ratio_force` (float 0–1): if quoted word ratio exceeds this, force fiction regardless of other signals.
+
+<u>Troubleshooting: non-fiction detected as fiction (quotes getting rewritten)</u>
+
+If you see `Detected fiction: quoted passages may be rewritten.` but your document is non-fiction and you want multi-word quotations preserved:
+
+1. Quick fix (per run): force the mode explicitly.
+   - `apply_fingerprint.py`: pass `--non-fiction`
+   - `fingerprint_style.py`: pass `--non-fiction` (so profiling excludes multi-word quotations too)
+   This is the safest option when the document is structurally "quote heavy" (transcripts, long epigraphs, interview Q/A, policy excerpts).
+
+2. Persistent fix (tuning): raise the thresholds in `config.tunables.json` under `fiction_detection`.
+   The current heuristic classifies as fiction when any of the following are true:
+   - `quote_spans >= quote_span_min` AND `quoted_ratio >= quoted_ratio_min`, OR
+   - `quote_para_ratio >= quote_para_ratio_min` AND `quoted_ratio >= quoted_ratio_min`, OR
+   - `quoted_ratio >= quoted_ratio_force` (force-fiction guard).
+
+   Recommended knobs (start here, then re-run and iterate):
+   - If the document contains long quoted blocks (high quoted-word share): raise `quoted_ratio_force` first.
+     - Typical change: `0.08 -> 0.12` (or `0.15` if the document is extremely quote heavy).
+     - Why: this prevents "force fiction" from triggering purely because a non-fiction document contains many quoted words.
+   - If you have many short, two-plus-word quotes ("scare quotes") but they are a small fraction of the document:
+     - Raise `quoted_ratio_min`: `0.03 -> 0.05`.
+     - Why: it makes the classifier require that quoted words occupy a meaningful share of the text before calling it fiction.
+   - If you have many multi-word quote spans overall, but they are not dialogue:
+     - Raise `quote_span_min`: `6 -> 10` (or `12`).
+     - Why: it requires more distinct multi-word quote spans before the span-count signal can trigger fiction.
+   - If the document has many paragraphs that begin with quotes (common in transcripts or formatted excerpts):
+     - Raise `quote_para_ratio_min`: `0.20 -> 0.30` (or `0.40`).
+     - Why: it reduces false positives when a non-fiction document uses quoted paragraphs as formatting rather than dialogue.
 
 **Chunking, Continuity, and Recovery (`chunking`)**
 *These settings define chunk size/splitting, continuity summaries, and fallback behavior on invalid outputs.*
@@ -719,6 +778,29 @@ Style compliance is scored locally. If the score falls below the threshold, the 
 If `general-guidelines.md` is present in the repository root or next to the scripts, its humanization rules (adapted from softaworks/agent-toolkit by @leonardocouy) are parsed with an LLM by default. Deterministically conflicting guidance (based on fingerprint signals such as em-dash rate, hedging or first-person use) is dropped before prompting. This introduces one additional LLM call when enabled. Parsed rules are cached in `humanizer_rules.cache.json` next to the scripts and are only re-parsed when `general-guidelines.md` changes. LLM parsing can be disabled via `--no-humanizer-llm-parse`, or the guidelines can be disabled entirely via `--no-humanizer-guidelines`.
 
 Pronoun override flags let you force the narrative voice regardless of the fingerprint: `--1st-person`, `--2nd-person`, or `--3rd-person`.
+
+#### Interpreting forced-voice logs (verbose mode)
+
+When a pronoun override is active, each chunk is checked for "wrong-person" pronouns used in subject-like roles. If violations are detected, the chunk is re-prompted with voice-specific feedback, up to the configured voice retry budget.
+
+You will see log lines like:
+
+```
+Chunk 1/2 pronoun override violations; retrying (voice retry 1/1).
+  Pronoun override detail: mode=third; allowed_count=105; violations[first_person=1, second_person=8]; ignored[first_person_non_subject=4, second_person_non_subject=4]
+```
+
+How to read this:
+- `voice retry 1/1`: the current attempt failed the forced-voice check, and the system is about to spend its 1st (and final) voice retry. `voice_max_retries=N` means "up to N additional voice retries after the initial attempt".
+- `mode=third`: the forced voice mode for this run (`first`, `second`, or `third`).
+- `allowed_count=105`: how many pronoun tokens match the target mode in the chunk's author-voice text. This is a coverage signal, not a violation signal. It is used as a tie-breaker when selecting the best attempt (more target-voice pronouns is better when violations are equal).
+- `violations[...]`: disallowed pronouns that look like grammatical subjects (approximate heuristic, not a full parser). In this example, third-person voice is being forced, but the model still produced some first-person ("I/we") and second-person ("you") subject-like uses.
+- `ignored[...]`: disallowed pronouns that were detected but treated as non-subject roles and therefore not counted as voice violations. This is how object/complement cases stay legal. Example: with `--1st-person`, "I had to help him" should not count "him" as a voice violation.
+
+Notes and common gotchas:
+- The check runs on "author-voice" text only (blockquotes/references/citations are excluded; and in non-fiction mode, multi-word quotations are masked/preserved), so the voice loop is not usually driven by quoted material unless you are in fiction mode.
+- If you see mostly `second_person` violations while forcing `first` or `third`, that often indicates direct address ("you ...") is persisting (commonly in dialogue or instructional prose).
+- If voice retries are exhausting frequently, adjust `style_retry.voice_max_retries` (voice budget) independently of `style_retry.max_retries` (style budget). Voice and style loops are separate: voice retries are triggered by pronoun violations; style retries are triggered by compliance score falling below the threshold.
 
 `--local-spelling {none|canadian|australian|british|us}` overrides both split spelling settings for a single run.  
 `--local-spelling-llm {none|canadian|australian|british|us}` overrides only `humanizer_mandatory.force_local_spelling_LLM`.  
