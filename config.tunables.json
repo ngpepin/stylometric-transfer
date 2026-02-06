@@ -175,7 +175,7 @@
   "style_retry": {
     "enabled": true,
     "threshold": 0.590,
-    "max_retries": 2,
+    "max_retries": 1,
     "voice_max_retries": 1
   },
   "section_restore": {
