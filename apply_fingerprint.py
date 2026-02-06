@@ -95,6 +95,8 @@ DEFAULT_TUNABLES = {
     "humanizer_mandatory": {
         "avoid_em_dashes": False,
         "emoji_policy": "remove",
+        "force_local_spelling_LLM": "none",
+        "force_local_spelling_rules": "none",
         "heading_case_normalization": "by-level",
         "heading_case_by_level": {
             "h1": "title-case",
@@ -1083,13 +1085,23 @@ def get_heading_case_normalization_conf(
     return mode, by_level, preserve_proper_name_case
 
 
-# Function: Get force local spelling.
-def get_force_local_spelling(tunables: Dict[str, Any] | None) -> str:
-    mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
-    value = str(mandatory.get("force_local_spelling", "none")).lower()
-    if value not in ("none", "canadian", "british", "australian", "us"):
+# Function: Normalize a locale spelling mode token.
+def normalize_spelling_locale(value: Any) -> str:
+    mode = str(value).strip().lower()
+    if mode not in ("none", "canadian", "british", "australian", "us"):
         return "none"
-    return value
+    return mode
+
+
+# Function: Resolve split spelling controls (LLM instructions vs deterministic rules).
+def get_force_local_spelling_conf(tunables: Dict[str, Any] | None) -> tuple[str, str]:
+    mandatory = tunables.get("humanizer_mandatory", {}) if isinstance(tunables, dict) else {}
+    legacy = normalize_spelling_locale(mandatory.get("force_local_spelling", "none"))
+    llm_raw = mandatory.get("force_local_spelling_LLM", None)
+    rules_raw = mandatory.get("force_local_spelling_rules", None)
+    llm = normalize_spelling_locale(llm_raw) if llm_raw is not None else legacy
+    rules = normalize_spelling_locale(rules_raw) if rules_raw is not None else legacy
+    return llm, rules
 
 
 # Function: Enforce no em dashes.
@@ -4983,7 +4995,8 @@ def build_apply_prompt(
     humanizer_rules: List[Dict[str, Any]] | None = None,
     controller_overlay: Dict[str, Any] | None = None,
     voice_override: str | None = None,
-    chunk_summary: Dict[str, Any] | None = None
+    chunk_summary: Dict[str, Any] | None = None,
+    local_spelling_llm: str = "none",
 ) -> List[Dict[str, str]]:
     # Fill the apply prompt template with runtime data.
     system = get_prompt_value(prompts, "apply", "system")
@@ -5030,6 +5043,20 @@ def build_apply_prompt(
         elif rule:
             user["rules"] = [rule]
         user["voice_override"] = voice_override
+    local_spelling_llm = normalize_spelling_locale(local_spelling_llm)
+    if local_spelling_llm != "none":
+        locale_labels = {
+            "us": "US",
+            "canadian": "Canadian",
+            "british": "British",
+            "australian": "Australian",
+        }
+        locale_label = locale_labels.get(local_spelling_llm, local_spelling_llm)
+        if isinstance(user.get("rules"), list):
+            user["rules"].append(
+                f"Use {locale_label} English spelling consistently for lexical variants in final_markdown."
+            )
+        user["local_spelling_target"] = local_spelling_llm
     if chunk_summary:
         user["chunk_summary"] = chunk_summary
         if isinstance(user.get("output_format"), dict):
@@ -5387,7 +5414,21 @@ def main() -> int:
         dest="local_spelling",
         choices=["none", "canadian", "australian", "british", "us"],
         default=None,
-        help="Override tunables humanizer_mandatory.force_local_spelling for this run"
+        help="Override both tunables humanizer_mandatory.force_local_spelling_LLM and force_local_spelling_rules for this run"
+    )
+    ap.add_argument(
+        "--local-spelling-llm",
+        dest="local_spelling_llm",
+        choices=["none", "canadian", "australian", "british", "us"],
+        default=None,
+        help="Override tunables humanizer_mandatory.force_local_spelling_LLM for this run"
+    )
+    ap.add_argument(
+        "--local-spelling-rules",
+        dest="local_spelling_rules",
+        choices=["none", "canadian", "australian", "british", "us"],
+        default=None,
+        help="Override tunables humanizer_mandatory.force_local_spelling_rules for this run"
     )
     ap.add_argument(
         "--seed",
@@ -5560,10 +5601,23 @@ def main() -> int:
     sanitize_heading_qualifiers, heading_allowlist_raw = get_heading_qualifier_sanitize_conf(tunables)
     heading_allowlist = compile_heading_allowlist(heading_allowlist_raw) if sanitize_heading_qualifiers else []
     heading_case_mode, heading_case_by_level, preserve_proper_name_case = get_heading_case_normalization_conf(tunables)
-    force_local_spelling = args.local_spelling or get_force_local_spelling(tunables)
-    if args.local_spelling and args.verbose:
-        vprint(f"Local spelling override: {force_local_spelling} (CLI)")
-    local_spelling_rules = load_local_spelling_rules() if force_local_spelling != "none" else {}
+    force_local_spelling_llm, force_local_spelling_rules = get_force_local_spelling_conf(tunables)
+    if args.local_spelling:
+        # Backward-compatible umbrella override: applies to both LLM and deterministic rules.
+        force_local_spelling_llm = args.local_spelling
+        force_local_spelling_rules = args.local_spelling
+    if args.local_spelling_llm:
+        force_local_spelling_llm = args.local_spelling_llm
+    if args.local_spelling_rules:
+        force_local_spelling_rules = args.local_spelling_rules
+    if args.verbose:
+        if args.local_spelling:
+            vprint(f"Local spelling override: {args.local_spelling} (CLI, applies to LLM + rules)")
+        if args.local_spelling_llm:
+            vprint(f"Local spelling LLM override: {args.local_spelling_llm} (CLI)")
+        if args.local_spelling_rules:
+            vprint(f"Local spelling rules override: {args.local_spelling_rules} (CLI)")
+    local_spelling_rules = load_local_spelling_rules() if force_local_spelling_rules != "none" else {}
     emoji_policy = None
     if isinstance(tunables, dict):
         mandatory = tunables.get("humanizer_mandatory", {})
@@ -5634,8 +5688,17 @@ def main() -> int:
                     "Hard constraint active: heading casing mode = by-level "
                     f"({by_level_render}; preserve proper names={preserve_note})."
                 )
-            if force_local_spelling != "none":
-                vprint(f"Hard constraint active: {force_local_spelling} spelling enforced (humanizer_mandatory).")
+            if force_local_spelling_llm != "none":
+                vprint(f"Hard constraint active: LLM spelling target = {force_local_spelling_llm}.")
+            else:
+                vprint("Hard constraint active: LLM spelling target = none (no explicit spelling instruction).")
+            if force_local_spelling_rules != "none":
+                vprint(
+                    "Hard constraint active: "
+                    f"deterministic spelling rules target = {force_local_spelling_rules}."
+                )
+            else:
+                vprint("Hard constraint active: deterministic spelling rules target = none.")
             if emoji_policy and str(emoji_policy) != "none":
                 vprint(f"Hard constraint active: emoji policy = {emoji_policy}.")
             parsed_rules: List[Dict[str, Any]] = []
@@ -5767,7 +5830,8 @@ def main() -> int:
             humanizer_rules,
             controller_overlay,
             args.force_person,
-            summary_payload
+            summary_payload,
+            force_local_spelling_llm,
         )
 
     # Function: Rewrite a single chunk via the LLM.
@@ -6101,12 +6165,15 @@ def main() -> int:
                         "reason": "Heading qualifiers removed when safe (humanizer_mandatory).",
                         "count": sanitized_headings
                     })
-            if force_local_spelling != "none":
-                final_md, replacements = enforce_local_spelling(final_md, force_local_spelling, local_spelling_rules)
+            if force_local_spelling_rules != "none":
+                final_md, replacements = enforce_local_spelling(final_md, force_local_spelling_rules, local_spelling_rules)
                 if replacements:
                     out_obj.setdefault("deviations", []).append({
                         "rule_or_field": "orthography.local_spelling",
-                        "reason": f"Enforced {force_local_spelling} spelling regardless of fingerprint.",
+                        "reason": (
+                            f"Enforced {force_local_spelling_rules} spelling via deterministic rules "
+                            "regardless of fingerprint."
+                        ),
                         "count": replacements
                     })
 
@@ -6881,17 +6948,20 @@ def main() -> int:
         final_md = "\n".join(lines).strip()
     # Section restoration can reintroduce original orthography; enforce locale spelling once more
     # on mutable regions only so preserved non-voice blocks and protected quotes stay verbatim.
-    if force_local_spelling != "none":
+    if force_local_spelling_rules != "none":
         final_md, post_restore_replacements = enforce_local_spelling_guarded(
             final_md,
-            force_local_spelling,
+            force_local_spelling_rules,
             local_spelling_rules,
             preserve_multiword_quotes=(not fiction_mode),
         )
         if post_restore_replacements:
             all_deviations.append({
                 "rule_or_field": "orthography.local_spelling",
-                "reason": f"Re-applied {force_local_spelling} spelling after section restoration.",
+                "reason": (
+                    f"Re-applied {force_local_spelling_rules} spelling via deterministic rules "
+                    "after section restoration."
+                ),
                 "count": post_restore_replacements,
             })
     if (

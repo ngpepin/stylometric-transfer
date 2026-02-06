@@ -1,4 +1,5 @@
 import sys
+import json
 from pathlib import Path
 import unittest
 
@@ -500,6 +501,63 @@ class TestV17XRegression(unittest.TestCase):
         self.assertFalse(af.should_request_chunk_summary(1, False, False, False))
         self.assertFalse(af.should_request_chunk_summary(1, True, True, False))
         self.assertTrue(af.should_request_chunk_summary(2, True, False, True))
+
+    def test_force_local_spelling_split_conf_defaults(self) -> None:
+        llm_mode, rules_mode = af.get_force_local_spelling_conf({})
+        self.assertEqual(llm_mode, "none")
+        self.assertEqual(rules_mode, "none")
+
+    def test_force_local_spelling_split_conf_legacy_fallback(self) -> None:
+        llm_mode, rules_mode = af.get_force_local_spelling_conf(
+            {"humanizer_mandatory": {"force_local_spelling": "canadian"}}
+        )
+        self.assertEqual(llm_mode, "canadian")
+        self.assertEqual(rules_mode, "canadian")
+
+    def test_force_local_spelling_split_conf_independent(self) -> None:
+        llm_mode, rules_mode = af.get_force_local_spelling_conf(
+            {
+                "humanizer_mandatory": {
+                    "force_local_spelling_LLM": "us",
+                    "force_local_spelling_rules": "canadian",
+                }
+            }
+        )
+        self.assertEqual(llm_mode, "us")
+        self.assertEqual(rules_mode, "canadian")
+
+    def test_build_apply_prompt_includes_llm_spelling_instruction(self) -> None:
+        cfg = af.LLMConfig(
+            api_key="k",
+            base_url="http://example.test/v1",
+            model="m",
+            max_tokens=1000,
+            temperature=0.0,
+            timeout_seconds=30,
+            extra_headers={},
+            max_prompt_tokens=1000,
+            max_retries=0,
+            backoff_base_seconds=0.1,
+            backoff_max_seconds=0.1,
+        )
+        prompts = {
+            "apply": {
+                "system": "s",
+                "user": {"rules": [], "output_format": {"final_markdown": "string"}},
+            }
+        }
+        messages = af.build_apply_prompt(
+            {},
+            "input",
+            {},
+            cfg,
+            prompts,
+            local_spelling_llm="us",
+        )
+        payload = json.loads(messages[1]["content"])
+        self.assertEqual(payload.get("local_spelling_target"), "us")
+        rules = payload.get("rules", [])
+        self.assertTrue(any("US English spelling" in r for r in rules))
 
     def test_force_local_spelling_canadian_exceptions(self) -> None:
         rules = af.load_local_spelling_rules()

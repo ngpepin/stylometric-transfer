@@ -270,7 +270,8 @@ Example (`config.tunables.json` project configuration example):
       "enabled": true,
       "allowlist": ["quick win"]
     },
-    "force_local_spelling": "canadian"
+    "force_local_spelling_LLM": "none",
+    "force_local_spelling_rules": "canadian"
   },
   "humanizer_variance": {
     "enabled": true,
@@ -470,7 +471,9 @@ Example (`config.tunables.json` project configuration example):
 - `sanitize_heading_qualifiers` (boolean or object): when true (or enabled), trailing parenthetical/comma qualifiers in headings are removed if the remaining title still has at least two words.
 - `sanitize_heading_qualifiers.enabled` (boolean): turn the qualifier sanitizer on/off.
 - `sanitize_heading_qualifiers.allowlist` (array of regex strings): headings that match any pattern are exempt from qualifier stripping.
-- `force_local_spelling` (`none`, `canadian`, `australian`, `british`, `us`): force a locale-specific spelling pass on the final output.
+- `force_local_spelling_LLM` (`none`, `canadian`, `australian`, `british`, `us`): locale spelling instruction sent to the LLM. `none` sends no explicit locale spelling instruction.
+- `force_local_spelling_rules` (`none`, `canadian`, `australian`, `british`, `us`): locale used by deterministic code-side normalization rules after generation.
+- `force_local_spelling` (`none`, `canadian`, `australian`, `british`, `us`): legacy fallback. If split settings are absent, this value is used for both LLM and deterministic rules.
 
 **Heading Case Normalization (`humanizer_mandatory.*`)**
 *These settings define deterministic heading-case policy, either globally or by heading level.*
@@ -717,7 +720,9 @@ If `general-guidelines.md` is present in the repository root or next to the scri
 
 Pronoun override flags let you force the narrative voice regardless of the fingerprint: `--1st-person`, `--2nd-person`, or `--3rd-person`.
 
-`--local-spelling {none|canadian|australian|british|us}` overrides `humanizer_mandatory.force_local_spelling` for a single run.  
+`--local-spelling {none|canadian|australian|british|us}` overrides both split spelling settings for a single run.  
+`--local-spelling-llm {none|canadian|australian|british|us}` overrides only `humanizer_mandatory.force_local_spelling_LLM`.  
+`--local-spelling-rules {none|canadian|australian|british|us}` overrides only `humanizer_mandatory.force_local_spelling_rules`.  
 `--seed [int]` overrides `humanizer_variance.seed` for a single run (`0` or omitted value = random seed). The override also drives controller‑overlay sampling so both systems remain aligned.
 
 Example (British spelling with mixed contexts):

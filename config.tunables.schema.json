@@ -54,7 +54,13 @@
             }
           ]
         },
-        "force_local_spelling": { "type": "string", "enum": ["none", "canadian", "australian", "british", "us"] }
+        "force_local_spelling_LLM": { "type": "string", "enum": ["none", "canadian", "australian", "british", "us"] },
+        "force_local_spelling_rules": { "type": "string", "enum": ["none", "canadian", "australian", "british", "us"] },
+        "force_local_spelling": {
+          "type": "string",
+          "enum": ["none", "canadian", "australian", "british", "us"],
+          "description": "Legacy single setting. If split settings are absent, this value is used for both LLM and deterministic rules."
+        }
       },
       "additionalProperties": false
     },

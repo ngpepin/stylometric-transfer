@@ -92,7 +92,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
   - Overrides: `--1st-person` / `--2nd-person` / `--3rd-person` force narrative voice regardless of fingerprint
-  - Runtime overrides: `--local-spelling {none|canadian|australian|british|us}` and `--seed [N]` (omitted value or `0` => random run seed)
+  - Runtime overrides: `--local-spelling {none|canadian|australian|british|us}` (applies to both LLM + deterministic rules), `--local-spelling-llm ...`, `--local-spelling-rules ...`, and `--seed [N]` (omitted value or `0` => random run seed)
 
 - `scripts/fingerprint_style.sh`, `scripts/apply_fingerprint.sh`, and `scripts/show_fingerprint.sh`
   - Bash wrappers around the Python entry points
