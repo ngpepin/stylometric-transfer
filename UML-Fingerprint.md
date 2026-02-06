@@ -1,4 +1,4 @@
-# UML: Fingerprint Pipeline
+
 
 This document contains PlantUML Class, Activity, and Sequence diagrams for the fingerprinting pipeline.
 
@@ -93,7 +93,10 @@ FingerprintPipeline --> Utils
 @enduml
 ```
 
+<hr style="page-break-before: always;">
+
 ## Activity Diagram
+<div align="center">
 
 ```plantuml
 @startuml
@@ -114,7 +117,10 @@ start
 :If non-fiction, drop multi-word quoted passages;
 :Compute measurements (rhetoric moves, cadence, discourse markers, repetition; uses shared utils);
 :Compute humanization baseline (rolling windows; embedded for auditability; stripped from LLM prompts during apply);
-
+stop
+```
+```plantuml
+start
 if (Phrase validation enabled?) then (yes)
   :Prefilter proper-name phrases;
   :Apply entity blacklist + date-pattern filters;
@@ -138,6 +144,10 @@ endif
 :Ensure required metadata fields;
 :Embed tunables snapshot (optional);
 :Embed measurements verbatim;
+stop
+```
+```plantuml
+start
 :Embed humanization baseline under measurements.humanization_baseline;
 :Include targets for rhetoric/cadence/epistemic/syntax/repetition;
 :Normalize rewrite_policy clauses + filter priority_order tokens;
@@ -146,6 +156,9 @@ endif
 stop
 @enduml
 ```
+</div>
+
+<hr style="page-break-before: always;">
 
 ## Sequence Diagram
 

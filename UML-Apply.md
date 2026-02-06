@@ -1,4 +1,3 @@
-# UML: Apply Pipeline
 
 This document contains PlantUML Class, Activity, and Sequence diagrams for the apply pipeline.
 
@@ -106,7 +105,11 @@ ApplyPipeline --> Utils
 @enduml
 ```
 
+<hr style="page-break-before: always;">
+
 ## Activity Diagram
+
+<div align="center-vh">
 
 ```plantuml
 @startuml
@@ -131,7 +134,10 @@ start
 :Mask HTML, math, entities, inline code;
 :If non-fiction, mask multi-word quoted passages;
 :Mask blockquotes, references, footnotes, citations;
-
+stop
+```
+```plantuml
+start
 :Compute input measurements (author-voice only; uses shared utils);
 if (Metrics enabled?) then (yes)
   :Compute input humanization metrics;
@@ -155,6 +161,10 @@ endif
 :Restore placeholders;
 :Apply mandatory output normalizations (em dashes, quotes, heading qualifiers, local spelling);
 :Apply heading-case normalization policy (automatic/identical/by-level);
+stop
+```
+```plantuml
+start
 :If preserve_proper_name_case=true, keep source proper-name casing in deterministic heading transforms;
 :Compute style compliance;
 
@@ -174,6 +184,9 @@ endif
 stop
 @enduml
 ```
+</div>
+
+<hr style="page-break-before: always;">
 
 ## Sequence Diagram
 
