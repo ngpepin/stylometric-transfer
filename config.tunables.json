@@ -184,6 +184,22 @@
     "signature_similarity_threshold": 0.35,
     "signature_min_overlap": 6
   },
+  "postprocess_redundancy": {
+    "enabled": true,
+    "paragraph_dedupe": {
+      "enabled": true,
+      "min_words": 30,
+      "similarity_threshold": 0.985,
+      "lookback_blocks": 20,
+      "max_drop_ratio": 0.15
+    },
+    "list_density": {
+      "enabled": true,
+      "min_run_length": 9,
+      "group_size": 2,
+      "joiner": "; "
+    }
+  },
   "sanity_checks": {
     "line_count_warn_pct": 10.0,
     "word_count_warn_pct": 10.0,

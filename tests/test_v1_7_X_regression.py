@@ -660,6 +660,78 @@ class TestV17XRegression(unittest.TestCase):
         self.assertIn("color's", updated.lower())
         self.assertIn("color-grade", updated.lower())
 
+    def test_dedupe_redundant_prose_blocks_drops_near_duplicate(self) -> None:
+        a = (
+            "This section explains how the platform enforces policy constraints while preserving semantic intent. "
+            "It covers execution flow, observability hooks, and guardrails for failure handling."
+        )
+        b = (
+            "This section explains how the platform enforces policy constraints while preserving semantic intent. "
+            "It covers execution flow, observability hooks, and guardrails for failure handling in production."
+        )
+        c = "This paragraph is different and should remain intact."
+        text = f"{a}\n\n{b}\n\n{c}"
+        updated, dropped = af.dedupe_redundant_prose_blocks(
+            text,
+            min_words=10,
+            similarity_threshold=0.95,
+            lookback_blocks=10,
+            max_drop_ratio=0.5,
+        )
+        self.assertEqual(dropped, 1)
+        self.assertIn(c, updated)
+
+    def test_dedupe_redundant_prose_blocks_keeps_list_blocks(self) -> None:
+        text = (
+            "- alpha\n"
+            "- beta\n"
+            "- gamma\n\n"
+            "- alpha\n"
+            "- beta\n"
+            "- gamma\n"
+        )
+        updated, dropped = af.dedupe_redundant_prose_blocks(text, min_words=1)
+        self.assertEqual(dropped, 0)
+        self.assertEqual(updated.count("- alpha"), 2)
+
+    def test_throttle_unordered_list_density_groups_long_runs(self) -> None:
+        text = "\n".join(
+            [
+                "- one",
+                "- two",
+                "- three",
+                "- four",
+                "- five",
+                "- six",
+                "- seven",
+                "- eight",
+            ]
+        )
+        updated, runs, merged_items = af.throttle_unordered_list_density(
+            text,
+            min_run_length=6,
+            group_size=2,
+            joiner="; ",
+        )
+        self.assertEqual(runs, 1)
+        self.assertEqual(merged_items, 4)
+        self.assertIn("- one; two", updated)
+        self.assertEqual(updated.count("\n- "), 3)
+
+    def test_postprocess_redundancy_conf_defaults_and_overrides(self) -> None:
+        conf = af.get_postprocess_redundancy_conf(
+            {
+                "postprocess_redundancy": {
+                    "enabled": True,
+                    "paragraph_dedupe": {"min_words": 20},
+                    "list_density": {"group_size": 3},
+                }
+            }
+        )
+        self.assertTrue(conf.get("enabled"))
+        self.assertEqual(conf["paragraph_dedupe"]["min_words"], 20)
+        self.assertEqual(conf["list_density"]["group_size"], 3)
+
     def test_utils_common_helpers(self) -> None:
         text = "One token, two tokens."
         self.assertEqual(utils.words(text), ["One", "token", "two", "tokens"])

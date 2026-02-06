@@ -227,6 +227,34 @@
       },
       "additionalProperties": false
     },
+    "postprocess_redundancy": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "paragraph_dedupe": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "min_words": { "type": "integer", "minimum": 5 },
+            "similarity_threshold": { "type": "number", "minimum": 0.8, "maximum": 1.0 },
+            "lookback_blocks": { "type": "integer", "minimum": 1 },
+            "max_drop_ratio": { "type": "number", "minimum": 0.01, "maximum": 0.5 }
+          },
+          "additionalProperties": false
+        },
+        "list_density": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "min_run_length": { "type": "integer", "minimum": 3 },
+            "group_size": { "type": "integer", "minimum": 2 },
+            "joiner": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "sanity_checks": {
       "type": "object",
       "properties": {

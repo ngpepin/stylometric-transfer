@@ -115,6 +115,22 @@ DEFAULT_TUNABLES = {
         "signature_similarity_threshold": 0.6,
         "signature_min_overlap": 6
     },
+    "postprocess_redundancy": {
+        "enabled": False,
+        "paragraph_dedupe": {
+            "enabled": True,
+            "min_words": 30,
+            "similarity_threshold": 0.985,
+            "lookback_blocks": 20,
+            "max_drop_ratio": 0.15
+        },
+        "list_density": {
+            "enabled": True,
+            "min_run_length": 9,
+            "group_size": 2,
+            "joiner": "; "
+        }
+    },
     "sanity_checks": {
         "line_count_warn_pct": 10.0,
         "word_count_warn_pct": 10.0,
@@ -134,6 +150,7 @@ REFERENCE_HEADINGS = {
 }
 ATX_HEADING_RE = re.compile(r"^\s{0,3}(#{1,8})\s+(.+?)\s*$")
 LIST_LINE_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
+UNORDERED_LIST_LINE_RE = re.compile(r"^(\s*)([-*+])\s+(.*\S)\s*$")
 SETEXT_H1_RE = re.compile(r"^\s*=+\s*$")
 SETEXT_H2_RE = re.compile(r"^\s*-+\s*$")
 BLOCKQUOTE_LINE_RE = re.compile(r"^\s*>")
@@ -1765,6 +1782,203 @@ def is_heading_or_list_line(text: str) -> bool:
     if re.match(r"([-*+]|\\d+[.)])\\s+", stripped):
         return True
     return False
+
+
+# Function: Parse deterministic post-process settings for redundancy/list shaping.
+def get_postprocess_redundancy_conf(tunables: Dict[str, Any] | None) -> Dict[str, Any]:
+    conf: Dict[str, Any] = {
+        "enabled": False,
+        "paragraph_dedupe": {
+            "enabled": True,
+            "min_words": 30,
+            "similarity_threshold": 0.985,
+            "lookback_blocks": 20,
+            "max_drop_ratio": 0.15,
+        },
+        "list_density": {
+            "enabled": True,
+            "min_run_length": 9,
+            "group_size": 2,
+            "joiner": "; ",
+        },
+    }
+    if not isinstance(tunables, dict):
+        return conf
+    raw = tunables.get("postprocess_redundancy", {})
+    if not isinstance(raw, dict):
+        return conf
+    conf["enabled"] = bool(raw.get("enabled", conf["enabled"]))
+    pd_raw = raw.get("paragraph_dedupe", {})
+    if isinstance(pd_raw, dict):
+        pd_conf = conf["paragraph_dedupe"]
+        pd_conf["enabled"] = bool(pd_raw.get("enabled", pd_conf["enabled"]))
+        try:
+            pd_conf["min_words"] = max(5, int(pd_raw.get("min_words", pd_conf["min_words"])))
+        except (TypeError, ValueError):
+            pass
+        try:
+            pd_conf["similarity_threshold"] = min(
+                1.0,
+                max(0.8, float(pd_raw.get("similarity_threshold", pd_conf["similarity_threshold"]))),
+            )
+        except (TypeError, ValueError):
+            pass
+        try:
+            pd_conf["lookback_blocks"] = max(1, int(pd_raw.get("lookback_blocks", pd_conf["lookback_blocks"])))
+        except (TypeError, ValueError):
+            pass
+        try:
+            pd_conf["max_drop_ratio"] = min(
+                0.5,
+                max(0.01, float(pd_raw.get("max_drop_ratio", pd_conf["max_drop_ratio"]))),
+            )
+        except (TypeError, ValueError):
+            pass
+    ld_raw = raw.get("list_density", {})
+    if isinstance(ld_raw, dict):
+        ld_conf = conf["list_density"]
+        ld_conf["enabled"] = bool(ld_raw.get("enabled", ld_conf["enabled"]))
+        try:
+            ld_conf["min_run_length"] = max(3, int(ld_raw.get("min_run_length", ld_conf["min_run_length"])))
+        except (TypeError, ValueError):
+            pass
+        try:
+            ld_conf["group_size"] = max(2, int(ld_raw.get("group_size", ld_conf["group_size"])))
+        except (TypeError, ValueError):
+            pass
+        joiner = ld_raw.get("joiner", ld_conf["joiner"])
+        if isinstance(joiner, str) and joiner:
+            ld_conf["joiner"] = joiner
+    return conf
+
+
+# Function: Build a canonical prose fingerprint for near-duplicate detection.
+def canonicalize_prose_block(text: str) -> str:
+    collapsed = re.sub(r"`[^`]*`", " ", text)
+    collapsed = re.sub(r"\[[^\]]+\]\([^)]+\)", " ", collapsed)
+    collapsed = re.sub(r"https?://\S+", " ", collapsed)
+    collapsed = re.sub(r"[^a-zA-Z0-9\s]", " ", collapsed).lower()
+    return " ".join(collapsed.split())
+
+
+# Function: Decide whether a block is a safe prose candidate for deterministic dedupe.
+def is_prose_dedupe_candidate(block: str, min_words: int) -> bool:
+    if not block.strip() or is_code_block(block):
+        return False
+    lines = [ln for ln in block.splitlines() if ln.strip()]
+    if not lines:
+        return False
+    if ATX_HEADING_RE.match(lines[0].strip()):
+        return False
+    if any(LIST_LINE_RE.match(ln.strip()) for ln in lines):
+        return False
+    if any(ln.strip().startswith("|") for ln in lines):
+        return False
+    if len(words(block)) < min_words:
+        return False
+    if not re.search(r"[.!?]", block):
+        return False
+    return True
+
+
+# Function: Remove near-duplicate prose blocks while preserving first occurrence.
+def dedupe_redundant_prose_blocks(
+    markdown: str,
+    min_words: int = 30,
+    similarity_threshold: float = 0.985,
+    lookback_blocks: int = 20,
+    max_drop_ratio: float = 0.15,
+) -> tuple[str, int]:
+    blocks = split_markdown_blocks(markdown)
+    if not blocks:
+        return markdown, 0
+    kept: List[str] = []
+    recent: List[str] = []
+    dropped = 0
+    max_drops = max(1, int(len(blocks) * max_drop_ratio))
+    for block in blocks:
+        if dropped >= max_drops or not is_prose_dedupe_candidate(block, min_words):
+            kept.append(block)
+            canon = canonicalize_prose_block(block)
+            if canon:
+                recent.append(canon)
+                if len(recent) > lookback_blocks:
+                    recent = recent[-lookback_blocks:]
+            continue
+        canon = canonicalize_prose_block(block)
+        if not canon:
+            kept.append(block)
+            continue
+        is_dup = False
+        for prev in reversed(recent[-lookback_blocks:]):
+            if canon == prev:
+                is_dup = True
+                break
+            score = difflib.SequenceMatcher(None, canon, prev).ratio()
+            if score >= similarity_threshold:
+                is_dup = True
+                break
+        if is_dup:
+            dropped += 1
+            continue
+        kept.append(block)
+        recent.append(canon)
+        if len(recent) > lookback_blocks:
+            recent = recent[-lookback_blocks:]
+    merged = "\n\n".join(s.strip() for s in kept if s.strip()).strip()
+    return merged, dropped
+
+
+# Function: Reduce long unordered-list runs by grouping adjacent bullets.
+def throttle_unordered_list_density(
+    markdown: str,
+    min_run_length: int = 9,
+    group_size: int = 2,
+    joiner: str = "; ",
+) -> tuple[str, int, int]:
+    blocks = split_markdown_blocks(markdown)
+    if not blocks:
+        return markdown, 0, 0
+    out_blocks: List[str] = []
+    run_count = 0
+    merged_items = 0
+    for block in blocks:
+        if is_code_block(block):
+            out_blocks.append(block)
+            continue
+        lines = block.splitlines()
+        i = 0
+        out_lines: List[str] = []
+        while i < len(lines):
+            match = UNORDERED_LIST_LINE_RE.match(lines[i])
+            if not match:
+                out_lines.append(lines[i])
+                i += 1
+                continue
+            indent = match.group(1)
+            run: List[str] = []
+            j = i
+            while j < len(lines):
+                m = UNORDERED_LIST_LINE_RE.match(lines[j])
+                if not m or m.group(1) != indent:
+                    break
+                run.append(m.group(3).strip())
+                j += 1
+            if len(run) < min_run_length:
+                out_lines.extend(lines[i:j])
+                i = j
+                continue
+            run_count += 1
+            for k in range(0, len(run), group_size):
+                chunk = run[k : k + group_size]
+                if not chunk:
+                    continue
+                out_lines.append(f"{indent}- {joiner.join(chunk)}")
+            merged_items += max(0, len(run) - ((len(run) + group_size - 1) // group_size))
+            i = j
+        out_blocks.append("\n".join(out_lines).strip("\n"))
+    merged = "\n\n".join(s.strip() for s in out_blocks if s.strip()).strip()
+    return merged, run_count, merged_items
 
 
 # Function: Apply removed emoji punctuation.
@@ -5627,6 +5841,26 @@ def main() -> int:
             and chunk_index == chunk_total
         )
         while True:
+            if attempt_global >= max_chunk_attempts:
+                if args.verbose and chunk_index is not None and chunk_total is not None:
+                    vprint(
+                        f"Chunk {chunk_index}/{chunk_total} reached max chunk attempts "
+                        f"({max_chunk_attempts}); stopping retries."
+                    )
+                if best_md is not None and best_out is not None and best_comp is not None:
+                    return best_md, best_out, best_comp
+                # Defensive fallback: should not occur because max attempts is at least 1.
+                fallback_out = {
+                    "final_markdown": md_chunk,
+                    "deviations": [
+                        {
+                            "rule_or_field": "chunk_retry_cap_fallback",
+                            "reason": "Chunk retry cap reached before a valid rewrite; original chunk preserved.",
+                        }
+                    ],
+                    "self_check": {"notes": ["Original chunk preserved due to retry cap fallback."]},
+                }
+                return md_chunk, fallback_out, {"score": 0.0, "deltas": []}
             attempt_global += 1
             request_chunk_summary = should_request_chunk_summary(
                 attempt_global,
@@ -6683,6 +6917,53 @@ def main() -> int:
                 "reason": f"Applied heading case normalization mode '{heading_case_mode}' (humanizer_mandatory).",
                 "count": heading_case_edits,
             })
+    postprocess_conf = get_postprocess_redundancy_conf(tunables)
+    postprocess_enabled = bool(postprocess_conf.get("enabled"))
+    para_enabled = False
+    list_enabled = False
+    para_dropped_blocks = 0
+    list_throttled_runs = 0
+    list_merged_items = 0
+    if postprocess_enabled:
+        para_conf = postprocess_conf.get("paragraph_dedupe", {})
+        if isinstance(para_conf, dict) and para_conf.get("enabled", True):
+            para_enabled = True
+            final_md, para_dropped_blocks = dedupe_redundant_prose_blocks(
+                final_md,
+                min_words=int(para_conf.get("min_words", 30)),
+                similarity_threshold=float(para_conf.get("similarity_threshold", 0.985)),
+                lookback_blocks=int(para_conf.get("lookback_blocks", 20)),
+                max_drop_ratio=float(para_conf.get("max_drop_ratio", 0.15)),
+            )
+            if para_dropped_blocks:
+                all_deviations.append({
+                    "rule_or_field": "postprocess_redundancy.paragraph_dedupe",
+                    "reason": "Removed near-duplicate prose blocks deterministically.",
+                    "count": para_dropped_blocks,
+                })
+        list_conf = postprocess_conf.get("list_density", {})
+        if isinstance(list_conf, dict) and list_conf.get("enabled", True):
+            list_enabled = True
+            final_md, list_throttled_runs, list_merged_items = throttle_unordered_list_density(
+                final_md,
+                min_run_length=int(list_conf.get("min_run_length", 9)),
+                group_size=int(list_conf.get("group_size", 2)),
+                joiner=str(list_conf.get("joiner", "; ")),
+            )
+            if list_merged_items:
+                all_deviations.append({
+                    "rule_or_field": "postprocess_redundancy.list_density",
+                    "reason": "Grouped long unordered-list runs to reduce repetitive list density.",
+                    "runs": list_throttled_runs,
+                    "merged_items": list_merged_items,
+                })
+    if args.verbose:
+        vprint(
+            "Post-process redundancy: "
+            f"enabled={postprocess_enabled}; "
+            f"paragraph_dedupe(enabled={para_enabled}, dropped_blocks={para_dropped_blocks}); "
+            f"list_density(enabled={list_enabled}, runs={list_throttled_runs}, merged_items={list_merged_items})."
+        )
     line_count_in = len(original_input_md.splitlines())
     line_count_out = len(final_md.splitlines())
     line_change_pct = ((line_count_out - line_count_in) / max(1, line_count_in)) * 100.0

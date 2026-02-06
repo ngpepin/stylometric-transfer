@@ -132,6 +132,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Includes controls normalization (rewrite-policy de-dup + priority-order filtering)
   - Includes fiction-detection thresholds (quote span/ratio heuristics)
   - Includes section‑restore controls (fuzzy heading match + restoration caps)
+  - Includes deterministic redundancy post-processing controls (near-duplicate prose pruning and long unordered-list density throttling)
   - Includes optional sanity checks such as line/word/paragraph count change warnings
   - The current tunables may be embedded into fingerprints as `metadata.extraction.tunables_snapshot` for auditability
 - `config.avoid.txt`

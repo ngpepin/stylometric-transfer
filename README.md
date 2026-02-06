@@ -425,6 +425,22 @@ Example (`config.tunables.json` project configuration example):
     "signature_similarity_threshold": 0.35,
     "signature_min_overlap": 6
   },
+  "postprocess_redundancy": {
+    "enabled": true,
+    "paragraph_dedupe": {
+      "enabled": true,
+      "min_words": 30,
+      "similarity_threshold": 0.985,
+      "lookback_blocks": 20,
+      "max_drop_ratio": 0.15
+    },
+    "list_density": {
+      "enabled": true,
+      "min_run_length": 9,
+      "group_size": 2,
+      "joiner": "; "
+    }
+  },
   "sanity_checks": {
     "line_count_warn_pct": 10.0,
     "word_count_warn_pct": 10.0,
@@ -557,6 +573,19 @@ Example (`config.tunables.json` project configuration example):
 - `section_restore.heading_similarity_threshold` (0–1): fuzzy heading match threshold for considering a rewritten heading “present”.
 - `section_restore.signature_similarity_threshold` (0–1): content‑signature similarity threshold for matching a section by its opening content.
 - `section_restore.signature_min_overlap` (integer): minimum number of overlapping signature tokens required for a content match.
+
+**Deterministic Redundancy Post-Processing (`postprocess_redundancy`)**
+*These controls reduce repetitive AI-like structure after chunk stitching while preserving semantic content.*
+- `postprocess_redundancy.enabled` (boolean): master switch for deterministic anti-redundancy pass.
+- `postprocess_redundancy.paragraph_dedupe.enabled` (boolean): enables near-duplicate prose block removal.
+- `postprocess_redundancy.paragraph_dedupe.min_words` (integer): minimum block length for dedupe eligibility.
+- `postprocess_redundancy.paragraph_dedupe.similarity_threshold` (0.8–1.0): canonical similarity threshold above which a prose block is treated as duplicate.
+- `postprocess_redundancy.paragraph_dedupe.lookback_blocks` (integer): how many recent blocks to compare against.
+- `postprocess_redundancy.paragraph_dedupe.max_drop_ratio` (0.01–0.5): safety cap on removable block fraction in one document.
+- `postprocess_redundancy.list_density.enabled` (boolean): enables unordered-list run throttling.
+- `postprocess_redundancy.list_density.min_run_length` (integer): minimum contiguous unordered bullets required before grouping is applied.
+- `postprocess_redundancy.list_density.group_size` (integer): number of bullet items merged into each grouped bullet.
+- `postprocess_redundancy.list_density.joiner` (string): separator used when grouping multiple bullet items.
 
 **Sanity Check Warnings (`sanity_checks`)**
 *These percentage thresholds trigger review warnings when output size drifts materially from input.*
