@@ -81,7 +81,7 @@ ANSI_YELLOW = "\x1b[33m"
 ANSI_RESET = "\x1b[0m"
 QUOTE_MODE: str | None = None
 DEFAULT_MAX_STYLE_RETRIES = 1
-PERPLEXITY_LEVELS = ("default", "low", "medium", "high")
+PERPLEXITY_LEVELS = ("default", "low", "medium", "high", "extreme")
 DEFAULT_TUNABLES = {
     "humanizer_conflicts": {
         "em_dash_keep_rate": 0.5,
@@ -126,6 +126,9 @@ DEFAULT_TUNABLES = {
             "chunking": {
                 "max_input_tokens": 5750,
                 "min_chunks_when_perturbing": 2
+            },
+            "llm": {
+                "temperature_multiplier": 1.0
             }
         },
         "low": {
@@ -139,6 +142,9 @@ DEFAULT_TUNABLES = {
             "chunking": {
                 "max_input_tokens": 5200,
                 "min_chunks_when_perturbing": 3
+            },
+            "llm": {
+                "temperature_multiplier": 1.0
             }
         },
         "medium": {
@@ -152,6 +158,9 @@ DEFAULT_TUNABLES = {
             "chunking": {
                 "max_input_tokens": 4700,
                 "min_chunks_when_perturbing": 4
+            },
+            "llm": {
+                "temperature_multiplier": 1.0
             }
         },
         "high": {
@@ -165,6 +174,25 @@ DEFAULT_TUNABLES = {
             "chunking": {
                 "max_input_tokens": 4200,
                 "min_chunks_when_perturbing": 5
+            },
+            "llm": {
+                "temperature_multiplier": 1.0
+            }
+        },
+        "extreme": {
+            "humanizer_variance": {
+                "max_ops_per_1000w": 2.0
+            },
+            "humanization_controller": {
+                "quantiles": [0.1, 0.5, 0.9],
+                "range_pct": 0.3
+            },
+            "chunking": {
+                "max_input_tokens": 4200,
+                "min_chunks_when_perturbing": 5
+            },
+            "llm": {
+                "temperature_multiplier": 2.0
             }
         }
     },
@@ -365,14 +393,61 @@ def apply_perplexity_profile(
     hv_conf = merged.get("humanizer_variance", {}) if isinstance(merged.get("humanizer_variance", {}), dict) else {}
     hc_conf = merged.get("humanization_controller", {}) if isinstance(merged.get("humanization_controller", {}), dict) else {}
     chunk_conf = merged.get("chunking", {}) if isinstance(merged.get("chunking", {}), dict) else {}
+    llm_conf = merged.get("llm", {}) if isinstance(merged.get("llm", {}), dict) else {}
     knob_values = {
         "humanizer_variance.max_ops_per_1000w": hv_conf.get("max_ops_per_1000w"),
         "humanization_controller.quantiles": hc_conf.get("quantiles"),
         "humanization_controller.range_pct": hc_conf.get("range_pct"),
         "chunking.max_input_tokens": chunk_conf.get("max_input_tokens"),
         "chunking.min_chunks_when_perturbing": chunk_conf.get("min_chunks_when_perturbing"),
+        "llm.temperature_multiplier": llm_conf.get("temperature_multiplier", 1.0),
     }
     return merged, effective_level, knob_values
+
+
+# Function: Apply perplexity-driven temperature multiplier.
+def apply_temperature_multiplier(base_temperature: float, multiplier: Any) -> float:
+    try:
+        parsed_base = float(base_temperature)
+    except (TypeError, ValueError):
+        parsed_base = 0.2
+    try:
+        parsed_multiplier = float(multiplier)
+    except (TypeError, ValueError):
+        parsed_multiplier = 1.0
+    if parsed_multiplier < 0:
+        parsed_multiplier = 0.0
+    return max(0.0, min(2.0, parsed_base * parsed_multiplier))
+
+
+# Function: Extract a --query argument from raw argv.
+def extract_query_arg(argv: List[str]) -> str | None:
+    idx = 0
+    while idx < len(argv):
+        arg = argv[idx]
+        if arg == "--query":
+            if idx + 1 >= len(argv):
+                return ""
+            return argv[idx + 1]
+        if arg.startswith("--query="):
+            return arg.split("=", 1)[1]
+        idx += 1
+    return None
+
+
+# Function: Handle lightweight query mode.
+def handle_query(query_arg: str) -> int:
+    query = str(query_arg).strip().lower()
+    if not query:
+        print_error("Error: --query requires a value.")
+        return 2
+    if query == "perplexity":
+        tunables = load_tunables(None)
+        _, level, _ = apply_perplexity_profile(tunables, None)
+        print(level)
+        return 0
+    print_error(f"Error: unsupported --query value: {query}")
+    return 2
 
 
 # Function: Resolve style/voice retry budgets from tunables and CLI.
@@ -5483,9 +5558,18 @@ def pronoun_override_quality(override_eval: Dict[str, Any]) -> tuple[int, int]:
 
 # Function: CLI entry point.
 def main() -> int:
+    query_arg = extract_query_arg(sys.argv[1:])
+    if query_arg is not None:
+        return handle_query(query_arg)
     if "--license" in sys.argv:
         return print_license_and_exit()
     ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--query",
+        type=str,
+        default=None,
+        help="Return a lightweight value and exit; supported: perplexity"
+    )
     ap.add_argument(
         "-c",
         "--config",
@@ -5550,7 +5634,7 @@ def main() -> int:
         "--perplexity",
         choices=list(PERPLEXITY_LEVELS),
         default=None,
-        help="Override tunables perplexity_level for this run (default|low|medium|high)"
+        help="Override tunables perplexity_level for this run (default|low|medium|high|extreme)"
     )
     ap.add_argument(
         "--seed",
@@ -5650,6 +5734,9 @@ def main() -> int:
         args.tunables = cwd_tunables if cwd_tunables.exists() else script_tunables
     tunables = load_tunables(args.tunables if args.tunables.exists() else None)
     tunables, perplexity_level, perplexity_knobs = apply_perplexity_profile(tunables, args.perplexity)
+    base_temperature = cfg.temperature
+    temp_multiplier = perplexity_knobs.get("llm.temperature_multiplier", 1.0)
+    cfg.temperature = apply_temperature_multiplier(base_temperature, temp_multiplier)
     print(f"Perplexity level: {perplexity_level}")
     if args.verbose:
         if args.perplexity:
@@ -5661,7 +5748,9 @@ def main() -> int:
             f"humanization_controller.range_pct={perplexity_knobs.get('humanization_controller.range_pct')}, "
             f"chunking.max_input_tokens={perplexity_knobs.get('chunking.max_input_tokens')}, "
             "chunking.min_chunks_when_perturbing="
-            f"{perplexity_knobs.get('chunking.min_chunks_when_perturbing')}"
+            f"{perplexity_knobs.get('chunking.min_chunks_when_perturbing')}, "
+            f"llm.temperature_multiplier={perplexity_knobs.get('llm.temperature_multiplier')}, "
+            f"llm.temperature_effective={cfg.temperature:.3f} (base={base_temperature:.3f})"
         )
     variance_seed_override: int | None = None
     if args.seed is not None:

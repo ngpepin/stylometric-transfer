@@ -67,7 +67,7 @@
     },
     "perplexity_level": {
       "type": "string",
-      "enum": ["default", "low", "medium", "high"]
+      "enum": ["default", "low", "medium", "high", "extreme"]
     },
     "perplexity_profiles": {
       "type": "object",
@@ -95,6 +95,13 @@
               "properties": {
                 "max_input_tokens": { "type": "integer", "minimum": 200 },
                 "min_chunks_when_perturbing": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            },
+            "llm": {
+              "type": "object",
+              "properties": {
+                "temperature_multiplier": { "type": "number", "minimum": 0 }
               },
               "additionalProperties": false
             }
@@ -126,6 +133,13 @@
                 "min_chunks_when_perturbing": { "type": "integer", "minimum": 1 }
               },
               "additionalProperties": false
+            },
+            "llm": {
+              "type": "object",
+              "properties": {
+                "temperature_multiplier": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -155,6 +169,13 @@
                 "min_chunks_when_perturbing": { "type": "integer", "minimum": 1 }
               },
               "additionalProperties": false
+            },
+            "llm": {
+              "type": "object",
+              "properties": {
+                "temperature_multiplier": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -182,6 +203,49 @@
               "properties": {
                 "max_input_tokens": { "type": "integer", "minimum": 200 },
                 "min_chunks_when_perturbing": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            },
+            "llm": {
+              "type": "object",
+              "properties": {
+                "temperature_multiplier": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "extreme": {
+          "type": "object",
+          "properties": {
+            "humanizer_variance": {
+              "type": "object",
+              "properties": {
+                "max_ops_per_1000w": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "humanization_controller": {
+              "type": "object",
+              "properties": {
+                "quantiles": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 1 } },
+                "range_pct": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "chunking": {
+              "type": "object",
+              "properties": {
+                "max_input_tokens": { "type": "integer", "minimum": 200 },
+                "min_chunks_when_perturbing": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            },
+            "llm": {
+              "type": "object",
+              "properties": {
+                "temperature_multiplier": { "type": "number", "minimum": 0 }
               },
               "additionalProperties": false
             }

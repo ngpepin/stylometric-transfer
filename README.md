@@ -279,22 +279,32 @@ Example (`config.tunables.json` project configuration example):
     "default": {
       "humanizer_variance": { "max_ops_per_1000w": 0.5 },
       "humanization_controller": { "quantiles": [0.25, 0.5, 0.75], "range_pct": 0.15 },
-      "chunking": { "max_input_tokens": 5750, "min_chunks_when_perturbing": 2 }
+      "chunking": { "max_input_tokens": 5750, "min_chunks_when_perturbing": 2 },
+      "llm": { "temperature_multiplier": 1.0 }
     },
     "low": {
       "humanizer_variance": { "max_ops_per_1000w": 1.0 },
       "humanization_controller": { "quantiles": [0.2, 0.5, 0.8], "range_pct": 0.2 },
-      "chunking": { "max_input_tokens": 5200, "min_chunks_when_perturbing": 3 }
+      "chunking": { "max_input_tokens": 5200, "min_chunks_when_perturbing": 3 },
+      "llm": { "temperature_multiplier": 1.0 }
     },
     "medium": {
       "humanizer_variance": { "max_ops_per_1000w": 1.5 },
       "humanization_controller": { "quantiles": [0.15, 0.5, 0.85], "range_pct": 0.25 },
-      "chunking": { "max_input_tokens": 4700, "min_chunks_when_perturbing": 4 }
+      "chunking": { "max_input_tokens": 4700, "min_chunks_when_perturbing": 4 },
+      "llm": { "temperature_multiplier": 1.0 }
     },
     "high": {
       "humanizer_variance": { "max_ops_per_1000w": 2.0 },
       "humanization_controller": { "quantiles": [0.1, 0.5, 0.9], "range_pct": 0.3 },
-      "chunking": { "max_input_tokens": 4200, "min_chunks_when_perturbing": 5 }
+      "chunking": { "max_input_tokens": 4200, "min_chunks_when_perturbing": 5 },
+      "llm": { "temperature_multiplier": 1.0 }
+    },
+    "extreme": {
+      "humanizer_variance": { "max_ops_per_1000w": 2.0 },
+      "humanization_controller": { "quantiles": [0.1, 0.5, 0.9], "range_pct": 0.3 },
+      "chunking": { "max_input_tokens": 4200, "min_chunks_when_perturbing": 5 },
+      "llm": { "temperature_multiplier": 2.0 }
     }
   },
   "humanizer_variance": {
@@ -502,14 +512,15 @@ Example (`config.tunables.json` project configuration example):
 
 **Perplexity Presets (`perplexity_level`, `perplexity_profiles`)**
 *These presets provide one-switch variability tuning by overriding a small set of bounded knobs.*
-- `perplexity_level` (`default`, `low`, `medium`, `high`): selected preset for the run.
+- `perplexity_level` (`default`, `low`, `medium`, `high`, `extreme`): selected preset for the run.
 - `perplexity_profiles.<level>`: per-level overrides applied to:
   - `humanizer_variance.max_ops_per_1000w`
   - `humanization_controller.quantiles`
   - `humanization_controller.range_pct`
   - `chunking.max_input_tokens`
   - `chunking.min_chunks_when_perturbing`
-- `default` should mirror your baseline settings; `low`/`medium`/`high` progressively increase variability and chunk-level perturbation opportunity.
+  - `llm.temperature_multiplier` (multiplies `config.llm.json` temperature; effective temperature is clamped to `0.0..2.0`)
+- `default` should mirror your baseline settings; `low`/`medium`/`high` progressively increase variability and chunk-level perturbation opportunity; `extreme` adds aggressive model sampling by doubling base temperature.
 
 **Heading Case Normalization (`humanizer_mandatory.*`)**
 *These settings define deterministic heading-case policy, either globally or by heading level.*
@@ -563,7 +574,7 @@ Example (`config.tunables.json` project configuration example):
 This project does not compute classic language-model perplexity directly. In practice, when users ask for "higher perplexity" they usually mean: the output feels less uniform and less template-like (more natural variation in rhythm, punctuation, transitions, and local phrasing) without changing meaning.
 
 Quick preset option:
-- Set `perplexity_level` in `config.tunables.json`, or pass `--perplexity {default|low|medium|high}` for a one-run override.
+- Set `perplexity_level` in `config.tunables.json`, or pass `--perplexity {default|low|medium|high|extreme}` for a one-run override.
 - Regular logs print the active level; verbose logs print the effective knob values.
 
 Recommended workflow:
@@ -867,8 +878,9 @@ Notes and common gotchas:
 `--local-spelling {none|canadian|australian|british|us}` overrides both split spelling settings for a single run.  
 `--local-spelling-llm {none|canadian|australian|british|us}` overrides only `humanizer_mandatory.force_local_spelling_LLM`.  
 `--local-spelling-rules {none|canadian|australian|british|us}` overrides only `humanizer_mandatory.force_local_spelling_rules`.  
-`--perplexity {default|low|medium|high}` overrides tunables `perplexity_level` for a single run.  
+`--perplexity {default|low|medium|high|extreme}` overrides tunables `perplexity_level` for a single run.  
 `--seed [int]` overrides `humanizer_variance.seed` for a single run (`0` or omitted value = random seed). The override also drives controller‑overlay sampling so both systems remain aligned.
+`--query perplexity` (or `--query=perplexity`) prints the configured perplexity level on a single line and exits; other arguments are ignored.
 
 Example (British spelling with mixed contexts):
 

@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 import unittest
+import io
+import contextlib
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -71,6 +73,40 @@ class TestV18XRegression(unittest.TestCase):
         self.assertEqual(applied["humanization_controller"]["range_pct"], 0.3)
         self.assertEqual(applied["chunking"]["max_input_tokens"], 4200)
         self.assertEqual(knobs["chunking.min_chunks_when_perturbing"], 5)
+
+    def test_perplexity_profile_extreme_temperature_multiplier(self) -> None:
+        tunables = {
+            "perplexity_level": "default",
+            "perplexity_profiles": {
+                "default": {
+                    "llm": {"temperature_multiplier": 1.0}
+                },
+                "extreme": {
+                    "llm": {"temperature_multiplier": 2.0}
+                },
+            },
+        }
+        _, level, knobs = af.apply_perplexity_profile(tunables, "extreme")
+        self.assertEqual(level, "extreme")
+        self.assertEqual(knobs["llm.temperature_multiplier"], 2.0)
+
+    def test_apply_temperature_multiplier_scales_and_clamps(self) -> None:
+        self.assertAlmostEqual(af.apply_temperature_multiplier(0.2, 2.0), 0.4)
+        self.assertAlmostEqual(af.apply_temperature_multiplier(1.5, 2.0), 2.0)
+
+    def test_extract_query_arg_supports_equals_and_space(self) -> None:
+        self.assertEqual(af.extract_query_arg(["--query", "perplexity"]), "perplexity")
+        self.assertEqual(af.extract_query_arg(["--query=perplexity"]), "perplexity")
+        self.assertEqual(af.extract_query_arg(["--query"]), "")
+        self.assertIsNone(af.extract_query_arg(["--perplexity", "high"]))
+
+    def test_handle_query_perplexity_prints_single_token(self) -> None:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = af.handle_query("perplexity")
+        self.assertEqual(code, 0)
+        value = out.getvalue().strip()
+        self.assertIn(value, ("default", "low", "medium", "high", "extreme"))
 
 
 if __name__ == "__main__":

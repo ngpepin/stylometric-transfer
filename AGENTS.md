@@ -92,7 +92,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
   - Overrides: `--1st-person` / `--2nd-person` / `--3rd-person` force narrative voice regardless of fingerprint
-  - Runtime overrides: `--local-spelling {none|canadian|australian|british|us}` (applies to both LLM + deterministic rules), `--local-spelling-llm ...`, `--local-spelling-rules ...`, `--perplexity {default|low|medium|high}`, and `--seed [N]` (omitted value or `0` => random run seed)
+  - Runtime overrides: `--local-spelling {none|canadian|australian|british|us}` (applies to both LLM + deterministic rules), `--local-spelling-llm ...`, `--local-spelling-rules ...`, `--perplexity {default|low|medium|high|extreme}`, and `--seed [N]` (omitted value or `0` => random run seed)
 
 - `scripts/fingerprint_style.sh`, `scripts/apply_fingerprint.sh`, and `scripts/show_fingerprint.sh`
   - Bash wrappers around the Python entry points
@@ -124,7 +124,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - Includes corpus-derived humanization baseline settings (rolling windows embedded in fingerprints for auditability; stripped from what the LLM sees during rewriting)
   - Includes humanization controller overlays (per-chunk target variation derived from baseline)
   - Includes chunking caps (max input tokens per chunk), split strategy (`chunk_split_on`), and rolling chunk summaries for semantic continuity
-  - Includes perplexity presets (`perplexity_level` + per-level profile overrides) that tune bounded variability and chunking knobs
+  - Includes perplexity presets (`perplexity_level` + per-level profile overrides) that tune bounded variability, chunking knobs, and LLM temperature multiplier
   - Includes minimum chunk counts when perturbations are enabled
   - Includes chunk-recovery split controls when the LLM repeatedly returns invalid output
   - Includes variance-aware chunk sizing (smaller chunks for higher-variance styles)
