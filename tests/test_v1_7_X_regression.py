@@ -341,15 +341,37 @@ class TestV17XRegression(unittest.TestCase):
         self.assertIn("####### mixed case", updated)
 
     def test_heading_case_caps_preserves_proper_names_when_enabled(self) -> None:
-        source_heading = "John Black and mary"
-        rewritten_heading = "john black and mary"
+        source_heading = "John Black has mary"
+        rewritten_heading = "john black has mary"
         updated = af.apply_heading_case_style(
             rewritten_heading,
             "caps",
             source_heading=source_heading,
             preserve_proper_name_case=True,
         )
-        self.assertEqual(updated, "John Black AND MARY")
+        self.assertEqual(updated, "John Black HAS MARY")
+
+    def test_heading_case_sentence_case_does_not_preserve_generic_title_tokens(self) -> None:
+        source_heading = "Runtime Deployment memory"
+        rewritten_heading = "Runtime Deployment memory"
+        updated = af.apply_heading_case_style(
+            rewritten_heading,
+            "sentence-case",
+            source_heading=source_heading,
+            preserve_proper_name_case=True,
+        )
+        self.assertEqual(updated, "Runtime deployment memory")
+
+    def test_heading_case_sentence_case_downcases_conjunction_heading(self) -> None:
+        source_heading = "Tool Connectivity and Protocols"
+        rewritten_heading = "Tool Connectivity and Protocols"
+        updated = af.apply_heading_case_style(
+            rewritten_heading,
+            "sentence-case",
+            source_heading=source_heading,
+            preserve_proper_name_case=True,
+        )
+        self.assertEqual(updated, "Tool connectivity and protocols")
 
     def test_heading_case_caps_does_not_preserve_proper_names_when_disabled(self) -> None:
         source_heading = "John Black and mary"
@@ -487,13 +509,34 @@ class TestV17XRegression(unittest.TestCase):
         self.assertIn("while", updated.lower())
         self.assertIn("spelled", updated.lower())
 
+    def test_force_local_spelling_canadian_programme_always_normalizes(self) -> None:
+        rules = af.load_local_spelling_rules()
+        text = "AI Strategy and Programme Delivery with no broadcast context."
+        updated, _ = af.enforce_local_spelling(text, "canadian", rules)
+        self.assertIn("Program Delivery", updated)
+        self.assertNotIn("Programme", updated)
+
     def test_force_local_spelling_handles_ise_ize_noun_forms(self) -> None:
         rules = af.load_local_spelling_rules()
-        text = "Humanisation and organisation improved after reprioritisation."
+        text = "Humanisation and organisation improved after reprioritisation, specialisation, optimisation, and visualisation."
         updated, _ = af.enforce_local_spelling(text, "canadian", rules)
         self.assertIn("humanization", updated.lower())
         self.assertIn("organization", updated.lower())
         self.assertIn("reprioritization", updated.lower())
+        self.assertIn("specialization", updated.lower())
+        self.assertIn("optimization", updated.lower())
+        self.assertIn("visualization", updated.lower())
+
+    def test_heading_proper_name_preservation_does_not_undo_spelling(self) -> None:
+        source = "AI Strategy and Programme Delivery"
+        rewritten = "AI Strategy and Program Delivery"
+        updated = af.apply_heading_case_style(
+            rewritten,
+            "title-case",
+            source_heading=source,
+            preserve_proper_name_case=True,
+        )
+        self.assertEqual(updated, "AI Strategy and Program Delivery")
 
     def test_force_local_spelling_guarded_preserves_nonfiction_multiword_quotes(self) -> None:
         rules = af.load_local_spelling_rules()

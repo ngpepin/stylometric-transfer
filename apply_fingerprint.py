@@ -2373,6 +2373,15 @@ def _detect_proper_name_indices(text: str) -> set[int]:
         "of", "on", "or", "per", "the", "to", "vs", "via", "with", "without", "over", "under",
         "has", "have", "had", "is", "are", "was", "were", "be", "being", "been"
     }
+    name_run_followers = {
+        "has", "have", "had", "is", "are", "was", "were", "be", "being", "been",
+        "does", "do", "did", "can", "could", "will", "would", "should", "may", "might", "must",
+    }
+
+    # Function: Check title-case token.
+    def is_title_token(word: str) -> bool:
+        return word[:1].isupper() and word[1:].islower()
+
     indices: set[int] = set()
     for idx, m in enumerate(matches):
         w = m.group(0)
@@ -2385,15 +2394,22 @@ def _detect_proper_name_indices(text: str) -> set[int]:
         if _word_case_pattern(w) == "mixed":
             indices.add(idx)
             continue
-        if w[:1].isupper() and w[1:].islower():
-            if idx > 0:
-                indices.add(idx)
-                continue
-            # First token is treated as proper name if followed by another capitalized token.
-            if idx + 1 < len(matches):
-                nxt = matches[idx + 1].group(0)
-                if nxt[:1].isupper() and nxt[1:].islower() and nxt.lower() not in stopwords:
-                    indices.add(idx)
+        if is_title_token(w):
+            # Guard against false positives from Title Case headings by requiring a
+            # name-like opening run ("John Black ...") followed by a verb/connective.
+            if idx == 0:
+                run_end = idx
+                while run_end + 1 < len(matches):
+                    nxt_word = matches[run_end + 1].group(0)
+                    nxt_lower = nxt_word.lower()
+                    if not is_title_token(nxt_word) or nxt_lower in stopwords:
+                        break
+                    run_end += 1
+                if run_end > idx:
+                    follower = matches[run_end + 1].group(0).lower() if run_end + 1 < len(matches) else ""
+                    if follower in name_run_followers:
+                        for j in range(idx, run_end + 1):
+                            indices.add(j)
     return indices
 
 
@@ -2413,6 +2429,12 @@ def _preserve_proper_name_case(source_heading: str, transformed_heading: str) ->
             break
         src_word = src_matches[idx].group(0)
         dst_match = dst_matches[idx]
+        dst_word = dst_match.group(0)
+        # Preserve casing only when both tokens are the same lexical item.
+        # This avoids undoing deterministic spelling normalization
+        # (e.g., Program -> Programme) when proper-name preservation is enabled.
+        if src_word.lower() != dst_word.lower():
+            continue
         out = out[:dst_match.start()] + src_word + out[dst_match.end():]
         # Refresh matches because replacement may shift offsets.
         dst_matches = list(word_re.finditer(out))

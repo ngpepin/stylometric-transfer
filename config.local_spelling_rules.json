@@ -838,6 +838,66 @@
         ]
       },
       {
+        "id": "ise_ize_optimize",
+        "variants": {
+          "us": "optimize",
+          "canadian": "optimize",
+          "british": "optimise",
+          "australian": "optimise"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed",
+          "ation",
+          "ations"
+        ]
+      },
+      {
+        "id": "ise_ize_visualize",
+        "variants": {
+          "us": "visualize",
+          "canadian": "visualize",
+          "british": "visualise",
+          "australian": "visualise"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed",
+          "ation",
+          "ations"
+        ]
+      },
+      {
+        "id": "ise_ize_specialize",
+        "variants": {
+          "us": "specialize",
+          "canadian": "specialize",
+          "british": "specialise",
+          "australian": "specialise"
+        },
+        "suffixes": [
+          "",
+          "s",
+          "d",
+          "r",
+          "rs",
+          "ing",
+          "ed",
+          "ation",
+          "ations"
+        ]
+      },
+      {
         "id": "yse_yze_analyze",
         "variants": {
           "us": "analyze",
@@ -1394,8 +1454,6 @@
       {
         "id": "program_programme",
         "variants": {
-          "us": "program",
-          "canadian": "program",
           "british": "programme",
           "australian": "programme"
         },
