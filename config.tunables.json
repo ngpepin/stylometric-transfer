@@ -29,7 +29,7 @@
       "enabled": true,
       "allowlist": ["quick win"]
     },
-    "force_local_spelling_LLM": "none",
+    "force_local_spelling_LLM": "us",
     "force_local_spelling_rules": "canadian"
   },
   "humanizer_variance": {
@@ -186,7 +186,7 @@
     "signature_min_overlap": 6
   },
   "postprocess_redundancy": {
-    "enabled": false,
+    "enabled": true,
     "paragraph_dedupe": {
       "enabled": true,
       "min_words": 30,
