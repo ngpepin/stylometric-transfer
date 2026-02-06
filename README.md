@@ -628,6 +628,28 @@ If you see `Detected fiction: quoted passages may be rewritten.` but your docume
 - `style_retry.max_retries` (integer): maximum additional retry passes for the style loop after the initial attempt.
 - `style_retry.voice_max_retries` (integer): maximum retry passes for the forced-person voice loop (`--1st-person` / `--2nd-person` / `--3rd-person`). If omitted, it inherits `style_retry.max_retries`.
 
+What `style_retry.threshold` actually measures
+
+The "compliance score" is a local, interpretable similarity score in the range 0 to 1 computed after each chunk rewrite. It compares the output chunk's measured stylometric signals against the fingerprint's measured corpus signals and aggregates the result:
+
+- `1.0` means the output chunk's measurements closely match the fingerprint measurements across the scored sections.
+- `0.0` means large divergence across one or more scored sections.
+
+The score is based on measurements of author-voice text only (blockquotes/references/citations are excluded, and in non-fiction mode multi-word quotations are preserved and excluded from measurement). It is not a meaning-preservation score; it is only used to decide whether to spend additional LLM calls to better match the fingerprint.
+
+Under the hood, the compliance score is a weighted average of section-level similarities. Each section contributes a 0-1 subscore computed from an explicit distance:
+
+- Histogram sections (sentence length, paragraph length): distance is total variation, `d = 0.5 * sum_i |p_i - q_i|` (ranges 0-1), then `score = 1 - d`.
+- Scalar/rate sections (punctuation rates, stance signals, rhetoric moves, epistemic profile, syntax texture, etc.): distance is a clipped relative error, `d = |out - target| / max(|target|, 1)`, then `score = 1 - clip(d, 0, 1)`. Multi-field sections average their per-field distances before scoring.
+
+Section weights come from `fingerprint.validators.weights` when present; otherwise, sections are averaged equally. In verbose logs, the printed `compliance score: X.XXX` is this aggregate value.
+
+<u>How to pick a threshold:</u>
+
+- Treat it as a "good enough" gate, not a guarantee of perfection. Because compliance is computed per chunk, short chunks and high-variance writing tend to have noisier measurements.
+- If most chunks plateau below your threshold even after retries, the threshold is usually too strict for that fingerprint/input pair. Lower it (for example, `0.75 -> 0.65`) or reduce the number of retries to cap cost.
+- If you care about only a subset of signals, adjust `fingerprint.validators.weights` to emphasize them, rather than pushing the global threshold very high.
+
 **Section Restoration (`section_restore`)**
 *These thresholds control recovery of missing sections after rewriting.*
 - `section_restore.enabled` (boolean): enable/disable restoration of missing sections detected after rewriting.
