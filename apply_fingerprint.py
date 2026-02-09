@@ -6332,7 +6332,9 @@ def main() -> int:
                         out_obj = parse_json_strict(raw)
                     except Exception:
                         vprint("Invalid JSON returned; attempting repair...")
-                        out_obj = repair_json_with_llm(active_cfg, raw, prompts)
+                        # Always repair with the primary config model, even when chunk generation
+                        # is roster-routed, so repair behavior stays stable and predictable.
+                        out_obj = repair_json_with_llm(cfg, raw, prompts)
                     final_md = out_obj.get("final_markdown") if isinstance(out_obj, dict) else None
                     if isinstance(final_md, str) and final_md.strip():
                         if attempt > 0:

@@ -1,0 +1,40 @@
+{
+  "roster": [
+    {
+      "name": "slot-1",
+      "api_key": "sk-123",
+      "base_url": "http://localhost:4141/v1",
+      "model": "gpt-4.1",
+      "max_tokens": 17000,
+      "temperature": 0.4,
+      "timeout_seconds": 320,
+      "max_retries": 6,
+      "backoff_base_seconds": 2.0,
+      "backoff_max_seconds": 20.0
+    },
+    {
+      "name": "slot-2",
+      "api_key": "sk-123",
+      "base_url": "http://localhost:4141/v1",
+      "model": "claude-sonnet-4.5",
+      "max_tokens": 17000,
+      "temperature": 0.4,
+      "timeout_seconds": 320,
+      "max_retries": 6,
+      "backoff_base_seconds": 2.0,
+      "backoff_max_seconds": 20.0
+    },
+    {
+      "name": "slot-3",
+      "api_key": "sk-123",
+      "base_url": "http://localhost:4141/v1",
+      "model": "gemini-2.5-pro",
+      "max_tokens": 17000,
+      "temperature": 0.4,
+      "timeout_seconds": 320,
+      "max_retries": 6,
+      "backoff_base_seconds": 2.0,
+      "backoff_max_seconds": 20.0
+    }
+  ]
+}

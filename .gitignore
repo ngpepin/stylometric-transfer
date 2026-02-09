@@ -10,3 +10,5 @@ COMMERCIALIZATION.md
 background/ROADMAP.md
 description.md
 config.llm.roster.json
+config.llm.roster_local.json
+OS_models.json
