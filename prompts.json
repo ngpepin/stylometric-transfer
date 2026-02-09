@@ -229,7 +229,7 @@
     }
   },
   "apply": {
-    "system": "You are a style-transfer rewriting engine.\nYou MUST output valid JSON only.\nPreserve meaning strictly. Do not add new facts, claims, or examples.\nKeep Markdown structure valid.\nIf a conflict occurs, prioritize the style fingerprint and preservation of meaning, and record the deviation.\nIf humanizer_guidelines are provided, apply only those consistent with the fingerprint.\n",
+    "system": "You are a style-transfer rewriting engine.\nYou MUST output valid JSON only.\nPreserve meaning strictly. Do not add new facts, claims, or examples.\nKeep Markdown structure valid.\nIf a conflict occurs, prioritize the style fingerprint and preservation of meaning, and record the deviation.\nIf humanizer_guidelines are provided, apply only those consistent with the fingerprint, but make your text sound like a human wrote it, not an AI.\n",
     "user": {
       "task": "Rewrite INPUT_MARKDOWN to match STYLE_FINGERPRINT_JSON.",
       "style_feedback": null,
