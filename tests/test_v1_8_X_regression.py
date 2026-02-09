@@ -3,6 +3,8 @@ from pathlib import Path
 import unittest
 import io
 import contextlib
+import tempfile
+import json
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -107,6 +109,51 @@ class TestV18XRegression(unittest.TestCase):
         self.assertEqual(code, 0)
         value = out.getvalue().strip()
         self.assertIn(value, ("default", "low", "medium", "high", "extreme"))
+
+    def test_parse_roster_seed(self) -> None:
+        self.assertIsNone(af.parse_roster_seed(None))
+        self.assertIsNone(af.parse_roster_seed(""))
+        self.assertEqual(af.parse_roster_seed("1234"), 1234)
+        with self.assertRaises(ValueError):
+            af.parse_roster_seed("abc")
+
+    def test_build_roster_indices_ordered_and_seeded(self) -> None:
+        self.assertEqual(af.build_roster_indices(3, 7, None), [0, 1, 2, 0, 1, 2, 0])
+        seeded = af.build_roster_indices(3, 6, 42)
+        self.assertEqual(seeded[:3], [1, 0, 2])
+        self.assertCountEqual(seeded[:3], [0, 1, 2])
+        self.assertCountEqual(seeded[3:6], [0, 1, 2])
+
+    def test_load_llm_roster(self) -> None:
+        base_cfg = af.LLMConfig(
+            api_key="k",
+            base_url="http://localhost:4141/v1",
+            model="gpt-4.1",
+            max_tokens=1000,
+            temperature=0.2,
+            timeout_seconds=30,
+            extra_headers={},
+            max_prompt_tokens=1000,
+            max_retries=2,
+            backoff_base_seconds=1.0,
+            backoff_max_seconds=2.0,
+        )
+        payload = {
+            "roster": [
+                {"model": "gpt-4.1"},
+                {"model": "gpt-4.1-mini", "temperature": 0.3},
+                "gpt-4.1",
+            ]
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            roster_path = Path(tmpdir) / "config.llm.roster.json"
+            roster_path.write_text(json.dumps(payload), encoding="utf-8")
+            entries = af.load_llm_roster(roster_path, base_cfg)
+        self.assertEqual(len(entries), 3)
+        self.assertEqual(entries[0].model, "gpt-4.1")
+        self.assertEqual(entries[1].model, "gpt-4.1-mini")
+        self.assertAlmostEqual(entries[1].temperature, 0.3)
+        self.assertEqual(entries[2].base_url, "http://localhost:4141/v1")
 
 
 if __name__ == "__main__":

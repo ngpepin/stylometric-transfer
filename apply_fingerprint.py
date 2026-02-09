@@ -67,6 +67,7 @@ HUMANIZER_GUIDELINES_FILENAME = "general-guidelines.md"
 HUMANIZER_CACHE_FILENAME = "humanizer_rules.cache.json"
 TUNABLES_FILENAME = "config.tunables.json"
 AVOID_LIST_FILENAME = "config.avoid.txt"
+LLM_ROSTER_FILENAME = "config.llm.roster.json"
 EMOJI_SUBSTITUTIONS_FILENAME = "emoji-substitutions.json"
 EM_DASH_CHAR = "—"
 EMOJI_RE = re.compile(
@@ -5105,6 +5106,108 @@ def load_config(path: Path) -> LLMConfig:
         backoff_max_seconds=float(data.get("backoff_max_seconds", 20.0))
     )
 
+
+# Function: Resolve roster config path.
+def resolve_roster_config_path(path: Path | None = None) -> Path | None:
+    if isinstance(path, Path) and path.exists():
+        return path
+    cwd_path = Path.cwd() / LLM_ROSTER_FILENAME
+    script_path = Path(__file__).resolve().parent / LLM_ROSTER_FILENAME
+    if cwd_path.exists():
+        return cwd_path
+    if script_path.exists():
+        return script_path
+    return None
+
+
+# Function: Parse optional roster seed.
+def parse_roster_seed(value: str | None) -> int | None:
+    if value is None:
+        return None
+    token = str(value).strip()
+    if token == "":
+        return None
+    return int(token)
+
+
+# Function: Build roster index schedule for chunks.
+def build_roster_indices(roster_size: int, chunk_count: int, seed: int | None = None) -> List[int]:
+    if roster_size <= 0 or chunk_count <= 0:
+        return []
+    if seed is None:
+        return [idx % roster_size for idx in range(chunk_count)]
+    rng = random.Random(int(seed))
+    out: List[int] = []
+    while len(out) < chunk_count:
+        cycle = list(range(roster_size))
+        rng.shuffle(cycle)
+        out.extend(cycle)
+    return out[:chunk_count]
+
+
+# Function: Load model roster entries and map to runtime configs.
+def load_llm_roster(path: Path, base_cfg: LLMConfig) -> List[LLMConfig]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ValueError(f"Failed to parse roster config at {path}: {exc}") from exc
+
+    raw_entries: Any = data
+    if isinstance(data, dict):
+        raw_entries = data.get("roster")
+    if not isinstance(raw_entries, list):
+        raise ValueError("Roster config must be a JSON array or an object with a 'roster' array.")
+
+    out: List[LLMConfig] = []
+    for idx, entry in enumerate(raw_entries, start=1):
+        overrides: Dict[str, Any]
+        if isinstance(entry, str):
+            overrides = {"model": entry}
+        elif isinstance(entry, dict):
+            overrides = entry
+        else:
+            continue
+        try:
+            max_tokens = int(overrides.get("max_tokens", base_cfg.max_tokens))
+            max_prompt_tokens = int(overrides.get("max_prompt_tokens", base_cfg.max_prompt_tokens))
+            timeout_seconds = int(overrides.get("timeout_seconds", base_cfg.timeout_seconds))
+            max_retries = int(overrides.get("max_retries", base_cfg.max_retries))
+            backoff_base_seconds = float(overrides.get("backoff_base_seconds", base_cfg.backoff_base_seconds))
+            backoff_max_seconds = float(overrides.get("backoff_max_seconds", base_cfg.backoff_max_seconds))
+            temperature = float(overrides.get("temperature", base_cfg.temperature))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid numeric override in roster entry {idx}: {exc}") from exc
+
+        base_extra_headers = dict(base_cfg.extra_headers) if isinstance(base_cfg.extra_headers, dict) else {}
+        entry_headers = overrides.get("extra_headers")
+        if isinstance(entry_headers, dict):
+            merged_headers = {**base_extra_headers, **entry_headers}
+        else:
+            merged_headers = base_extra_headers
+        model = str(overrides.get("model", base_cfg.model)).strip()
+        if not model:
+            raise ValueError(f"Roster entry {idx} has an empty model.")
+
+        out.append(
+            LLMConfig(
+                api_key=str(overrides.get("api_key", base_cfg.api_key)),
+                base_url=str(overrides.get("base_url", base_cfg.base_url)),
+                model=model,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                timeout_seconds=timeout_seconds,
+                extra_headers=merged_headers,
+                max_prompt_tokens=max_prompt_tokens,
+                max_retries=max_retries,
+                backoff_base_seconds=backoff_base_seconds,
+                backoff_max_seconds=backoff_max_seconds,
+            )
+        )
+
+    if not out:
+        raise ValueError("Roster config contains no valid entries.")
+    return out
+
 # Function: Call completions.
 def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> tuple[str, Dict[str, Any] | None]:
     # POST to a /v1/chat/completions-compatible endpoint.
@@ -5645,6 +5748,16 @@ def main() -> int:
         help="Override tunables humanizer_variance.seed for this run (0 or omitted value = random seed)"
     )
     ap.add_argument(
+        "--roster",
+        nargs="?",
+        const="",
+        default=None,
+        help=(
+            "Use config.llm.roster.json and route one model per chunk in roster order. "
+            "Optional integer value enables seeded random non-repeating roster cycles."
+        )
+    )
+    ap.add_argument(
         "--no-style-retry",
         action="store_true",
         help="Disable the style compliance retry pass"
@@ -5752,6 +5865,36 @@ def main() -> int:
             f"llm.temperature_multiplier={perplexity_knobs.get('llm.temperature_multiplier')}, "
             f"llm.temperature_effective={cfg.temperature:.3f} (base={base_temperature:.3f})"
         )
+
+    roster_cfgs: List[LLMConfig] = []
+    roster_seed: int | None = None
+    roster_enabled = args.roster is not None
+    if roster_enabled:
+        try:
+            roster_seed = parse_roster_seed(args.roster)
+        except ValueError:
+            print_error("Error: --roster seed must be an integer when provided.")
+            return 2
+        roster_path = resolve_roster_config_path(None)
+        if roster_path is None:
+            print_error(f"Error: roster mode requested but {LLM_ROSTER_FILENAME} was not found.")
+            return 2
+        try:
+            roster_cfgs = load_llm_roster(roster_path, cfg)
+        except ValueError as exc:
+            print_error(f"Error: {exc}")
+            return 2
+        if roster_seed is None:
+            print(f"LLM roster: ordered ({len(roster_cfgs)} models)")
+        else:
+            print(f"LLM roster: random seed={roster_seed} ({len(roster_cfgs)} models)")
+        if args.verbose:
+            for idx, entry in enumerate(roster_cfgs, start=1):
+                vprint(
+                    f"  Roster[{idx}] model={entry.model} base_url={entry.base_url} "
+                    f"temperature={entry.temperature:.3f}"
+                )
+
     variance_seed_override: int | None = None
     if args.seed is not None:
         if args.seed == 0:
@@ -6032,7 +6175,8 @@ def main() -> int:
         controller_overlay: Dict[str, Any] | None = None,
         previous_summary: str | None = None,
         summary_words: int | None = None,
-        summary_enabled: bool = False
+        summary_enabled: bool = False,
+        llm_cfg: LLMConfig | None = None
     ) -> List[Dict[str, str]]:
         # Build prompts per chunk using local measurements.
         if for_estimate:
@@ -6048,11 +6192,12 @@ def main() -> int:
                 "summary_words": summary_words if isinstance(summary_words, int) else None,
                 "previous_summary": previous_summary or ""
             }
+        prompt_cfg = llm_cfg if isinstance(llm_cfg, LLMConfig) else cfg
         return build_apply_prompt(
             fp_payload,
             md_chunk,
             input_meas,
-            cfg,
+            prompt_cfg,
             prompts,
             style_feedback,
             humanizer_rules,
@@ -6070,9 +6215,11 @@ def main() -> int:
         depth: int = 0,
         previous_summary: str | None = None,
         summary_words: int | None = None,
-        summary_enabled: bool = False
+        summary_enabled: bool = False,
+        chunk_cfg: LLMConfig | None = None
     ) -> tuple[str, Dict[str, Any], Dict[str, Any]]:
         # Rewrite a chunk with optional style retry.
+        active_cfg = chunk_cfg if isinstance(chunk_cfg, LLMConfig) else cfg
         author_voice = filter_author_voice_text(md_chunk)
         if not author_voice.strip():
             if args.verbose and chunk_index is not None and chunk_total is not None:
@@ -6168,23 +6315,24 @@ def main() -> int:
                 controller_overlay,
                 previous_summary,
                 summary_words,
-                request_chunk_summary
+                request_chunk_summary,
+                active_cfg
             )
             input_tokens = estimate_tokens_for_messages(messages)
             last_raw = ""
             last_usage: Dict[str, Any] | None = None
             last_err: Exception | None = None
             out_obj: Dict[str, Any] | None = None
-            for attempt in range(cfg.max_retries + 1):
+            for attempt in range(active_cfg.max_retries + 1):
                 try:
-                    raw, usage = chat_completions(cfg, messages)
+                    raw, usage = chat_completions(active_cfg, messages)
                     last_raw = raw
                     last_usage = usage
                     try:
                         out_obj = parse_json_strict(raw)
                     except Exception:
                         vprint("Invalid JSON returned; attempting repair...")
-                        out_obj = repair_json_with_llm(cfg, raw, prompts)
+                        out_obj = repair_json_with_llm(active_cfg, raw, prompts)
                     final_md = out_obj.get("final_markdown") if isinstance(out_obj, dict) else None
                     if isinstance(final_md, str) and final_md.strip():
                         if attempt > 0:
@@ -6193,14 +6341,14 @@ def main() -> int:
                     last_err = RuntimeError("LLM did not return final_markdown")
                 except Exception as exc:
                     last_err = exc
-                if attempt >= cfg.max_retries:
+                if attempt >= active_cfg.max_retries:
                     break
-                backoff = min(cfg.backoff_max_seconds, cfg.backoff_base_seconds * (2 ** attempt))
+                backoff = min(active_cfg.backoff_max_seconds, active_cfg.backoff_base_seconds * (2 ** attempt))
                 jitter = random.uniform(0, backoff * 0.2)
                 sleep_s = backoff + jitter
                 print_warn(
                     "LLM output invalid "
-                    f"(attempt {attempt + 1}/{cfg.max_retries + 1}); "
+                    f"(attempt {attempt + 1}/{active_cfg.max_retries + 1}); "
                     f"retrying in {sleep_s:.1f}s. Error: {last_err}"
                 )
                 time.sleep(sleep_s)
@@ -6274,7 +6422,8 @@ def main() -> int:
                                 depth + 1,
                                 summary_cursor,
                                 summary_words,
-                                summary_enabled
+                                summary_enabled,
+                                active_cfg
                             )
                             recovered_chunks.append(sub_md)
                             sub_devs = sub_obj.get("deviations", []) if isinstance(sub_obj, dict) else []
@@ -6698,6 +6847,15 @@ def main() -> int:
     summary_active = summary_enabled and (input_tokens > max_input_tokens or force_min_chunks)
     if input_tokens <= max_input_tokens and not force_min_chunks:
         vprint("Calling LLM to apply fingerprint...")
+        single_chunk_cfg = cfg
+        if roster_cfgs:
+            roster_idx = build_roster_indices(len(roster_cfgs), 1, roster_seed)[0]
+            single_chunk_cfg = roster_cfgs[roster_idx]
+            if args.verbose:
+                vprint(
+                    f"Single chunk roster model {roster_idx + 1}/{len(roster_cfgs)}: "
+                    f"{single_chunk_cfg.model} @ {single_chunk_cfg.base_url}"
+                )
         try:
             final_md, out_obj, compliance = rewrite_chunk(
                 input_md,
@@ -6706,7 +6864,8 @@ def main() -> int:
                 0,
                 None,
                 summary_words,
-                False
+                False,
+                single_chunk_cfg
             )
         except RuntimeError:
             return 3
@@ -6827,8 +6986,20 @@ def main() -> int:
             vprint(f"Filtered out {len(chunks) - len(non_empty)} empty chunk(s).")
         chunks = enforce_min_chunks(input_md, non_empty, min_chunks_when_perturbing) if force_min_chunks else non_empty
         vprint(f"Chunked into {len(chunks)} parts.")
+        roster_indices: List[int] = []
+        if roster_cfgs:
+            roster_indices = build_roster_indices(len(roster_cfgs), len(chunks), roster_seed)
         running_summary = ""
         for idx, chunk in enumerate(chunks, start=1):
+            chunk_cfg = cfg
+            if roster_cfgs:
+                roster_idx = roster_indices[idx - 1]
+                chunk_cfg = roster_cfgs[roster_idx]
+                if args.verbose:
+                    vprint(
+                        f"Chunk {idx}/{len(chunks)} roster model {roster_idx + 1}/{len(roster_cfgs)}: "
+                        f"{chunk_cfg.model} @ {chunk_cfg.base_url}"
+                    )
             vprint(f"Rewriting chunk {idx}/{len(chunks)}...")
             try:
                 final_md, out_obj, compliance = rewrite_chunk(
@@ -6838,7 +7009,8 @@ def main() -> int:
                     0,
                     running_summary,
                     summary_words,
-                    summary_active
+                    summary_active,
+                    chunk_cfg
                 )
             except RuntimeError:
                 return 3
@@ -7370,7 +7542,12 @@ def main() -> int:
             "metrics": humanization_metrics
         })
 
-    out_path = args.out or args.inp.with_suffix(args.inp.suffix + ".styled.md")
+    roster_suffix = ""
+    if roster_enabled:
+        roster_suffix = "_roster"
+        if roster_seed is not None:
+            roster_suffix += str(roster_seed)
+    out_path = args.out or args.inp.with_suffix(args.inp.suffix + f".styled{roster_suffix}.md")
     vprint(f"Writing output: {out_path}")
     out_path.write_text(final_md, encoding="utf-8")
     print(f"Wrote rewritten markdown to: {out_path}")

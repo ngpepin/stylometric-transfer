@@ -214,6 +214,7 @@ Create `config.llm.json` in the project root (used by default):
 
 Notes:
 - Default lookup for `config.llm.json`: current working directory first, then the directory containing the Python scripts
+- Optional `config.llm.roster.json` (same lookup path) defines ordered model entries used by `--roster` (one model per chunk, cycling through the roster)
 - `config.tunables.json` can override humanizer conflict thresholds (same search path as config.llm.json)
 - `max_prompt_tokens` controls chunking for large inputs (defaults to `max_tokens`; override per run with `--max-prompt-tokens`)
 - `max_retries`, `backoff_base_seconds`, and `backoff_max_seconds` control exponential backoff retries for transient LLM errors or timeouts
@@ -879,6 +880,7 @@ Notes and common gotchas:
 `--local-spelling-llm {none|canadian|australian|british|us}` overrides only `humanizer_mandatory.force_local_spelling_LLM`.  
 `--local-spelling-rules {none|canadian|australian|british|us}` overrides only `humanizer_mandatory.force_local_spelling_rules`.  
 `--perplexity {default|low|medium|high|extreme}` overrides tunables `perplexity_level` for a single run.  
+`--roster [int]` enables multi-model chunk routing from `config.llm.roster.json`; with an integer seed, each roster cycle is shuffled deterministically and no model repeats until all entries are used.  
 `--seed [int]` overrides `humanizer_variance.seed` for a single run (`0` or omitted value = random seed). The override also drives controller‑overlay sampling so both systems remain aligned.
 `--query perplexity` (or `--query=perplexity`) prints the configured perplexity level on a single line and exits; other arguments are ignored.
 

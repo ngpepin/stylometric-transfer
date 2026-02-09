@@ -92,7 +92,7 @@ Avoid ambiguous terms like “clone” in public documentation.
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
   - Extra: `--max-prompt-tokens` overrides chunking threshold
   - Overrides: `--1st-person` / `--2nd-person` / `--3rd-person` force narrative voice regardless of fingerprint
-  - Runtime overrides: `--local-spelling {none|canadian|australian|british|us}` (applies to both LLM + deterministic rules), `--local-spelling-llm ...`, `--local-spelling-rules ...`, `--perplexity {default|low|medium|high|extreme}`, and `--seed [N]` (omitted value or `0` => random run seed)
+  - Runtime overrides: `--local-spelling {none|canadian|australian|british|us}` (applies to both LLM + deterministic rules), `--local-spelling-llm ...`, `--local-spelling-rules ...`, `--perplexity {default|low|medium|high|extreme}`, `--roster [N]` (optional seeded chunk-level roster shuffle), and `--seed [N]` (omitted value or `0` => random run seed)
 
 - `scripts/fingerprint_style.sh`, `scripts/apply_fingerprint.sh`, and `scripts/show_fingerprint.sh`
   - Bash wrappers around the Python entry points
@@ -112,6 +112,10 @@ Avoid ambiguous terms like “clone” in public documentation.
   - `max_prompt_tokens` controls chunking for large prompts (defaults to `max_tokens`)
   - `max_retries` / `backoff_*` control exponential backoff on transient LLM failures (transport-level retries per HTTP call)
   - Optional `lexicon_hints.json` can be used to inject preferred/avoided phrases into fingerprinting
+- `config.llm.roster.json`
+  - Optional ordered roster used by `apply_fingerprint.py --roster`
+  - Supports per-entry OpenAI-compatible overrides (`model`, `base_url`, `api_key`, temperature, retry/backoff fields, token limits)
+  - In seeded mode, each roster cycle is shuffled without repeating an entry until the cycle is exhausted
 - `config.tunables.json`
   - Overrides humanizer conflict thresholds for `apply_fingerprint.py`
   - See README for per‑field explanations and defaults
