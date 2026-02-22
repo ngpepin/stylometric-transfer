@@ -1,3 +1,4 @@
+# Stylometric Profiling and Constraint-Guided Author-Conditioned Style Transfer with Large Language Models (LLMs)
 
 **Repository:** `stylometric-transfer`  
 **Keywords:** stylometry, computational stylistics, authorship attribution, controllable text generation, text style transfer, interpretability
