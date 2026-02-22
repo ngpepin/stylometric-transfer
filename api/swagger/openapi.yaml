@@ -104,6 +104,29 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+  /similarity:
+    post:
+      summary: Compare two stored fingerprints
+      operationId: fingerprintSimilarity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimilarityRequest"
+      responses:
+        "200":
+          description: Similarity score with component diagnostics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimilarityResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   responses:
     BadRequest:
@@ -308,3 +331,88 @@ components:
         calibration:
           type: object
           additionalProperties: true
+    SimilarityRequest:
+      type: object
+      required: [id_a, id_b]
+      properties:
+        id_a:
+          type: string
+          format: uuid
+          description: First fingerprint GUID.
+        id_b:
+          type: string
+          format: uuid
+          description: Second fingerprint GUID.
+        component_weights:
+          type: object
+          description: Optional component weight overrides by component key.
+          additionalProperties:
+            type: number
+            minimum: 0
+    SimilarityComponent:
+      type: object
+      properties:
+        name:
+          type: string
+        similarity:
+          type: number
+          minimum: 0
+          maximum: 1
+        weight:
+          type: number
+          minimum: 0
+      additionalProperties: true
+    SimilarityResponse:
+      type: object
+      required:
+        - id_a
+        - id_b
+        - similarity_score
+        - distance_score
+        - coverage
+        - confidence_hint
+        - evidence
+        - components
+      properties:
+        id_a:
+          type: string
+          format: uuid
+        id_b:
+          type: string
+          format: uuid
+        profile_id_a:
+          type: string
+          nullable: true
+        profile_id_b:
+          type: string
+          nullable: true
+        similarity_score:
+          type: number
+          minimum: 0
+          maximum: 1
+        distance_score:
+          type: number
+          minimum: 0
+          maximum: 1
+        coverage:
+          type: object
+          additionalProperties: true
+        confidence_hint:
+          type: number
+          minimum: 0
+          maximum: 1
+        evidence:
+          type: object
+          additionalProperties: true
+        components:
+          type: array
+          items:
+            $ref: "#/components/schemas/SimilarityComponent"
+        top_differences:
+          type: array
+          items:
+            $ref: "#/components/schemas/SimilarityComponent"
+        weights:
+          type: object
+          additionalProperties:
+            type: number

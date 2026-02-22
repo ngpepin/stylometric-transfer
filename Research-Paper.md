@@ -160,6 +160,71 @@ The strategic opportunity comes with governance risks:
 
 For these reasons, this project makes humanization explicit, deterministic by default, bounded when stochastic, and always logged. From a management perspective, this is the key design choice: it turns a vague aspiration ("make it sound human") into an auditable operational capability.
 
+#### 1.5.7 Chat trust operations: API-assisted human-interaction validation
+
+A practical business use case is chat trust operations: estimating whether an account that appears to be a human user is still being operated by that same human, rather than by an automated agent proxy. In this setting, the local API (`/make`, `/rate`) supports a behavioral assurance layer on top of conventional controls.
+
+At a high level, the operating pattern is:
+
+1) Build a reference fingerprint from trusted user-authored text (`POST /make`).
+2) At periodic intervals (or event triggers), score new ostensibly user-provided text (`POST /rate`).
+3) Optionally build rolling session fingerprints and compare them to the baseline with `POST /similarity` to detect profile-level drift.
+4) Treat low probability, low similarity, or abrupt drift as risk signals for secondary checks (step-up authentication, moderation review, or conversation throttling), not as automatic ban decisions.
+
+From a business perspective, this creates a lightweight control surface that can reduce abuse costs (credential sharing, scripted account farming, synthetic support interactions) while preserving user experience for low-risk traffic. The value is strongest when stylometry is fused with orthogonal signals (device reputation, session telemetry, challenge-response), because stylometric evidence alone is probabilistic and can be noisy on short text.
+
+**Suggested operating model**
+
+- **Enrollment window:** build the initial fingerprint only from text collected under higher trust conditions (for example, successful recent MFA sessions and low-risk device posture).
+- **Scoring cadence:** score every $k$ user turns, and also on risk triggers (sudden session geo-change, unusual API call patterns, rapid prompt-copy behavior).
+- **Evidence floor:** defer high-impact actions when token evidence is below a minimum threshold; short segments should contribute weakly to risk.
+- **Rolling updates:** refresh fingerprints periodically to capture natural drift in user style (life events, domain changes, language shifts).
+- **Case logging:** store probability, confidence interval, evidence size, and escalation rationale for audit and model governance.
+
+**Decisioning pattern**
+
+Let $p_t$ be the style-match probability from `/rate` at turn $t$. A practical risk score can be formed as a rolling aggregation:
+
+$$
+\bar{p}_t = \frac{1}{m}\sum_{i=t-m+1}^{t} p_i, \qquad
+R_t = \alpha(1-\bar{p}_t) + \beta D_t + \gamma C_t
+$$
+
+where:
+- $D_t$ captures drift volatility (for example, recent variance or slope in $p_i$),
+- $C_t$ captures contextual risk from non-stylometric controls,
+- $\alpha,\beta,\gamma$ are operational weights.
+
+This allows tiered response rather than binary classification:
+- **Low risk:** continue session normally.
+- **Medium risk:** passive friction (light challenge, reduced tool privileges).
+- **High risk:** step-up verification or human review queue.
+- **Critical risk:** temporary action constraints pending adjudication.
+
+**Business KPIs for deployment**
+
+Program success should be measured as an operations portfolio, not a single classifier score:
+- reduction in confirmed automated-abuse incidents per 1,000 sessions,
+- false-positive escalation rate (human users sent to review),
+- median time-to-resolution for escalated sessions,
+- user-friction impact (challenge rate, abandonment rate),
+- review precision (fraction of flagged sessions confirmed risky),
+- net cost impact (abuse losses avoided minus review and friction costs).
+
+**Failure modes and mitigation controls**
+
+- **Legitimate style drift:** users can change writing register by context or stress; mitigate via rolling baselines and recency weighting.
+- **Cross-genre mismatch:** support chats, appeals, and technical prompts may have different style regimes; mitigate with per-context fingerprints or context-aware thresholds.
+- **Adversarial mimicry:** sophisticated attackers may imitate prior text; mitigate by combining stylometry with independent session controls and anomaly features.
+- **Sparse evidence:** short or formulaic text can yield unstable estimates; mitigate by delaying irreversible actions until evidence accumulates.
+- **Population bias:** non-native language users or accessibility tools may alter stylometric signals; mitigate through fairness monitoring and calibrated overrides.
+
+**Governance and compliance implications**
+
+The core governance point is proportional response: stylometric mismatch is an indicator, not identity proof. In regulated or high-stakes environments, the signal should inform risk tiering and review queues, never replace due process or explicit user authentication controls. Data minimization is also essential: retain only what is needed for model operation and audit, define retention windows, and document user-notice and appeal pathways where policy requires them.
+
+In short, API-based stylometric validation is most effective as a risk amplifier in a defense-in-depth architecture, not as a standalone gatekeeper.
+
 ---
 
 ## 2. Related Work
@@ -423,6 +488,38 @@ w = 0.5(1-r), \qquad
 $$
 
 This design is practical for operations: it preserves interpretability, keeps all scoring grounded in explicit stylometric features, and emits probabilities in $[0,1]$ aligned with authorship-verification evaluation conventions (including Brier-oriented assessments) [PAN/CLEF AV metrics].
+
+#### 2.5.7 Fingerprint-to-fingerprint similarity (`/similarity`)
+
+The API also supports direct fingerprint comparison (`POST /similarity`) to answer a different question from `/rate`: not "does this text match fingerprint $F$?" but "how similar are fingerprints $F_a$ and $F_b$?" This is useful for profile deduplication, drift monitoring, cohort analysis, and chat trust workflows that compare a baseline user fingerprint with a rolling session fingerprint.
+
+Let the fingerprint similarity be a weighted aggregation over interpretable components:
+
+$$
+S(F_a,F_b) = \frac{\sum_{j \in \mathcal{J}_\text{avail}} w_j s_j}{\sum_{j \in \mathcal{J}_\text{avail}} w_j},
+\qquad s_j \in [0,1].
+$$
+
+Each component score $s_j$ is derived from explicit features already present in the fingerprint JSON:
+
+- **Distribution components (sentence/paragraph histograms, function-word profiles):** use Jensen-Shannon divergence and map similarity as $s=1-\mathrm{JSD}(P,Q)$. JSD is symmetric, bounded, and well-suited for probability distributions [Lin, 1991; Endres & Schindelin, 2003].
+- **Rate components (punctuation, stance, rhetoric, syntax, cadence, repetition):** use symmetric relative similarity
+$$
+s = \frac{1}{1 + \frac{|a-b|}{\max\left(\frac{|a|+|b|}{2},\epsilon\right)}}
+$$
+which stays bounded and interpretable while avoiding instability near zero.
+- **Lexical overlap components (preferred and avoided lexicon):** use Jaccard overlap
+$$
+s = \frac{|A \cap B|}{|A \cup B|}.
+$$
+
+The method returns not only $S$ but also component-level diagnostics (worst-matching components/keys), because operational users need causal hints ("where are these profiles different?"), not only a scalar. This is consistent with stylometric best practice where distance values are interpreted through feature decomposition rather than as opaque truth values [Evert et al., 2017].
+
+To prevent overconfidence when fingerprints are sparse, the API also emits:
+- **coverage ratio:** fraction of expected weighted components actually comparable,
+- **confidence hint:** a bounded signal combining feature coverage with available corpus size estimates.
+
+This keeps decisions auditable: a low similarity with low coverage should trigger data collection, not hard enforcement.
 
 **Genre-aware quotation handling:** the pipeline auto-detects fiction versus non-fiction using quote-density signals (multi-word quote spans, quoted-word ratio, and quote-paragraph ratio). In non-fiction, multi-word quotations are excluded from profiling and preserved verbatim during rewriting; in fiction, they remain part of the author’s voice. These thresholds are tunable via `config.tunables.json` (see `fiction_detection.*`) and can be overridden explicitly (`--fiction` / `--non‑fiction`).
 
@@ -803,6 +900,8 @@ Stylometric-Transfer connects classic stylometry and LLM-based rewriting by pair
 
 - Mosteller, F., & Wallace, D. L. *Inference and Disputed Authorship: The Federalist.* Addison-Wesley (1964). ([archive.org](https://archive.org/details/inferencedispute00most?utm_source=chatgpt.com))
 - Evert, S., et al. "Understanding and explaining Delta measures for authorship attribution." *Digital Scholarship in the Humanities* (2017). ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com))
+- Lin, J. "Divergence Measures Based on the Shannon Entropy." *IEEE Transactions on Information Theory* (1991). ([doi.org](https://doi.org/10.1109/18.61115))
+- Endres, D. M., & Schindelin, J. E. "A new metric for probability distributions." *IEEE Transactions on Information Theory* (2003). ([doi.org](https://doi.org/10.1109/TIT.2003.813506))
 - Platt, J. "Probabilistic Outputs for Support Vector Machines and Comparisons to Regularized Likelihood Methods." (1999). ([researchgate.net](https://www.researchgate.net/publication/2594015_Probabilistic_Outputs_for_Support_Vector_Machines_and_Comparisons_to_Regularized_Likelihood_Methods))
 - Guo, C., Pleiss, G., Sun, Y., & Weinberger, K. Q. "On Calibration of Modern Neural Networks." *ICML/PMLR* (2017). ([proceedings.mlr.press](https://proceedings.mlr.press/v70/guo17a.html))
 - scikit-learn documentation, "Probability calibration" (sigmoid/Platt and isotonic calibration notes). ([scikit-learn.org](https://scikit-learn.org/stable/modules/calibration.html))

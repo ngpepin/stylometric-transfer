@@ -181,6 +181,65 @@ class TestV18XRegression(unittest.TestCase):
             self.assertEqual(loaded_path, fp_path)
             self.assertEqual(meta.get("id"), guid)
 
+    def test_common_fingerprint_similarity_identical(self) -> None:
+        fp = {
+            "metadata": {"corpus": {"size": {"words_est": 5000}}},
+            "measurements": {
+                "sentence": {"length_words": {"histogram_p": [0.2, 0.4, 0.3, 0.1]}},
+                "paragraph": {"length_sentences_histogram_p": [0.3, 0.5, 0.2]},
+                "function_words": {"rates_per_1000w": {"and": 30.0, "the": 70.0, "but": 4.0}},
+                "punctuation": {"rates_per_1000w": {"commas": 35.0, "semicolons": 3.0}},
+                "stance_signals": {"hedge_rate": 4.0, "booster_rate": 1.0},
+                "rhetoric_moves": {"claim_rate": 6.0, "evidence_rate": 5.0},
+                "syntax_texture": {"subordinate_clause_rate": 8.0},
+                "paragraph_cadence": {"opening_sentence_length_mean": 14.0},
+                "repetition": {"bigram_repeat_rate": 0.06, "trigram_repeat_rate": 0.03},
+            },
+            "lexicon": {
+                "preferred_words": ["therefore"],
+                "preferred_phrases": ["in practice"],
+                "avoid_words": ["very"],
+            },
+        }
+        result = common.compute_fingerprint_similarity(fp, fp)
+        self.assertGreaterEqual(result["similarity_score"], 0.99)
+        self.assertLessEqual(result["distance_score"], 0.01)
+
+    def test_common_fingerprint_similarity_detects_difference(self) -> None:
+        fp_a = {
+            "metadata": {"corpus": {"size": {"words_est": 7000}}},
+            "measurements": {
+                "sentence": {"length_words": {"histogram_p": [0.7, 0.2, 0.1]}},
+                "paragraph": {"length_sentences_histogram_p": [0.8, 0.2]},
+                "function_words": {"rates_per_1000w": {"and": 60.0, "the": 80.0}},
+                "punctuation": {"rates_per_1000w": {"commas": 5.0, "semicolons": 0.2}},
+                "stance_signals": {"hedge_rate": 0.3},
+                "rhetoric_moves": {"claim_rate": 2.0},
+                "syntax_texture": {"subordinate_clause_rate": 1.0},
+                "paragraph_cadence": {"opening_sentence_length_mean": 8.0},
+                "repetition": {"bigram_repeat_rate": 0.02, "trigram_repeat_rate": 0.01},
+            },
+            "lexicon": {"preferred_words": ["quick"], "avoid_words": ["however"]},
+        }
+        fp_b = {
+            "metadata": {"corpus": {"size": {"words_est": 7000}}},
+            "measurements": {
+                "sentence": {"length_words": {"histogram_p": [0.1, 0.2, 0.7]}},
+                "paragraph": {"length_sentences_histogram_p": [0.1, 0.9]},
+                "function_words": {"rates_per_1000w": {"and": 5.0, "the": 20.0}},
+                "punctuation": {"rates_per_1000w": {"commas": 65.0, "semicolons": 9.0}},
+                "stance_signals": {"hedge_rate": 9.0},
+                "rhetoric_moves": {"claim_rate": 12.0},
+                "syntax_texture": {"subordinate_clause_rate": 14.0},
+                "paragraph_cadence": {"opening_sentence_length_mean": 28.0},
+                "repetition": {"bigram_repeat_rate": 0.22, "trigram_repeat_rate": 0.14},
+            },
+            "lexicon": {"preferred_words": ["consequently"], "avoid_words": ["quick"]},
+        }
+        result = common.compute_fingerprint_similarity(fp_a, fp_b)
+        self.assertLess(result["similarity_score"], 0.6)
+        self.assertGreater(result["distance_score"], 0.4)
+
 
 if __name__ == "__main__":
     unittest.main()

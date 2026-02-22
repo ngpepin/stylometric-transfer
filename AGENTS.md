@@ -99,12 +99,18 @@ Avoid ambiguous terms like “clone” in public documentation.
     - `POST /make`: accepts text, generates/stores fingerprint, returns GUID
     - `POST /apply`: accepts GUID + text, applies stored fingerprint
     - `POST /rate`: accepts GUID + text, returns stylometric match probability
+    - `POST /similarity`: accepts two GUIDs, returns fingerprint similarity score + component diagnostics
+  - Port controls: `--port` (default `8765`) and `--api` (alias for API port, takes precedence when provided)
   - Uses the same config modalities as CLI (`config.llm.json`, `config.tunables.json`, `config.avoid.txt`, `config.local_spelling_rules.json`, `config.llm.roster.json` via existing entry points)
   - Uses repository-root `fingerprint_store/` for GUID tracking (`<guid>.fingerprint.json`, `<guid>.meta.json`)
   - Exposes local docs helpers: `GET /openapi.yaml`, `GET /openapi.json`, `GET /health`
-- `scripts/fingerprint_style.sh`, `scripts/apply_fingerprint.sh`, `scripts/show_fingerprint.sh`, and `scripts/fingerprint_api.sh`
+- `fingerprint_api_harness.py`
+  - Tkinter GUI demo harness for local API testing (make/apply/rate/similarity + docs/health helpers)
+  - Accepts `--host` and `--api` to target a running local API instance
+- `scripts/fingerprint_style.sh`, `scripts/apply_fingerprint.sh`, `scripts/show_fingerprint.sh`, `scripts/fingerprint_api.sh`, and `scripts/fingerprint_api_harness.sh`
   - Bash wrappers around the Python entry points
   - Pass all CLI args through unchanged
+  - `scripts/fingerprint_api_harness.sh` seeds a default `API_PORT` constant (`8765`) and still allows runtime override via `--api`
 - `show_fingerprint.py`
   - Generates a standalone HTML dashboard for a fingerprint JSON
 - `utils.py`
@@ -177,7 +183,7 @@ Avoid ambiguous terms like “clone” in public documentation.
 ```
 Corpus → Voice-filtered local stats → LLM synthesis → Fingerprint JSON
 Fingerprint + Draft → Voice-filtered local stats → LLM rewrite → Styled Markdown
-HTTP Text + GUID → fingerprint_api.py → make/apply/rate orchestration (+ local store)
+HTTP Text + GUID → fingerprint_api.py → make/apply/rate/similarity orchestration (+ local store)
 ```
 
 ### 3.1 Fast Onboarding for Agents
@@ -191,6 +197,7 @@ If you are joining this codebase cold, do this first:
    - `python apply_fingerprint.py --help`
    - `python show_fingerprint.py --help`
    - `python fingerprint_api.py --help`
+   - `python fingerprint_api_harness.py --help`
 4. Before changing rewrite behavior, inspect these hotspots:
    - Retry/chunk orchestration and compliance loops in `apply_fingerprint.py`
    - Deterministic post-processing (spelling, quotes, heading normalization) in `apply_fingerprint.py`

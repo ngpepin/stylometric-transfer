@@ -11,6 +11,7 @@ Endpoints:
   POST /make   -> Build a fingerprint from text and store it by GUID.
   POST /apply  -> Apply a stored fingerprint to new text.
   POST /rate   -> Score probability that text matches a stored fingerprint.
+  POST /similarity -> Compare two stored fingerprints.
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ import apply_fingerprint as af
 
 from common import (
     calibrated_style_match_probability,
+    compute_fingerprint_similarity,
     find_repo_root,
     load_fingerprint_from_store,
     resolve_fingerprint_store_dir,
@@ -158,6 +160,9 @@ class FingerprintAPIHandler(BaseHTTPRequestHandler):
                 return
             if self.path == "/rate":
                 self.handle_rate()
+                return
+            if self.path == "/similarity":
+                self.handle_similarity()
                 return
             self.fail(404, f"Unknown path: {self.path}")
         except ValueError as exc:
@@ -402,6 +407,36 @@ class FingerprintAPIHandler(BaseHTTPRequestHandler):
             },
         )
 
+    # Function: Compare two stored fingerprints and return component-level similarity diagnostics.
+    def handle_similarity(self) -> None:
+        state = self.server.state
+        payload = self.read_json()
+        guid_a = payload.get("id_a")
+        guid_b = payload.get("id_b")
+        if not isinstance(guid_a, str) or not guid_a.strip():
+            raise ValueError("Field 'id_a' must be a non-empty GUID string.")
+        if not isinstance(guid_b, str) or not guid_b.strip():
+            raise ValueError("Field 'id_b' must be a non-empty GUID string.")
+
+        fp_a, _path_a, _meta_a = load_fingerprint_from_store(guid_a.strip(), state.store_dir)
+        fp_b, _path_b, _meta_b = load_fingerprint_from_store(guid_b.strip(), state.store_dir)
+
+        component_weights = payload.get("component_weights")
+        if component_weights is not None and not isinstance(component_weights, dict):
+            raise ValueError("Field 'component_weights' must be an object when provided.")
+
+        similarity = compute_fingerprint_similarity(fp_a, fp_b, component_weights=component_weights)
+        self.send_json(
+            200,
+            {
+                "id_a": guid_a.strip(),
+                "id_b": guid_b.strip(),
+                "profile_id_a": fp_a.get("profile_id"),
+                "profile_id_b": fp_b.get("profile_id"),
+                **similarity,
+            },
+        )
+
     # Function: Quiet default logging unless verbose is enabled.
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
         if self.server.state.verbose:
@@ -448,6 +483,12 @@ def main() -> int:
         help="HTTP bind port (default: 8765)",
     )
     ap.add_argument(
+        "--api",
+        type=int,
+        default=None,
+        help="Optional alias for --port (API port number)",
+    )
+    ap.add_argument(
         "--max-prompt-tokens",
         type=int,
         default=None,
@@ -455,6 +496,11 @@ def main() -> int:
     )
     ap.add_argument("-v", "--verbose", action="store_true", help="Enable HTTP request logging")
     args = ap.parse_args()
+
+    port = int(args.api) if args.api is not None else int(args.port)
+    if not (1 <= port <= 65535):
+        print("Error: API port must be in 1..65535.", file=sys.stderr)
+        return 2
 
     repo_root = find_repo_root(Path(__file__).resolve())
     config_path = resolve_required_path(args.config, "config.llm.json", __file__)
@@ -475,8 +521,8 @@ def main() -> int:
         style_retry_threshold=style_retry_threshold,
         default_max_prompt_tokens=args.max_prompt_tokens,
     )
-    server = FingerprintAPIServer(args.host, args.port, state)
-    print(f"fingerprint_api listening on http://{args.host}:{args.port}")
+    server = FingerprintAPIServer(args.host, port, state)
+    print(f"fingerprint_api listening on http://{args.host}:{port}")
     print(f"Using config: {config_path}")
     if tunables_path is not None:
         print(f"Using tunables: {tunables_path}")

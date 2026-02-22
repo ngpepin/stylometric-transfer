@@ -12,12 +12,13 @@ A **humanization-aware conflict-resolution layer** integrates humanizer guidelin
 This repository includes:
 - `fingerprint_style.py`: extracts a **style fingerprint (stylometric profile)** from a writing archive
 - `apply_fingerprint.py`: rewrites Markdown to match the fingerprint
-- `fingerprint_api.py`: local HTTP API exposing `make`, `apply`, and `rate` methods
+- `fingerprint_api.py`: local HTTP API exposing `make`, `apply`, `rate`, and `similarity` methods
+- `fingerprint_api_harness.py`: GUI demo harness for calling API endpoints
 - `show_fingerprint.py`: generates a standalone HTML dashboard for a fingerprint JSON
 - `common.py`: shared path/config/store/probability helpers used across entry points
 - `prompts.json`: externalized prompt templates used by both scripts (edit here to adjust behaviour)
 - `api/swagger/openapi.yaml` and `api/swagger/openapi.json`: API specifications
-- `scripts/`: bash wrappers for invoking the Python entry points
+- `scripts/`: bash wrappers for invoking the Python entry points (including `fingerprint_api_harness.sh`)
 
 Further details are available in `Article-Teaching-Machines-to-Write-Like-You.md` and `Research-Paper.md`.
 
@@ -57,6 +58,7 @@ For commercial use, contact the author to discuss potential participation and/or
   - [1. Build a Style Fingerprint](#1-build-a-style-fingerprint)
   - [2. Apply a Fingerprint](#2-apply-a-fingerprint)
   - [3. Local HTTP API](#3-local-http-api)
+  - [4. API GUI Harness](#4-api-gui-harness)
 - [Output Files](#output-files)
 - [Testing](#testing)
 - [Style Model Schema](#style-model-schema)
@@ -151,6 +153,7 @@ In research terms, the system performs:
 - Filters out blockquotes, reference sections, footnotes, citation markers, and boilerplate notices (copyright/terms/privacy) from style measurements and excerpts, preserving them verbatim during rewrite
 - Strips embedded BASE64 images before sending prompts to the LLM and re-embeds them in output
 - Exposes a local HTTP API (`make`/`apply`/`rate`) backed by GUID-tracked fingerprint files
+  - Includes a fingerprint-to-fingerprint `similarity` method for profile comparison diagnostics
 - Compatible with OpenAI (works with OpenAI, Azure OpenAI, vLLM, etc.)
 - Interpretable, editable, versionable style models
 
@@ -189,6 +192,7 @@ HTTP text
       ├─ POST /make  -> fingerprint_style.py + GUID store
       ├─ POST /apply -> apply_fingerprint.py
       └─ POST /rate  -> local probabilistic style scoring
+         POST /similarity -> local fingerprint similarity scoring
 ```
 
 ---
@@ -982,11 +986,19 @@ Run the local API (HTTP only; local deployment intent):
 python fingerprint_api.py --host 127.0.0.1 --port 8765
 ```
 
+You can also set the API port with `--api N`:
+
+```bash
+python fingerprint_api.py --host 127.0.0.1 --api 8765
+```
+
 Wrapper script:
 
 ```bash
 ./scripts/fingerprint_api.sh --host 127.0.0.1 --port 8765
 ```
+
+`--api` is also accepted by the wrapper because all args are passed through unchanged.
 
 The API stores fingerprints in a repository-root subdirectory (`fingerprint_store/`) as:
 - `<guid>.fingerprint.json`
@@ -996,6 +1008,7 @@ Methods:
 - `POST /make`: accepts text and creates a fingerprint; returns a GUID
 - `POST /apply`: accepts GUID + text and returns rewritten text + deviations
 - `POST /rate`: accepts GUID + text and returns style-match probability
+- `POST /similarity`: accepts two GUIDs and returns fingerprint similarity diagnostics
 
 Example: `make`
 
@@ -1021,6 +1034,14 @@ curl -s http://127.0.0.1:8765/rate \
   -d '{"id":"<GUID_FROM_MAKE>","text":"Candidate text segment."}'
 ```
 
+Example: `similarity`
+
+```bash
+curl -s http://127.0.0.1:8765/similarity \
+  -H "Content-Type: application/json" \
+  -d '{"id_a":"<GUID_A>","id_b":"<GUID_B>"}'
+```
+
 Swagger/OpenAPI artifacts:
 - `api/swagger/openapi.yaml`
 - `api/swagger/openapi.json`
@@ -1034,6 +1055,49 @@ The API also serves:
 - Base score: local style compliance score (`0..1`) from the same measurement layer used by rewrite retries.
 - Calibration: logistic mapping centered at the style threshold (default: `config.tunables.json -> style_retry.threshold`).
 - Reliability shrinkage: short segments are shrunk toward `0.5` to reflect lower evidence, and a 90% confidence interval is returned.
+
+`similarity` method details:
+- Compares two stored fingerprints directly (no rewrite step).
+- Uses interpretable per-component signals (histogram/divergence, rate similarity, function-word distribution, lexical overlap).
+- Returns:
+  - overall `similarity_score` (`0..1`)
+  - `distance_score` (`1 - similarity`)
+  - per-component metrics and top differences
+  - coverage and confidence hints to show when the comparison is underpowered.
+
+---
+
+### 4. API GUI Harness
+
+The GUI harness provides a no-`curl` way to try all API endpoints:
+- `POST /make`
+- `POST /apply`
+- `POST /rate`
+- `POST /similarity`
+- utility calls: `GET /health`, `GET /openapi.json`, `GET /openapi.yaml`
+
+Launcher script (runnable from anywhere):
+
+```bash
+./scripts/fingerprint_api_harness.sh
+```
+
+How port selection works:
+- The launcher defines a constant at the top of the script: `API_PORT=8765`
+- It starts the harness with `--api "${API_PORT}"` by default
+- You can still override it at runtime, for example:
+
+```bash
+./scripts/fingerprint_api_harness.sh --api 9000
+```
+
+Typical flow:
+1. Start the API server (`fingerprint_api.py`) on a chosen port.
+2. Start the harness script.
+3. In the harness top bar, confirm host/port and click `Apply Host/Port`.
+4. Use each endpoint tab to submit requests and inspect JSON responses in the Response panel.
+
+The harness uses Tkinter (`python3-tk` on many Linux distros) plus `requests`.
 
 ---
 

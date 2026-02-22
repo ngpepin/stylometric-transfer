@@ -10,7 +10,7 @@ import math
 import re
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 FINGERPRINT_STORE_DIRNAME = "fingerprint_store"
 GUID_RE = re.compile(
@@ -219,4 +219,361 @@ def calibrated_style_match_probability(
             "evidence_tokens": denom,
             "method": "logistic_calibration_with_length_reliability_shrinkage",
         },
+    }
+
+
+# Function: Safely fetch nested dictionary values.
+def _safe_get(obj: Dict[str, Any], *keys: str, default: Any = None) -> Any:
+    cur: Any = obj
+    for key in keys:
+        if not isinstance(cur, dict) or key not in cur:
+            return default
+        cur = cur[key]
+    return cur
+
+
+# Function: Normalize a vector into a probability distribution.
+def _normalize_distribution(values: List[float]) -> List[float]:
+    if not values:
+        return []
+    cleaned = [max(0.0, float(v)) for v in values]
+    total = sum(cleaned)
+    if total <= 0.0:
+        uniform = 1.0 / len(cleaned)
+        return [uniform for _ in cleaned]
+    return [v / total for v in cleaned]
+
+
+# Function: Compute Jensen-Shannon divergence in base-2 (bounded in [0,1] for two distributions).
+def jensen_shannon_divergence(p: List[float], q: List[float]) -> float:
+    if not p or not q or len(p) != len(q):
+        return 1.0
+    pp = _normalize_distribution(p)
+    qq = _normalize_distribution(q)
+    m = [(a + b) / 2.0 for a, b in zip(pp, qq)]
+    eps = 1e-12
+
+    # Function: Compute KL divergence.
+    def _kl(a: List[float], b: List[float]) -> float:
+        out = 0.0
+        for ai, bi in zip(a, b):
+            if ai <= 0.0:
+                continue
+            out += ai * math.log((ai + eps) / (bi + eps), 2)
+        return out
+
+    jsd = 0.5 * _kl(pp, m) + 0.5 * _kl(qq, m)
+    if not math.isfinite(jsd):
+        return 1.0
+    return max(0.0, min(1.0, jsd))
+
+
+# Function: Compute cosine similarity between two vectors.
+def cosine_similarity(a: List[float], b: List[float]) -> float:
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(float(x) * float(y) for x, y in zip(a, b))
+    na = math.sqrt(sum(float(x) * float(x) for x in a))
+    nb = math.sqrt(sum(float(y) * float(y) for y in b))
+    if na <= 0.0 or nb <= 0.0:
+        return 0.0
+    out = dot / (na * nb)
+    return max(0.0, min(1.0, out))
+
+
+# Function: Compute set Jaccard similarity.
+def jaccard_similarity(a: set[str], b: set[str]) -> float:
+    if not a and not b:
+        return 1.0
+    if not a or not b:
+        return 0.0
+    inter = len(a & b)
+    union = len(a | b)
+    return inter / max(1, union)
+
+
+# Function: Convert an arbitrary mapping to numeric float map.
+def _to_numeric_dict(value: Any) -> Dict[str, float]:
+    if not isinstance(value, dict):
+        return {}
+    out: Dict[str, float] = {}
+    for k, v in value.items():
+        if isinstance(k, str) and isinstance(v, (int, float)) and not isinstance(v, bool):
+            fv = float(v)
+            if math.isfinite(fv):
+                out[k] = fv
+    return out
+
+
+# Function: Compare two numeric values using symmetric relative similarity.
+def _relative_similarity(a: float, b: float) -> float:
+    av = float(a)
+    bv = float(b)
+    denom = max((abs(av) + abs(bv)) / 2.0, 1e-9)
+    rel = abs(av - bv) / denom
+    # 1/(1+rel) maps 0->1 and grows smoothly toward 0 for large differences.
+    return 1.0 / (1.0 + rel)
+
+
+# Function: Compare two numeric dictionaries and return aggregate similarity diagnostics.
+def _compare_numeric_dicts(
+    a: Dict[str, float],
+    b: Dict[str, float]
+) -> Dict[str, Any] | None:
+    keys = sorted(set(a.keys()) & set(b.keys()))
+    if not keys:
+        return None
+    rows: List[Dict[str, Any]] = []
+    sims: List[float] = []
+    for key in keys:
+        sim = _relative_similarity(a[key], b[key])
+        sims.append(sim)
+        rows.append(
+            {
+                "key": key,
+                "a": a[key],
+                "b": b[key],
+                "similarity": sim,
+                "abs_diff": abs(a[key] - b[key]),
+            }
+        )
+    rows.sort(key=lambda r: float(r.get("similarity", 0.0)))
+    return {
+        "similarity": sum(sims) / len(sims),
+        "keys_compared": len(keys),
+        "worst_keys": rows[:5],
+    }
+
+
+# Function: Compare two distributions represented as equal-length vectors.
+def _compare_distribution_vectors(
+    a: List[float],
+    b: List[float]
+) -> Dict[str, Any] | None:
+    if not isinstance(a, list) or not isinstance(b, list) or not a or len(a) != len(b):
+        return None
+    aa = [float(x) if isinstance(x, (int, float)) and not isinstance(x, bool) else 0.0 for x in a]
+    bb = [float(x) if isinstance(x, (int, float)) and not isinstance(x, bool) else 0.0 for x in b]
+    jsd = jensen_shannon_divergence(aa, bb)
+    l1 = sum(abs(x - y) for x, y in zip(_normalize_distribution(aa), _normalize_distribution(bb))) / 2.0
+    return {
+        "similarity": max(0.0, 1.0 - jsd),
+        "js_divergence": jsd,
+        "l1_distance_half": l1,
+        "bins": len(a),
+    }
+
+
+# Function: Compare two sparse feature maps as distributions.
+def _compare_distribution_dicts(
+    a: Dict[str, float],
+    b: Dict[str, float]
+) -> Dict[str, Any] | None:
+    keys = sorted(set(a.keys()) | set(b.keys()))
+    if not keys:
+        return None
+    va = [float(a.get(k, 0.0)) for k in keys]
+    vb = [float(b.get(k, 0.0)) for k in keys]
+    jsd = jensen_shannon_divergence(va, vb)
+    cos = cosine_similarity(va, vb)
+    return {
+        "similarity": max(0.0, 1.0 - jsd),
+        "js_divergence": jsd,
+        "cosine_similarity": cos,
+        "dimensions": len(keys),
+    }
+
+
+# Function: Extract an estimated corpus word count from a fingerprint.
+def _fingerprint_word_estimate(fp: Dict[str, Any]) -> int:
+    candidates = [
+        _safe_get(fp, "metadata", "corpus", "size", "words_est"),
+        _safe_get(fp, "measurements", "totals", "total_words_est"),
+    ]
+    for value in candidates:
+        if isinstance(value, int) and value >= 0:
+            return int(value)
+    return 0
+
+
+# Function: Compute similarity between two fingerprints using interpretable component metrics.
+def compute_fingerprint_similarity(
+    fingerprint_a: Dict[str, Any],
+    fingerprint_b: Dict[str, Any],
+    component_weights: Dict[str, float] | None = None
+) -> Dict[str, Any]:
+    if not isinstance(fingerprint_a, dict) or not isinstance(fingerprint_b, dict):
+        raise ValueError("Both fingerprints must be JSON objects.")
+
+    default_weights: Dict[str, float] = {
+        "function_words_distribution": 0.20,
+        "sentence_histogram": 0.15,
+        "paragraph_histogram": 0.10,
+        "punctuation_rates": 0.10,
+        "stance_signals": 0.08,
+        "rhetoric_moves": 0.08,
+        "syntax_texture": 0.08,
+        "paragraph_cadence": 0.08,
+        "repetition": 0.05,
+        "lexicon_preferred_overlap": 0.04,
+        "lexicon_avoid_overlap": 0.04,
+    }
+    if isinstance(component_weights, dict):
+        for key, value in component_weights.items():
+            if key in default_weights and isinstance(value, (int, float)) and not isinstance(value, bool):
+                default_weights[key] = max(0.0, float(value))
+
+    components: Dict[str, Dict[str, Any]] = {}
+
+    # Distribution components.
+    sent_a = _safe_get(fingerprint_a, "measurements", "sentence", "length_words", "histogram_p", default=[])
+    sent_b = _safe_get(fingerprint_b, "measurements", "sentence", "length_words", "histogram_p", default=[])
+    cmp_sent = _compare_distribution_vectors(sent_a, sent_b) if isinstance(sent_a, list) and isinstance(sent_b, list) else None
+    if cmp_sent:
+        components["sentence_histogram"] = cmp_sent
+
+    para_a = _safe_get(fingerprint_a, "measurements", "paragraph", "length_sentences_histogram_p", default=[])
+    para_b = _safe_get(fingerprint_b, "measurements", "paragraph", "length_sentences_histogram_p", default=[])
+    cmp_para = _compare_distribution_vectors(para_a, para_b) if isinstance(para_a, list) and isinstance(para_b, list) else None
+    if cmp_para:
+        components["paragraph_histogram"] = cmp_para
+
+    func_a = _to_numeric_dict(_safe_get(fingerprint_a, "measurements", "function_words", "rates_per_1000w", default={}))
+    func_b = _to_numeric_dict(_safe_get(fingerprint_b, "measurements", "function_words", "rates_per_1000w", default={}))
+    cmp_func = _compare_distribution_dicts(func_a, func_b)
+    if cmp_func:
+        components["function_words_distribution"] = cmp_func
+
+    # Numeric dictionary components.
+    punct_a = _to_numeric_dict(_safe_get(fingerprint_a, "measurements", "punctuation", "rates_per_1000w", default={}))
+    punct_b = _to_numeric_dict(_safe_get(fingerprint_b, "measurements", "punctuation", "rates_per_1000w", default={}))
+    cmp_punct = _compare_numeric_dicts(punct_a, punct_b)
+    if cmp_punct:
+        components["punctuation_rates"] = cmp_punct
+
+    stance_a = _to_numeric_dict(_safe_get(fingerprint_a, "measurements", "stance_signals", default={}))
+    stance_b = _to_numeric_dict(_safe_get(fingerprint_b, "measurements", "stance_signals", default={}))
+    cmp_stance = _compare_numeric_dicts(stance_a, stance_b)
+    if cmp_stance:
+        components["stance_signals"] = cmp_stance
+
+    rhet_a = _to_numeric_dict(_safe_get(fingerprint_a, "measurements", "rhetoric_moves", default={}))
+    rhet_b = _to_numeric_dict(_safe_get(fingerprint_b, "measurements", "rhetoric_moves", default={}))
+    cmp_rhet = _compare_numeric_dicts(rhet_a, rhet_b)
+    if cmp_rhet:
+        components["rhetoric_moves"] = cmp_rhet
+
+    synt_a = _to_numeric_dict(_safe_get(fingerprint_a, "measurements", "syntax_texture", default={}))
+    synt_b = _to_numeric_dict(_safe_get(fingerprint_b, "measurements", "syntax_texture", default={}))
+    cmp_synt = _compare_numeric_dicts(synt_a, synt_b)
+    if cmp_synt:
+        components["syntax_texture"] = cmp_synt
+
+    cadence_a = _to_numeric_dict(_safe_get(fingerprint_a, "measurements", "paragraph_cadence", default={}))
+    cadence_b = _to_numeric_dict(_safe_get(fingerprint_b, "measurements", "paragraph_cadence", default={}))
+    cmp_cadence = _compare_numeric_dicts(cadence_a, cadence_b)
+    if cmp_cadence:
+        components["paragraph_cadence"] = cmp_cadence
+
+    rep_a = _to_numeric_dict(_safe_get(fingerprint_a, "measurements", "repetition", default={}))
+    rep_b = _to_numeric_dict(_safe_get(fingerprint_b, "measurements", "repetition", default={}))
+    rep_a = {k: v for k, v in rep_a.items() if k in {"bigram_repeat_rate", "trigram_repeat_rate"}}
+    rep_b = {k: v for k, v in rep_b.items() if k in {"bigram_repeat_rate", "trigram_repeat_rate"}}
+    cmp_rep = _compare_numeric_dicts(rep_a, rep_b)
+    if cmp_rep:
+        components["repetition"] = cmp_rep
+
+    # Lexical overlap components.
+    lex_a = _safe_get(fingerprint_a, "lexicon", default={})
+    lex_b = _safe_get(fingerprint_b, "lexicon", default={})
+    preferred_a = set()
+    preferred_b = set()
+    avoid_a = set()
+    avoid_b = set()
+    if isinstance(lex_a, dict):
+        preferred_a = {
+            str(x).strip().lower()
+            for x in (lex_a.get("preferred_words", []) or []) + (lex_a.get("preferred_phrases", []) or [])
+            if isinstance(x, str) and str(x).strip()
+        }
+        avoid_a = {str(x).strip().lower() for x in (lex_a.get("avoid_words", []) or []) if isinstance(x, str) and str(x).strip()}
+    if isinstance(lex_b, dict):
+        preferred_b = {
+            str(x).strip().lower()
+            for x in (lex_b.get("preferred_words", []) or []) + (lex_b.get("preferred_phrases", []) or [])
+            if isinstance(x, str) and str(x).strip()
+        }
+        avoid_b = {str(x).strip().lower() for x in (lex_b.get("avoid_words", []) or []) if isinstance(x, str) and str(x).strip()}
+
+    components["lexicon_preferred_overlap"] = {
+        "similarity": jaccard_similarity(preferred_a, preferred_b),
+        "size_a": len(preferred_a),
+        "size_b": len(preferred_b),
+        "intersection_size": len(preferred_a & preferred_b),
+    }
+    components["lexicon_avoid_overlap"] = {
+        "similarity": jaccard_similarity(avoid_a, avoid_b),
+        "size_a": len(avoid_a),
+        "size_b": len(avoid_b),
+        "intersection_size": len(avoid_a & avoid_b),
+    }
+
+    total_weight = sum(default_weights.values())
+    used_weight = 0.0
+    weighted_sum = 0.0
+    missing: List[str] = []
+    used_components: Dict[str, Dict[str, Any]] = {}
+    for name, weight in default_weights.items():
+        comp = components.get(name)
+        if not comp or not isinstance(comp.get("similarity"), (int, float)):
+            missing.append(name)
+            continue
+        sim = clamp01(float(comp["similarity"]))
+        used_weight += weight
+        weighted_sum += sim * weight
+        used_components[name] = {**comp, "weight": weight}
+
+    if used_weight > 0.0:
+        overall = weighted_sum / used_weight
+    else:
+        overall = 0.0
+    overall = clamp01(overall)
+
+    words_a = _fingerprint_word_estimate(fingerprint_a)
+    words_b = _fingerprint_word_estimate(fingerprint_b)
+    min_words = min(words_a, words_b) if (words_a > 0 and words_b > 0) else 0
+    evidence_factor = 1.0 - math.exp(-max(0, min_words) / 20000.0)
+    coverage = used_weight / total_weight if total_weight > 0 else 0.0
+    confidence_hint = clamp01((0.6 * coverage) + (0.4 * evidence_factor))
+
+    ordered_components = sorted(
+        (
+            {"name": name, **spec}
+            for name, spec in used_components.items()
+        ),
+        key=lambda row: float(row.get("similarity", 0.0))
+    )
+    top_differences = ordered_components[:5]
+
+    return {
+        "similarity_score": overall,
+        "distance_score": 1.0 - overall,
+        "coverage": {
+            "components_available": len(used_components),
+            "components_expected": len(default_weights),
+            "missing_components": missing,
+            "used_weight": used_weight,
+            "total_weight": total_weight,
+            "coverage_ratio": coverage,
+        },
+        "confidence_hint": confidence_hint,
+        "evidence": {
+            "words_est_a": words_a,
+            "words_est_b": words_b,
+            "min_words_est": min_words,
+            "evidence_factor": evidence_factor,
+        },
+        "components": ordered_components,
+        "top_differences": top_differences,
+        "weights": default_weights,
     }
