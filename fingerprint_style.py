@@ -60,6 +60,7 @@ from utils import (
     split_sentences as utils_split_sentences,
     words,
 )
+from common import resolve_path_prefer_cwd, resolve_required_path
 
 import requests
 
@@ -164,13 +165,7 @@ def load_prompts() -> Dict[str, Any]:
 # Function: Resolve license path.
 def resolve_license_path() -> Path | None:
     # Resolve LICENSE.md from CWD or script directory.
-    cwd_path = Path.cwd() / LICENSE_FILENAME
-    script_path = Path(__file__).resolve().parent / LICENSE_FILENAME
-    if cwd_path.exists():
-        return cwd_path
-    if script_path.exists():
-        return script_path
-    return None
+    return resolve_path_prefer_cwd(LICENSE_FILENAME, __file__)
 
 
 # Function: Render markdown.
@@ -197,9 +192,7 @@ def print_license_and_exit() -> int:
 # Function: Load optional lexicon hints.
 def load_optional_lexicon_hints() -> Optional[Dict[str, Any]]:
     # Load optional lexicon hints from CWD or script directory.
-    cwd_path = Path.cwd() / LEXICON_HINTS_FILENAME
-    script_path = Path(__file__).resolve().parent / LEXICON_HINTS_FILENAME
-    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    path = resolve_path_prefer_cwd(LEXICON_HINTS_FILENAME, __file__)
     if not path:
         return None
     try:
@@ -212,9 +205,7 @@ def load_optional_lexicon_hints() -> Optional[Dict[str, Any]]:
 # Function: Load tunables snapshot.
 def load_tunables_snapshot() -> Optional[Dict[str, Any]]:
     # Load tunables for auditability snapshot (CWD or script directory).
-    cwd_path = Path.cwd() / "config.tunables.json"
-    script_path = Path(__file__).resolve().parent / "config.tunables.json"
-    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    path = resolve_path_prefer_cwd("config.tunables.json", __file__)
     if not path:
         return None
     try:
@@ -241,9 +232,7 @@ def parse_avoid_list(text: str) -> List[str]:
 # Function: Load avoid list.
 def load_avoid_list() -> List[str]:
     # Load optional avoid-word list from CWD or script directory.
-    cwd_path = Path.cwd() / AVOID_LIST_FILENAME
-    script_path = Path(__file__).resolve().parent / AVOID_LIST_FILENAME
-    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    path = resolve_path_prefer_cwd(AVOID_LIST_FILENAME, __file__)
     if not path:
         return []
     try:
@@ -255,36 +244,34 @@ def load_avoid_list() -> List[str]:
 # Function: Load common words.
 def load_common_words() -> List[Tuple[str, Optional[float]]]:
     # Load optional common-words list from CWD or script directory.
-    cwd_path = Path.cwd() / COMMON_WORDS_FILENAME
-    script_path = Path(__file__).resolve().parent / COMMON_WORDS_FILENAME
-    for path in (cwd_path, script_path):
-        if path.exists():
-            try:
-                raw_lines = path.read_text(encoding="utf-8").splitlines()
-            except Exception:
-                raw_lines = []
-            entries: List[Tuple[str, Optional[float]]] = []
-            seen: set[str] = set()
-            for raw in raw_lines:
-                line = raw.split("#", 1)[0].strip()
-                if not line:
-                    continue
-                parts = re.split(r"\s+", line)
-                if not parts:
-                    continue
-                word = parts[0].strip().lower()
-                if not word or word in seen:
-                    continue
-                freq: Optional[float] = None
-                if len(parts) >= 2:
-                    try:
-                        freq = float(parts[1])
-                    except Exception:
-                        freq = None
-                seen.add(word)
-                entries.append((word, freq))
-            if entries:
-                return entries
+    path = resolve_path_prefer_cwd(COMMON_WORDS_FILENAME, __file__)
+    if path and path.exists():
+        try:
+            raw_lines = path.read_text(encoding="utf-8").splitlines()
+        except Exception:
+            raw_lines = []
+        entries: List[Tuple[str, Optional[float]]] = []
+        seen: set[str] = set()
+        for raw in raw_lines:
+            line = raw.split("#", 1)[0].strip()
+            if not line:
+                continue
+            parts = re.split(r"\s+", line)
+            if not parts:
+                continue
+            word = parts[0].strip().lower()
+            if not word or word in seen:
+                continue
+            freq: Optional[float] = None
+            if len(parts) >= 2:
+                try:
+                    freq = float(parts[1])
+                except Exception:
+                    freq = None
+            seen.add(word)
+            entries.append((word, freq))
+        if entries:
+            return entries
     return [(w, None) for w in sorted(DEFAULT_COMMON_WORDS)]
 
 
@@ -305,9 +292,7 @@ def normalize_entity_name(value: str) -> str:
 # Function: Load entity blacklist.
 def load_entity_blacklist() -> List[str]:
     # Load optional entity blacklist from CWD or script directory.
-    cwd_path = Path.cwd() / ENTITY_BLACKLIST_FILENAME
-    script_path = Path(__file__).resolve().parent / ENTITY_BLACKLIST_FILENAME
-    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    path = resolve_path_prefer_cwd(ENTITY_BLACKLIST_FILENAME, __file__)
     if not path:
         return []
     try:
@@ -359,7 +344,9 @@ def _apply_case(template: str, replacement: str) -> str:
 
 # Function: Load local spelling rules.
 def load_local_spelling_rules() -> Dict[str, Any]:
-    rules_path = Path(__file__).resolve().parent / LOCAL_SPELLING_RULES_FILENAME
+    rules_path = resolve_path_prefer_cwd(LOCAL_SPELLING_RULES_FILENAME, __file__)
+    if rules_path is None:
+        rules_path = Path(__file__).resolve().parent / LOCAL_SPELLING_RULES_FILENAME
     if rules_path.exists():
         try:
             data = json.loads(rules_path.read_text(encoding="utf-8"))
@@ -3131,10 +3118,7 @@ def main() -> int:
         args.out = args.out.with_suffix(".json")
 
     if args.config is None:
-        # Resolve config: prefer current working directory, then script directory.
-        cwd_cfg = Path.cwd() / "config.llm.json"
-        script_cfg = Path(__file__).resolve().parent / "config.llm.json"
-        args.config = cwd_cfg if cwd_cfg.exists() else script_cfg
+        args.config = resolve_required_path(args.config, "config.llm.json", __file__)
 
     # Function: Verbose-print when enabled.
     def vprint(msg: str) -> None:

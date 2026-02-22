@@ -12,3 +12,4 @@ description.md
 config.llm.roster.json
 config.llm.roster_local.json
 OS_models.json
+fingerprint_store/

@@ -390,6 +390,40 @@ where $\alpha$ converts words to tokens (about 1–1.3 for plain English).
 
 After rewriting, the system emits the input and output metric profiles (with the aggregate score) for rapid inspection and regression analysis.
 
+#### 2.5.6 API style-match probability (`/rate`)
+
+The local API includes a `rate` method that returns a probability that a text segment is stylometrically consistent with a stored fingerprint. The method intentionally starts from the same explicit local signal stack already used for rewrite retries, then adds a calibrated probabilistic layer.
+
+Let $s \in [0,1]$ be the local style-compliance score from `compute_style_compliance` (histogram and rate divergence against the fingerprint). Distances such as Delta-like stylometric dissimilarities are informative but are not probabilities by themselves [Evert et al., 2017]. Therefore, the API maps $s$ through a logistic calibration:
+
+$$
+p_0 = \sigma\left(\frac{s - \tau}{\kappa}\right), \qquad \sigma(z)=\frac{1}{1+e^{-z}}
+$$
+
+where:
+- $\tau$ is the operating point (default: `style_retry.threshold` from tunables),
+- $\kappa$ controls calibration slope.
+
+This follows the same family of score-to-probability calibration used in Platt-style sigmoid mapping and modern calibration practice [Platt, 1999; Guo et al., 2017; scikit-learn calibration docs].
+
+Short segments provide weak stylometric evidence, and authorship attribution reliability drops substantially for short or topically varied samples [Luyckx & Daelemans, 2011; Boenninghoff et al., 2019; ALMs study, 2024]. To reflect this, the API applies evidence-dependent shrinkage toward an uninformative prior of $0.5$:
+
+$$
+r = 1 - e^{-n/n_0}, \qquad
+p = 0.5 + r \cdot (p_0 - 0.5)
+$$
+
+where $n$ is token count in the rated segment and $n_0$ is an evidence scale (default 250 tokens). For very short text ($n \ll n_0$), $r \approx 0$ and $p$ stays near 0.5. For longer text, $r \to 1$ and $p \to p_0$.
+
+The API also returns an uncertainty interval that expands when evidence is weak:
+
+$$
+w = 0.5(1-r), \qquad
+\mathrm{CI}_{90} = [\max(0,p-w),\ \min(1,p+w)].
+$$
+
+This design is practical for operations: it preserves interpretability, keeps all scoring grounded in explicit stylometric features, and emits probabilities in $[0,1]$ aligned with authorship-verification evaluation conventions (including Brier-oriented assessments) [PAN/CLEF AV metrics].
+
 **Genre-aware quotation handling:** the pipeline auto-detects fiction versus non-fiction using quote-density signals (multi-word quote spans, quoted-word ratio, and quote-paragraph ratio). In non-fiction, multi-word quotations are excluded from profiling and preserved verbatim during rewriting; in fiction, they remain part of the author’s voice. These thresholds are tunable via `config.tunables.json` (see `fiction_detection.*`) and can be overridden explicitly (`--fiction` / `--non‑fiction`).
 
 For orthography, local spelling rules are not applied to preserved quotations in non-fiction: quoted passages are masked before rewriting and reinserted verbatim afterward. In fiction, quoted dialogue is rewritten along with surrounding prose and receives the same local spelling normalization as the rest of the output.
@@ -769,6 +803,13 @@ Stylometric-Transfer connects classic stylometry and LLM-based rewriting by pair
 
 - Mosteller, F., & Wallace, D. L. *Inference and Disputed Authorship: The Federalist.* Addison-Wesley (1964). ([archive.org](https://archive.org/details/inferencedispute00most?utm_source=chatgpt.com))
 - Evert, S., et al. "Understanding and explaining Delta measures for authorship attribution." *Digital Scholarship in the Humanities* (2017). ([academic.oup.com](https://academic.oup.com/dsh/article/32/suppl_2/ii4/3865676?utm_source=chatgpt.com))
+- Platt, J. "Probabilistic Outputs for Support Vector Machines and Comparisons to Regularized Likelihood Methods." (1999). ([researchgate.net](https://www.researchgate.net/publication/2594015_Probabilistic_Outputs_for_Support_Vector_Machines_and_Comparisons_to_Regularized_Likelihood_Methods))
+- Guo, C., Pleiss, G., Sun, Y., & Weinberger, K. Q. "On Calibration of Modern Neural Networks." *ICML/PMLR* (2017). ([proceedings.mlr.press](https://proceedings.mlr.press/v70/guo17a.html))
+- scikit-learn documentation, "Probability calibration" (sigmoid/Platt and isotonic calibration notes). ([scikit-learn.org](https://scikit-learn.org/stable/modules/calibration.html))
+- PAN/CLEF Authorship Verification task (evaluation with probability-like scores and Brier-oriented metrics). ([pan.webis.de](https://pan.webis.de/clef23/pan23-web/author-identification.html))
+- Luyckx, K., & Daelemans, W. "The Effect of Author Set Size and Data Size in Authorship Attribution." *Literary and Linguistic Computing* (2011). ([academic.oup.com](https://academic.oup.com/dsh/article-abstract/26/1/35/982424))
+- Boenninghoff, B., et al. "Cross-Domain Authorship Attribution Combining Instance-Based and Profile-Based Features." *CLEF/PAN* (2019). ([arxiv.org](https://arxiv.org/abs/1912.03363))
+- ALMs study: "Author style can be measured with local metrics over short segments (20–400 tokens)." (2024). ([arxiv.org](https://arxiv.org/abs/2401.12005))
 - Shen, T., Lei, T., Barzilay, R., & Jaakkola, T. "Style Transfer from Non-Parallel Text by Cross-Alignment." (2017). ([arxiv.org](https://arxiv.org/abs/1705.09655?utm_source=chatgpt.com))
 - Mukherjee, S., et al. "A Survey of Text Style Transfer: Applications and Ethical Implications." (2024). ([arxiv.org](https://arxiv.org/abs/2407.16737?utm_source=chatgpt.com))
 - Hu, Z., et al. "Text Style Transfer: A Review and Experimental Evaluation." *KDD Explorations* (PDF). ([kdd.org](https://www.kdd.org/exploration_files/vol24issue1_2._Text_Style_Transfer__A_Review_and_Experimental_Evaluation.pdf?utm_source=chatgpt.com))

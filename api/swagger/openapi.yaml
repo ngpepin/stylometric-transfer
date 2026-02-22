@@ -1,0 +1,310 @@
+openapi: 3.0.3
+info:
+  title: Stylometric Transfer Local Fingerprint API
+  version: 1.0.0
+  description: |
+    Local HTTP API for stylometric fingerprint workflows.
+
+    This API is intentionally non-production:
+    - HTTP only (no TLS termination in this process)
+    - local deployment expectations
+    - GUID-backed fingerprint files stored on local disk
+servers:
+  - url: http://127.0.0.1:8765
+    description: Default local server
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is available
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: fingerprint_api
+                  store_dir:
+                    type: string
+  /make:
+    post:
+      summary: Create and persist a style fingerprint
+      operationId: makeFingerprint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MakeRequest"
+      responses:
+        "200":
+          description: Fingerprint created and stored by GUID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MakeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /apply:
+    post:
+      summary: Apply a stored fingerprint to new text
+      operationId: applyFingerprint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyRequest"
+      responses:
+        "200":
+          description: Styled rewrite completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplyResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/UpstreamError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /rate:
+    post:
+      summary: Rate stylistic match probability for text against a stored fingerprint
+      operationId: rateFingerprintMatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateRequest"
+      responses:
+        "200":
+          description: Stylometric match probability and diagnostics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+components:
+  responses:
+    BadRequest:
+      description: Invalid request payload
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: GUID not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UpstreamError:
+      description: Underlying fingerprint/apply execution error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        detail:
+          description: Optional implementation-specific diagnostics
+          nullable: true
+    MakeRequest:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+          description: Source text used to build a stylometric fingerprint.
+        profile_id:
+          type: string
+          description: Optional explicit profile identifier for fingerprint metadata.
+        author_name:
+          type: string
+          description: Optional author name for fingerprint metadata.
+        max_prompt_tokens:
+          type: integer
+          minimum: 1
+          description: Optional prompt token cap override for this request.
+        no_phrase_validation:
+          type: boolean
+          default: false
+          description: Disable LLM phrase validation pass.
+        quote_mode:
+          type: string
+          enum: [fiction, non-fiction]
+          description: Optional quote handling override.
+        fiction:
+          type: boolean
+          description: Backward-compatible quote mode boolean override.
+    MakeResponse:
+      type: object
+      required: [id, profile_id, stored_fingerprint, stored_metadata]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: GUID identifier used for later apply/rate requests.
+        profile_id:
+          type: string
+          nullable: true
+        stored_fingerprint:
+          type: string
+          description: Absolute path to GUID-stored fingerprint JSON.
+        stored_metadata:
+          type: string
+          description: Absolute path to GUID metadata JSON.
+    ApplyRequest:
+      type: object
+      required: [id, text]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: GUID returned by `/make`.
+        text:
+          type: string
+          description: Input text to rewrite in the stored style.
+        max_prompt_tokens:
+          type: integer
+          minimum: 1
+        no_style_retry:
+          type: boolean
+          default: false
+        metrics:
+          type: boolean
+          default: false
+        local_spelling:
+          type: string
+          enum: [none, canadian, australian, british, us]
+        force_person:
+          type: string
+          enum: [first, second, third]
+          description: Optional pronoun mode override.
+        quote_mode:
+          type: string
+          enum: [fiction, non-fiction]
+        fiction:
+          type: boolean
+    ApplyResponse:
+      type: object
+      required: [id, profile_id, final_markdown, deviations]
+      properties:
+        id:
+          type: string
+          format: uuid
+        profile_id:
+          type: string
+          nullable: true
+        final_markdown:
+          type: string
+        deviations:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        apply_stdout:
+          type: string
+        apply_stderr:
+          type: string
+    RateRequest:
+      type: object
+      required: [id, text]
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+          description: Text segment to score against the stored fingerprint.
+        threshold:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Optional logistic center override (default from style retry threshold).
+        slope:
+          type: number
+          exclusiveMinimum: 0
+          description: Optional logistic slope override.
+        evidence_tokens:
+          type: integer
+          minimum: 1
+          description: Optional evidence scale for short-text reliability shrinkage.
+    RateResponse:
+      type: object
+      required:
+        - id
+        - probability
+        - probability_percent
+        - confidence_interval_90
+        - compliance_score
+        - token_count
+      properties:
+        id:
+          type: string
+          format: uuid
+        profile_id:
+          type: string
+          nullable: true
+        probability:
+          type: number
+          minimum: 0
+          maximum: 1
+        probability_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+        confidence_interval_90:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: number
+            minimum: 0
+            maximum: 1
+        compliance_score:
+          type: number
+          minimum: 0
+          maximum: 1
+        token_count:
+          type: integer
+          minimum: 0
+        top_deltas:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        calibration:
+          type: object
+          additionalProperties: true

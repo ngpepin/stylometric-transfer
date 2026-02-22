@@ -25,6 +25,8 @@ import webbrowser
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple, Optional
 
+from common import resolve_path_prefer_cwd
+
 
 # Function: Load JSON from disk.
 def load_json(path: Path) -> Dict[str, Any]:
@@ -40,9 +42,7 @@ def load_tunables(path: Path | None = None) -> Dict[str, Any]:
         except Exception:
             return {}
     # Prefer cwd config to align with CLI working directory; fallback to script dir.
-    cwd_path = Path.cwd() / "config.tunables.json"
-    script_path = Path(__file__).resolve().parent / "config.tunables.json"
-    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    path = resolve_path_prefer_cwd("config.tunables.json", __file__)
     if not path:
         return {}
     try:
@@ -94,9 +94,7 @@ def take_items(items: Iterable[Any], limit: int = 10) -> List[Any]:
 def load_common_word_frequencies() -> Dict[str, float]:
     # Load common-word Zipf frequencies from config.common_words.txt if present.
     filename = "config.common_words.txt"
-    cwd_path = Path.cwd() / filename
-    script_path = Path(__file__).resolve().parent / filename
-    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    path = resolve_path_prefer_cwd(filename, __file__)
     if not path:
         return {}
     freq_map: Dict[str, float] = {}

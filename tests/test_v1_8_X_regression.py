@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import apply_fingerprint as af  # noqa: E402
+import common  # noqa: E402
 
 
 class TestV18XRegression(unittest.TestCase):
@@ -154,6 +155,31 @@ class TestV18XRegression(unittest.TestCase):
         self.assertEqual(entries[1].model, "gpt-4.1-mini")
         self.assertAlmostEqual(entries[1].temperature, 0.3)
         self.assertEqual(entries[2].base_url, "http://localhost:4141/v1")
+
+    def test_common_calibrated_probability_shrinks_for_short_text(self) -> None:
+        long_text = common.calibrated_style_match_probability(
+            compliance_score=0.9,
+            token_count=1000,
+        )
+        short_text = common.calibrated_style_match_probability(
+            compliance_score=0.9,
+            token_count=5,
+        )
+        self.assertGreater(long_text["probability"], short_text["probability"])
+        self.assertGreater(long_text["probability"], 0.5)
+        self.assertGreater(short_text["confidence_interval_90"][1] - short_text["confidence_interval_90"][0], 0.5)
+
+    def test_common_store_roundtrip(self) -> None:
+        payload = {"schema_version": "1.0.0", "profile_id": "test-profile"}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store_dir = Path(tmpdir) / "fingerprint_store"
+            guid, fp_path, _meta_path = common.save_fingerprint_to_store(payload, store_dir)
+            self.assertTrue(common.is_valid_guid(guid))
+            self.assertTrue(fp_path.exists())
+            loaded, loaded_path, meta = common.load_fingerprint_from_store(guid, store_dir)
+            self.assertEqual(loaded["profile_id"], "test-profile")
+            self.assertEqual(loaded_path, fp_path)
+            self.assertEqual(meta.get("id"), guid)
 
 
 if __name__ == "__main__":

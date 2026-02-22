@@ -12,8 +12,11 @@ A **humanization-aware conflict-resolution layer** integrates humanizer guidelin
 This repository includes:
 - `fingerprint_style.py`: extracts a **style fingerprint (stylometric profile)** from a writing archive
 - `apply_fingerprint.py`: rewrites Markdown to match the fingerprint
+- `fingerprint_api.py`: local HTTP API exposing `make`, `apply`, and `rate` methods
 - `show_fingerprint.py`: generates a standalone HTML dashboard for a fingerprint JSON
+- `common.py`: shared path/config/store/probability helpers used across entry points
 - `prompts.json`: externalized prompt templates used by both scripts (edit here to adjust behaviour)
+- `api/swagger/openapi.yaml` and `api/swagger/openapi.json`: API specifications
 - `scripts/`: bash wrappers for invoking the Python entry points
 
 Further details are available in `Article-Teaching-Machines-to-Write-Like-You.md` and `Research-Paper.md`.
@@ -53,6 +56,7 @@ For commercial use, contact the author to discuss potential participation and/or
 - [Usage](#usage)
   - [1. Build a Style Fingerprint](#1-build-a-style-fingerprint)
   - [2. Apply a Fingerprint](#2-apply-a-fingerprint)
+  - [3. Local HTTP API](#3-local-http-api)
 - [Output Files](#output-files)
 - [Testing](#testing)
 - [Style Model Schema](#style-model-schema)
@@ -146,6 +150,7 @@ In research terms, the system performs:
   - Deterministic normalization of verbose rewrite policies and noisy priority orders before use
 - Filters out blockquotes, reference sections, footnotes, citation markers, and boilerplate notices (copyright/terms/privacy) from style measurements and excerpts, preserving them verbatim during rewrite
 - Strips embedded BASE64 images before sending prompts to the LLM and re-embeds them in output
+- Exposes a local HTTP API (`make`/`apply`/`rate`) backed by GUID-tracked fingerprint files
 - Compatible with OpenAI (works with OpenAI, Azure OpenAI, vLLM, etc.)
 - Interpretable, editable, versionable style models
 
@@ -175,6 +180,15 @@ style_fingerprint.json
       │
       ▼
 rewritten_text.styled.md
+
+HTTP text
+      │
+      ▼
+[fingerprint_api.py]
+      │
+      ├─ POST /make  -> fingerprint_style.py + GUID store
+      ├─ POST /apply -> apply_fingerprint.py
+      └─ POST /rate  -> local probabilistic style scoring
 ```
 
 ---
@@ -216,6 +230,7 @@ Notes:
 - Default lookup for `config.llm.json`: current working directory first, then the directory containing the Python scripts
 - Optional `config.llm.roster.json` (same lookup path) defines ordered model entries used by `--roster` (one model per chunk, cycling through the roster)
 - `config.tunables.json` can override humanizer conflict thresholds (same search path as config.llm.json)
+- `fingerprint_api.py` uses the same config search behavior as the CLI tools and forwards settings to existing entry points (`fingerprint_style.py`, `apply_fingerprint.py`)
 - `max_prompt_tokens` controls chunking for large inputs (defaults to `max_tokens`; override per run with `--max-prompt-tokens`)
 - `max_retries`, `backoff_base_seconds`, and `backoff_max_seconds` control exponential backoff retries for transient LLM errors or timeouts
 - `base_url` should be the API root (no `/chat/completions`)
@@ -959,6 +974,69 @@ Outputs:
 
 ---
 
+### 3. Local HTTP API
+
+Run the local API (HTTP only; local deployment intent):
+
+```bash
+python fingerprint_api.py --host 127.0.0.1 --port 8765
+```
+
+Wrapper script:
+
+```bash
+./scripts/fingerprint_api.sh --host 127.0.0.1 --port 8765
+```
+
+The API stores fingerprints in a repository-root subdirectory (`fingerprint_store/`) as:
+- `<guid>.fingerprint.json`
+- `<guid>.meta.json`
+
+Methods:
+- `POST /make`: accepts text and creates a fingerprint; returns a GUID
+- `POST /apply`: accepts GUID + text and returns rewritten text + deviations
+- `POST /rate`: accepts GUID + text and returns style-match probability
+
+Example: `make`
+
+```bash
+curl -s http://127.0.0.1:8765/make \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Sample corpus text for style extraction."}'
+```
+
+Example: `apply`
+
+```bash
+curl -s http://127.0.0.1:8765/apply \
+  -H "Content-Type: application/json" \
+  -d '{"id":"<GUID_FROM_MAKE>","text":"New text to rewrite."}'
+```
+
+Example: `rate`
+
+```bash
+curl -s http://127.0.0.1:8765/rate \
+  -H "Content-Type: application/json" \
+  -d '{"id":"<GUID_FROM_MAKE>","text":"Candidate text segment."}'
+```
+
+Swagger/OpenAPI artifacts:
+- `api/swagger/openapi.yaml`
+- `api/swagger/openapi.json`
+
+The API also serves:
+- `GET /health`
+- `GET /openapi.yaml`
+- `GET /openapi.json`
+
+`rate` probability details:
+- Base score: local style compliance score (`0..1`) from the same measurement layer used by rewrite retries.
+- Calibration: logistic mapping centered at the style threshold (default: `config.tunables.json -> style_retry.threshold`).
+- Reliability shrinkage: short segments are shrunk toward `0.5` to reflect lower evidence, and a 90% confidence interval is returned.
+
+---
+
 ### Visualize a Fingerprint
 
 Generate an HTML dashboard to review key fingerprint settings and measurements:
@@ -994,6 +1072,21 @@ Contents include:
 - `derived_instructions`: compiled prompts for generation and rewriting
 
 This file is human readable, editable, version controllable and reusable across projects.
+
+---
+
+### API Fingerprint Store (`fingerprint_store/`)
+
+When using `fingerprint_api.py`, fingerprints are tracked by GUID in a repo-root subdirectory:
+- `fingerprint_store/<guid>.fingerprint.json`: stored fingerprint artifact
+- `fingerprint_store/<guid>.meta.json`: metadata for source/run tracking
+
+---
+
+### API Specification Artifacts
+
+- `api/swagger/openapi.yaml`: primary OpenAPI specification
+- `api/swagger/openapi.json`: JSON-form OpenAPI specification
 
 ---
 

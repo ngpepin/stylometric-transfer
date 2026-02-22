@@ -47,6 +47,10 @@ from utils import (
     split_sentences,
     words,
 )
+from common import (
+    resolve_path_prefer_cwd,
+    resolve_required_path,
+)
 
 
 # ---- same lightweight stats as fingerprint script ----
@@ -350,9 +354,7 @@ def load_tunables(path: Path | None = None) -> Dict[str, Any]:
         except Exception:
             return dict(DEFAULT_TUNABLES)
     # Fallback search.
-    cwd_path = Path.cwd() / TUNABLES_FILENAME
-    script_path = Path(__file__).resolve().parent / TUNABLES_FILENAME
-    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    path = resolve_path_prefer_cwd(TUNABLES_FILENAME, __file__)
     if not path:
         return dict(DEFAULT_TUNABLES)
     try:
@@ -498,9 +500,7 @@ def load_avoid_list(path: Path | None = None) -> List[str]:
             return parse_avoid_list(path.read_text(encoding="utf-8"))
         except Exception:
             return []
-    cwd_path = Path.cwd() / AVOID_LIST_FILENAME
-    script_path = Path(__file__).resolve().parent / AVOID_LIST_FILENAME
-    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
+    path = resolve_path_prefer_cwd(AVOID_LIST_FILENAME, __file__)
     if not path:
         return []
     try:
@@ -1481,7 +1481,9 @@ def enforce_heading_qualifiers(
 
 # Function: Load local spelling rules.
 def load_local_spelling_rules() -> Dict[str, Any]:
-    rules_path = Path(__file__).resolve().parent / LOCAL_SPELLING_RULES_FILENAME
+    rules_path = resolve_path_prefer_cwd(LOCAL_SPELLING_RULES_FILENAME, __file__)
+    if rules_path is None:
+        rules_path = Path(__file__).resolve().parent / LOCAL_SPELLING_RULES_FILENAME
     if rules_path.exists():
         try:
             data = json.loads(rules_path.read_text(encoding="utf-8"))
@@ -2342,10 +2344,7 @@ def apply_humanizer_variance(
 # Function: Resolve general guidelines path.
 def resolve_general_guidelines_path() -> Path | None:
     # Resolve optional humanizer guidelines from CWD or script directory.
-    cwd_path = Path.cwd() / HUMANIZER_GUIDELINES_FILENAME
-    script_path = Path(__file__).resolve().parent / HUMANIZER_GUIDELINES_FILENAME
-    path = cwd_path if cwd_path.exists() else script_path if script_path.exists() else None
-    return path
+    return resolve_path_prefer_cwd(HUMANIZER_GUIDELINES_FILENAME, __file__)
 
 
 # Function: Load general guidelines.
@@ -2359,13 +2358,7 @@ def load_general_guidelines() -> tuple[str | None, Path | None]:
 # Function: Resolve license path.
 def resolve_license_path() -> Path | None:
     # Resolve LICENSE.md from CWD or script directory.
-    cwd_path = Path.cwd() / LICENSE_FILENAME
-    script_path = Path(__file__).resolve().parent / LICENSE_FILENAME
-    if cwd_path.exists():
-        return cwd_path
-    if script_path.exists():
-        return script_path
-    return None
+    return resolve_path_prefer_cwd(LICENSE_FILENAME, __file__)
 
 
 # Function: Render markdown.
@@ -5111,13 +5104,7 @@ def load_config(path: Path) -> LLMConfig:
 def resolve_roster_config_path(path: Path | None = None) -> Path | None:
     if isinstance(path, Path) and path.exists():
         return path
-    cwd_path = Path.cwd() / LLM_ROSTER_FILENAME
-    script_path = Path(__file__).resolve().parent / LLM_ROSTER_FILENAME
-    if cwd_path.exists():
-        return cwd_path
-    if script_path.exists():
-        return script_path
-    return None
+    return resolve_path_prefer_cwd(LLM_ROSTER_FILENAME, __file__)
 
 
 # Function: Parse optional roster seed.
@@ -5824,10 +5811,7 @@ def main() -> int:
         args.fingerprint = args.fingerprint.with_suffix(".json")
 
     if args.config is None:
-        # Resolve config: prefer current working directory, then script directory.
-        cwd_cfg = Path.cwd() / "config.llm.json"
-        script_cfg = Path(__file__).resolve().parent / "config.llm.json"
-        args.config = cwd_cfg if cwd_cfg.exists() else script_cfg
+        args.config = resolve_required_path(args.config, "config.llm.json", __file__)
 
     # Function: Verbose-print when enabled.
     def vprint(msg: str) -> None:
@@ -5842,9 +5826,7 @@ def main() -> int:
     cfg = load_config(args.config)
     prompts = load_prompts()
     if args.tunables is None:
-        cwd_tunables = Path.cwd() / TUNABLES_FILENAME
-        script_tunables = Path(__file__).resolve().parent / TUNABLES_FILENAME
-        args.tunables = cwd_tunables if cwd_tunables.exists() else script_tunables
+        args.tunables = resolve_required_path(args.tunables, TUNABLES_FILENAME, __file__)
     tunables = load_tunables(args.tunables if args.tunables.exists() else None)
     tunables, perplexity_level, perplexity_knobs = apply_perplexity_profile(tunables, args.perplexity)
     base_temperature = cfg.temperature
