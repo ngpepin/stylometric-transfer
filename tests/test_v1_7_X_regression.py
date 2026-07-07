@@ -559,6 +559,152 @@ class TestV17XRegression(unittest.TestCase):
         rules = payload.get("rules", [])
         self.assertTrue(any("US English spelling" in r for r in rules))
 
+    def test_apply_prompt_instructs_llm_to_escape_double_quotes(self) -> None:
+        cfg = af.LLMConfig(
+            api_key="k",
+            base_url="http://example.test/v1",
+            model="m",
+            max_tokens=1000,
+            temperature=0.0,
+            timeout_seconds=30,
+            extra_headers={},
+            max_prompt_tokens=1000,
+            max_retries=0,
+            backoff_base_seconds=0.1,
+            backoff_max_seconds=0.1,
+        )
+        prompts = af.load_prompts()
+        messages = af.build_apply_prompt({}, 'He said "hello".', {}, cfg, prompts)
+        system = messages[0]["content"]
+        payload = json.loads(messages[1]["content"])
+        rules = payload.get("rules", [])
+        self.assertIn("escape any double quote characters inside final_markdown", system)
+        self.assertTrue(any("escape each one" in r and "\\\"" in r for r in rules))
+
+    def test_build_apply_prompt_uses_author_name_for_third_person(self) -> None:
+        cfg = af.LLMConfig(
+            api_key="k",
+            base_url="http://example.test/v1",
+            model="m",
+            max_tokens=1000,
+            temperature=0.0,
+            timeout_seconds=30,
+            extra_headers={},
+            max_prompt_tokens=1000,
+            max_retries=0,
+            backoff_base_seconds=0.1,
+            backoff_max_seconds=0.1,
+        )
+        prompts = {
+            "apply": {
+                "system": "s",
+                "user": {"rules": [], "output_format": {"final_markdown": "string"}},
+            }
+        }
+        messages = af.build_apply_prompt(
+            {},
+            "# Section\n\nHe makes the claim.",
+            {},
+            cfg,
+            prompts,
+            voice_override="third",
+            author_name="Nico Pepin",
+        )
+        payload = json.loads(messages[1]["content"])
+        self.assertEqual(payload.get("author_name"), "Nico Pepin")
+        rules = payload.get("rules", [])
+        self.assertTrue(any("After each Markdown heading" in r and "Nico Pepin" in r for r in rules))
+
+    def test_build_apply_prompt_ignores_author_name_without_third_person(self) -> None:
+        cfg = af.LLMConfig(
+            api_key="k",
+            base_url="http://example.test/v1",
+            model="m",
+            max_tokens=1000,
+            temperature=0.0,
+            timeout_seconds=30,
+            extra_headers={},
+            max_prompt_tokens=1000,
+            max_retries=0,
+            backoff_base_seconds=0.1,
+            backoff_max_seconds=0.1,
+        )
+        prompts = {
+            "apply": {
+                "system": "s",
+                "user": {"rules": [], "output_format": {"final_markdown": "string"}},
+            }
+        }
+        messages = af.build_apply_prompt(
+            {},
+            "input",
+            {},
+            cfg,
+            prompts,
+            voice_override="first",
+            author_name="Nico Pepin",
+        )
+        payload = json.loads(messages[1]["content"])
+        self.assertNotIn("author_name", payload)
+
+    def test_parse_json_strict_repairs_unescaped_final_markdown_quotes(self) -> None:
+        raw = '''{
+          "final_markdown": "A person who is seen as "difficult," then dismissed as "difficult" simply because.",
+          "deviations": [],
+          "self_check": {"notes": []}
+        }'''
+        parsed = af.parse_json_strict(raw)
+        self.assertEqual(
+            parsed["final_markdown"],
+            'A person who is seen as "difficult," then dismissed as "difficult" simply because.',
+        )
+
+    def test_parse_json_strict_repairs_quote_comma_inside_final_markdown(self) -> None:
+        raw = '''{
+          "final_markdown": "She said "yes," then walked away.",
+          "deviations": [],
+          "self_check": {"notes": []}
+        }'''
+        parsed = af.parse_json_strict(raw)
+        self.assertEqual(parsed["final_markdown"], 'She said "yes," then walked away.')
+
+    def test_parse_json_strict_repairs_unescaped_deviation_reason_quotes(self) -> None:
+        raw = '''{
+          "final_markdown": "Done.",
+          "deviations": [
+            {
+              "rule_or_field": "/input_markdown/headings/Example 2",
+              "reason": "Corrected the apparent typographical heading "EExample 2" to "Example 2" without changing meaning."
+            },
+            {
+              "rule_or_field": "/style_fingerprint_json/lexicon/spelling_preferences",
+              "reason": "Used US spellings such as "colorism," "color," and "behavior" because the task required US English."
+            }
+          ],
+          "self_check": {"notes": []}
+        }'''
+        parsed = af.parse_json_strict(raw)
+        reasons = [item["reason"] for item in parsed["deviations"]]
+        self.assertIn('"EExample 2" to "Example 2"', reasons[0])
+        self.assertIn('"colorism," "color," and "behavior"', reasons[1])
+
+    def test_parse_json_strict_repairs_unescaped_self_check_note_quotes(self) -> None:
+        raw = '''{
+          "final_markdown": "Done.",
+          "deviations": [],
+          "self_check": {
+            "notes": [
+              "Returned valid JSON only.",
+              "Converted the passage to third-person narration and used "Francia" at the first natural author reference after each heading."
+            ]
+          }
+        }'''
+        parsed = af.parse_json_strict(raw)
+        self.assertIn(
+            'used "Francia" at the first natural author reference',
+            parsed["self_check"]["notes"][1],
+        )
+
     def test_force_local_spelling_canadian_exceptions(self) -> None:
         rules = af.load_local_spelling_rules()
         text = "He replaced the tyre whilst he spelled the word."
@@ -651,12 +797,54 @@ class TestV17XRegression(unittest.TestCase):
         text = "She opened the door, and I followed."
         eval_obj = af.evaluate_pronoun_override(text, "first")
         self.assertGreaterEqual(eval_obj.get("violations", {}).get("third_person", 0), 1)
+        sentence_violations = eval_obj.get("sentence_violations", [])
+        self.assertTrue(sentence_violations)
+        self.assertEqual(sentence_violations[0].get("target_voice"), "first")
 
     def test_pronoun_override_handles_contractions(self) -> None:
         text = "I'm ready, but she's late."
         eval_obj = af.evaluate_pronoun_override(text, "first")
         self.assertGreaterEqual(eval_obj.get("allowed_count", 0), 1)
         self.assertGreaterEqual(eval_obj.get("violations", {}).get("third_person", 0), 1)
+
+    def test_deterministic_pronoun_repair_reduces_third_person_violations(self) -> None:
+        text = "You can see why the decision matters. The next point is unchanged."
+        before = af.evaluate_pronoun_override(text, "third")
+        repaired, repairs = af.apply_deterministic_pronoun_repairs(text, "third", before)
+        after = af.evaluate_pronoun_override(repaired, "third")
+        self.assertTrue(repairs)
+        self.assertIn("It is possible to see", repaired)
+        self.assertGreater(af.pronoun_override_quality(after), af.pronoun_override_quality(before))
+
+    def test_pronoun_sentence_repair_result_applies_only_improvements(self) -> None:
+        text = "You can see why it matters. She left afterward."
+        eval_obj = af.evaluate_pronoun_override(text, "third")
+        result = {
+            "sentences": [
+                {"index": 0, "replacement": "It is possible to see why it matters."},
+                {"index": 1, "replacement": "I left afterward."},
+            ],
+            "deviations": [],
+        }
+        repaired, repairs = af.apply_pronoun_sentence_repair_result(
+            text,
+            result,
+            eval_obj.get("sentence_violations", []),
+            "third",
+        )
+        self.assertIn("It is possible to see why it matters.", repaired)
+        self.assertNotIn("I left afterward.", repaired)
+        self.assertEqual(len(repairs), 1)
+
+    def test_pronoun_sentence_repair_prompt_includes_author_name_for_third_person(self) -> None:
+        messages = af.build_pronoun_sentence_repair_prompt(
+            "third",
+            [{"index": 0, "text": "He argues the point.", "violations": {}, "tokens": ["He"]}],
+            "Nico Pepin",
+        )
+        payload = json.loads(messages[1]["content"])
+        self.assertEqual(payload.get("author_name"), "Nico Pepin")
+        self.assertTrue(any("Nico Pepin" in r for r in payload.get("rules", [])))
 
     def test_pronoun_override_quality_prefers_fewer_violations(self) -> None:
         low = {"allowed_count": 2, "violations": {"third_person": 1}}

@@ -16,3 +16,7 @@ fingerprint_store/
 requirements.txt
 db-priv/README.md
 stylo.sh
+config.llm_OLD.json
+config.llm_Gemma-SEA-LION.json
+config.llm_Olmo.json
+config.llm_catgpt.json

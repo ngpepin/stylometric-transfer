@@ -32,6 +32,8 @@ import time
 import random
 import statistics
 import math
+import atexit
+import textwrap
 from pathlib import Path
 import copy
 from typing import Any, Dict, List
@@ -83,9 +85,18 @@ CLOSER_CHARS = "\"'”’»)]}"
 EMOJI_SUBSTITUTIONS: list[tuple[str, str]] | None = None
 ANSI_RED = "\x1b[31m"
 ANSI_YELLOW = "\x1b[33m"
+ANSI_GREEN = "\x1b[32m"
+ANSI_CYAN = "\x1b[36m"
+ANSI_BLUE = "\x1b[34m"
+ANSI_BOLD = "\x1b[1m"
+ANSI_DIM = "\x1b[2m"
+ANSI_BG_DARK_BLUE = "\x1b[48;5;17m"
+ANSI_BRIGHT_WHITE = "\x1b[97m"
 ANSI_RESET = "\x1b[0m"
 QUOTE_MODE: str | None = None
 DEFAULT_MAX_STYLE_RETRIES = 1
+CONSOLE_WIDTH = 132
+CONSOLE_TABLE_STATE: Dict[str, Any] = {"active": False, "signature": None, "bottom": "", "row_mid": ""}
 PERPLEXITY_LEVELS = ("default", "low", "medium", "high", "extreme")
 DEFAULT_TUNABLES = {
     "humanizer_conflicts": {
@@ -284,6 +295,13 @@ def colorize(text: str, color: str, stream: Any) -> str:
     return f"{color}{text}{ANSI_RESET}"
 
 
+# Function: Colorize stdout console text.
+def console_color(text: str, color: str) -> str:
+    if os.getenv("NO_COLOR") or os.getenv("CLICOLOR") == "0":
+        return text
+    return f"{color}{text}{ANSI_RESET}"
+
+
 # Function: Print warnings to stderr.
 def print_warn(msg: str) -> None:
     print(colorize(msg, ANSI_YELLOW, sys.stderr), file=sys.stderr)
@@ -292,6 +310,208 @@ def print_warn(msg: str) -> None:
 # Function: Print errors to stderr.
 def print_error(msg: str) -> None:
     print(colorize(msg, ANSI_RED, sys.stderr), file=sys.stderr)
+
+
+# Function: Print a compact console section header.
+def print_console_header(title: str) -> None:
+    close_console_table()
+    print(console_color(title, ANSI_BOLD + ANSI_CYAN))
+    print(console_color("─" * len(title), ANSI_DIM))
+
+
+# Function: Print a compact console key/value line.
+def print_console_kv(label: str, value: Any) -> None:
+    close_console_table()
+    print(f"  {console_color(f'{label:<12}', ANSI_GREEN)} {value}")
+
+
+# Function: Close the currently active streaming table.
+def close_console_table() -> None:
+    if CONSOLE_TABLE_STATE.get("active"):
+        bottom = CONSOLE_TABLE_STATE.get("bottom")
+        if isinstance(bottom, str) and bottom:
+            print(bottom)
+    CONSOLE_TABLE_STATE["active"] = False
+    CONSOLE_TABLE_STATE["signature"] = None
+    CONSOLE_TABLE_STATE["bottom"] = ""
+    CONSOLE_TABLE_STATE["row_mid"] = ""
+
+
+atexit.register(close_console_table)
+
+
+# Function: Wrap table cells while preserving alignment.
+def wrap_console_cell(text: str, width: int) -> List[str]:
+    token = str(text)
+    if token == "":
+        return [""]
+    wrapped = textwrap.wrap(
+        token,
+        width=max(1, width),
+        break_long_words=True,
+        break_on_hyphens=False,
+    )
+    return wrapped or [""]
+
+
+# Function: Compute sensible table widths within the assumed terminal width.
+def compute_console_widths(headers: List[str], rows: List[List[Any]], initial_widths: List[int] | None = None) -> List[int]:
+    col_count = len(headers)
+    if initial_widths and len(initial_widths) == col_count:
+        widths = list(initial_widths)
+    else:
+        widths = [len(str(header)) for header in headers]
+        for row in rows:
+            for idx, cell in enumerate(row[:col_count]):
+                widths[idx] = max(widths[idx], min(len(str(cell)), 48))
+    max_width_sum = max(20, CONSOLE_WIDTH - 2 - (col_count + 1) - (2 * col_count))
+    while sum(widths) > max_width_sum and max(widths) > 10:
+        idx = max(range(col_count), key=lambda i: widths[i])
+        widths[idx] -= 1
+    return [max(3, width) for width in widths]
+
+
+# Function: Render table rows, optionally with the table header.
+def format_console_table(
+    headers: List[str],
+    rows: List[List[Any]],
+    widths: List[int],
+    include_header: bool,
+    leading_separator: bool = False,
+) -> str:
+    string_rows = [[str(cell) for cell in row] for row in rows]
+    border_color = ANSI_DIM
+    header_color = ANSI_BG_DARK_BLUE + ANSI_BOLD + ANSI_BRIGHT_WHITE
+    key_color = ANSI_GREEN
+    value_color = ANSI_BLUE
+    double_boundaries = {
+        idx
+        for idx in range(1, len(headers))
+        if str(headers[idx]).lower() == "setting"
+    }
+
+    def render_rule(left: str, single: str, double: str, horizontal: str, right: str) -> str:
+        parts = [left]
+        for idx, width in enumerate(widths):
+            parts.append(horizontal * (width + 2))
+            if idx < len(widths) - 1:
+                parts.append(double if idx + 1 in double_boundaries else single)
+        parts.append(right)
+        return console_color("  " + "".join(parts), border_color)
+
+    separators = [
+        console_color("║" if idx in double_boundaries else "│", border_color)
+        for idx in range(1, len(widths))
+    ]
+    top = render_rule("┌", "┬", "╥", "─", "┐")
+    header_mid = render_rule("╞", "╪", "╬", "═", "╡")
+    row_mid = render_rule("├", "┼", "╫", "─", "┤")
+    bottom = render_rule("└", "┴", "╨", "─", "┘")
+    sep = console_color("│", border_color)
+    key_cols = {idx for idx, header in enumerate(headers) if str(header).lower() in {"setting", "metric", "count", "artifact", "result", "mode", "policy", "hard constraint"}}
+    if not key_cols and headers:
+        key_cols = {0}
+    value_cols = {idx for idx, header in enumerate(headers) if str(header).lower() in {"value", "path", "input", "output", "score"}}
+    header_cells = [
+        console_color(f" {str(header):<{widths[idx]}} ", header_color)
+        for idx, header in enumerate(headers)
+    ]
+    header_line = "  " + sep + "".join(
+        cell + (separators[idx] if idx < len(separators) else sep)
+        for idx, cell in enumerate(header_cells)
+    )
+    rendered: List[str] = []
+    if include_header:
+        rendered.extend([top, header_line, header_mid])
+    elif leading_separator:
+        rendered.append(row_mid)
+    for row_idx, row in enumerate(string_rows):
+        if row_idx > 0:
+            rendered.append(row_mid)
+        normalized = row[:len(widths)] + [""] * max(0, len(widths) - len(row))
+        wrapped_cells = [wrap_console_cell(cell, widths[idx]) for idx, cell in enumerate(normalized[:len(widths)])]
+        height = max(len(lines) for lines in wrapped_cells)
+        for line_idx in range(height):
+            rendered_cells: List[str] = []
+            for idx, lines in enumerate(wrapped_cells):
+                cell = lines[line_idx] if line_idx < len(lines) else ""
+                padded = f" {cell:<{widths[idx]}} "
+                if cell.strip() and idx in key_cols:
+                    padded = console_color(padded, key_color)
+                elif cell.strip() and idx in value_cols:
+                    padded = console_color(padded, value_color)
+                rendered_cells.append(padded)
+            rendered.append("  " + sep + "".join(
+                cell + (separators[idx] if idx < len(separators) else sep)
+                for idx, cell in enumerate(rendered_cells)
+            ))
+    CONSOLE_TABLE_STATE["bottom"] = bottom
+    CONSOLE_TABLE_STATE["row_mid"] = row_mid
+    return "\n".join(rendered)
+
+
+# Function: Print a compact box-drawing table.
+def print_console_table(headers: List[str], rows: List[List[Any]]) -> None:
+    if not rows:
+        return
+    widths = compute_console_widths(headers, rows)
+    signature = (tuple(headers), tuple(widths))
+    include_header = (
+        not CONSOLE_TABLE_STATE.get("active")
+        or CONSOLE_TABLE_STATE.get("signature") != signature
+    )
+    leading_separator = bool(CONSOLE_TABLE_STATE.get("active") and CONSOLE_TABLE_STATE.get("signature") == signature)
+    if CONSOLE_TABLE_STATE.get("active") and CONSOLE_TABLE_STATE.get("signature") != signature:
+        close_console_table()
+        include_header = True
+        leading_separator = False
+    CONSOLE_TABLE_STATE["active"] = True
+    CONSOLE_TABLE_STATE["signature"] = signature
+    print(format_console_table(headers, rows, widths, include_header, leading_separator))
+
+
+# Function: Print key/value rows packed into multiple pairs per line.
+def print_console_kv_table(rows: List[List[Any]], pairs_per_row: int = 2) -> None:
+    if not rows:
+        return
+    packed_rows: List[List[Any]] = []
+    pair_count = max(1, pairs_per_row)
+    for start in range(0, len(rows), pairs_per_row):
+        row: List[Any] = []
+        for item in rows[start:start + pair_count]:
+            row.extend([item[0], item[1] if len(item) > 1 else ""])
+        while len(row) < pair_count * 2:
+            row.extend(["", ""])
+        packed_rows.append(row)
+    headers: List[str] = []
+    for _idx in range(pair_count):
+        headers.extend(["Setting", "Value"])
+    max_width_sum = max(20, CONSOLE_WIDTH - 2 - (len(headers) + 1) - (2 * len(headers)))
+    key_width = 18 if pair_count >= 3 else 22
+    value_width = max(8, (max_width_sum - (key_width * pair_count)) // pair_count)
+    initial_widths: List[int] = []
+    for _idx in range(pair_count):
+        initial_widths.extend([key_width, value_width])
+    widths = compute_console_widths(headers, packed_rows, initial_widths)
+    signature = (tuple(headers), tuple(widths))
+    include_header = (
+        not CONSOLE_TABLE_STATE.get("active")
+        or CONSOLE_TABLE_STATE.get("signature") != signature
+    )
+    leading_separator = bool(CONSOLE_TABLE_STATE.get("active") and CONSOLE_TABLE_STATE.get("signature") == signature)
+    if CONSOLE_TABLE_STATE.get("active") and CONSOLE_TABLE_STATE.get("signature") != signature:
+        close_console_table()
+        include_header = True
+        leading_separator = False
+    CONSOLE_TABLE_STATE["active"] = True
+    CONSOLE_TABLE_STATE["signature"] = signature
+    print(format_console_table(headers, packed_rows, widths, include_header, leading_separator))
+
+
+# Function: Print a verbose detail line.
+def print_console_detail(msg: str) -> None:
+    close_console_table()
+    print(f"  - {msg}")
 
 
 # Function: Deep-merge nested dictionaries.
@@ -3589,14 +3809,17 @@ def build_humanizer_parse_prompt(prompts: Dict[str, Any], raw_guidelines: str) -
 def parse_humanizer_guidelines_llm(
     cfg: LLMConfig,
     prompts: Dict[str, Any],
-    raw_guidelines: str
+    raw_guidelines: str,
+    debug: bool = False
 ) -> List[Dict[str, Any]]:
     messages = build_humanizer_parse_prompt(prompts, raw_guidelines)
     raw, _ = chat_completions(cfg, messages)
     try:
         out_obj = parse_json_strict(raw)
     except Exception:
-        out_obj = repair_json_with_llm(cfg, raw, prompts)
+        out_obj = repair_json_with_llm(cfg, raw, prompts, debug, "humanizer parse repair")
+    if debug:
+        debug_print_llm_json("humanizer parse", out_obj)
 
     rules_obj: Any = out_obj.get("rules") if isinstance(out_obj, dict) else out_obj
     if not isinstance(rules_obj, list):
@@ -4853,6 +5076,183 @@ def compute_style_compliance(
     }
 
 
+# Function: Lookup nested values by path.
+def get_nested_value(data: Dict[str, Any], path: List[str]) -> Any:
+    cur: Any = data
+    for key in path:
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(key)
+    return cur
+
+
+# Function: Resolve compliance metric to measurement paths.
+def compliance_metric_paths(metric: str) -> tuple[List[str] | None, List[str] | None]:
+    if metric == "sentence_length_histogram":
+        return (
+            ["sentence", "length_words", "histogram_p"],
+            ["sentence", "length_words", "histogram_p"],
+        )
+    if metric == "paragraph_length_histogram":
+        return (
+            ["paragraph", "length_sentences_histogram_p"],
+            ["paragraph", "length_sentences_histogram_p"],
+        )
+    if metric == "one_sentence_paragraph_rate":
+        return (
+            ["paragraph", "one_sentence_paragraph_rate"],
+            ["paragraph", "one_sentence_paragraph_rate"],
+        )
+    if metric.startswith("punctuation."):
+        key = metric.split(".", 1)[1]
+        return (["punctuation", "rates_per_1000w", key], ["punctuation", "rates_per_1000w", key])
+    if metric.startswith("orthography."):
+        key = metric.split(".", 1)[1]
+        return (["orthography_signals", key], ["orthography_signals", key])
+    if metric.startswith("stance."):
+        key = metric.split(".", 1)[1]
+        return (["stance_signals", key], ["stance_signals", key])
+    if metric.startswith("rhetoric_moves."):
+        key = metric.split(".", 1)[1]
+        return (["rhetoric_moves", key], ["rhetoric_moves", key])
+    if metric.startswith("epistemic_profile."):
+        key = metric.split(".", 1)[1]
+        return (["epistemic_profile", key], ["epistemic_profile", key])
+    if metric.startswith("paragraph_cadence."):
+        key = metric.split(".", 1)[1]
+        return (["paragraph_cadence", key], ["paragraph_cadence", key])
+    if metric.startswith("syntax_texture."):
+        key = metric.split(".", 1)[1]
+        return (["syntax_texture", key], ["syntax_texture", key])
+    if metric.startswith("lexical_avoidance."):
+        key = metric.split(".", 1)[1]
+        return (
+            ["lexical_avoidance", "category_rates_per_1000w", key],
+            ["lexical_avoidance", "category_rates_per_1000w", key],
+        )
+    if metric.startswith("discourse_markers."):
+        key = metric.split(".", 1)[1]
+        return (
+            ["templates_signals", "transition_marker_positions", key],
+            ["templates_signals", "transition_marker_positions", key],
+        )
+    if metric.startswith("repetition."):
+        key = metric.split(".", 1)[1]
+        return (["repetition", key], ["repetition", key])
+    return None, None
+
+
+# Function: Create an actionable instruction for a failed metric.
+def compliance_metric_instruction(metric: str, actual: Any, target: Any) -> str:
+    direction = ""
+    if isinstance(actual, (int, float)) and isinstance(target, (int, float)):
+        if actual > target:
+            direction = "Reduce this signal."
+        elif actual < target:
+            direction = "Increase this signal."
+    instructions = {
+        "sentence_length_histogram": "Adjust sentence length distribution; split or combine sentences while preserving meaning.",
+        "paragraph_length_histogram": "Adjust paragraph rhythm; redistribute sentences across paragraphs without adding claims.",
+        "one_sentence_paragraph_rate": "Adjust one-sentence paragraph frequency to better match the fingerprint.",
+    }
+    if metric.startswith("punctuation."):
+        return f"{direction or 'Adjust punctuation frequency.'} Match the author's punctuation rate without changing meaning."
+    if metric.startswith("orthography.contractions_rate"):
+        return f"{direction or 'Adjust contraction usage.'} Use or avoid contractions according to the target style."
+    if metric.startswith("orthography."):
+        return f"{direction or 'Adjust orthographic signal.'} Preserve required spelling and punctuation rules."
+    if metric.startswith("stance."):
+        return f"{direction or 'Adjust stance markers.'} Tune hedging, boosting, or pronoun-like stance markers to match the target."
+    if metric.startswith("rhetoric_moves."):
+        return f"{direction or 'Adjust rhetorical moves.'} Rebalance claim, evidence, concession, counterpoint, or synthesis phrasing without adding facts."
+    if metric.startswith("epistemic_profile."):
+        return f"{direction or 'Adjust certainty level.'} Tune speculative/probabilistic/assertive/directive language."
+    if metric.startswith("paragraph_cadence."):
+        return f"{direction or 'Adjust paragraph cadence.'} Revise opening and closing sentence lengths while preserving claims."
+    if metric.startswith("syntax_texture."):
+        return f"{direction or 'Adjust syntax texture.'} Tune subordinate clauses, parentheticals, and appositives."
+    if metric.startswith("lexical_avoidance."):
+        return f"{direction or 'Adjust lexical avoidance.'} Avoid overusing words/categories that the fingerprint treats as rare or soft-avoid."
+    if metric.startswith("discourse_markers."):
+        return f"{direction or 'Adjust discourse markers.'} Move or reduce transition markers to match start vs mid-sentence tendencies."
+    if metric.startswith("repetition."):
+        return f"{direction or 'Adjust repetition.'} Reduce self-echo and repeated n-grams unless they are required for meaning."
+    return instructions.get(metric, f"{direction or 'Adjust this metric.'} Preserve meaning and Markdown structure.")
+
+
+# Function: Build response diagnostics for style retry feedback.
+def build_response_style_diagnostics(text: str, max_items: int = 3) -> Dict[str, Any]:
+    sents = [s.strip() for s in split_sentences(text) if s.strip()]
+    longest = sorted(sents, key=lambda s: len(words(s)), reverse=True)[:max_items]
+    token_words = [w.lower() for w in words(text)]
+    bigram_counts: Dict[str, int] = {}
+    for i in range(len(token_words) - 1):
+        bg = f"{token_words[i]} {token_words[i + 1]}"
+        bigram_counts[bg] = int(bigram_counts.get(bg, 0)) + 1
+    repeated = [
+        {"phrase": phrase, "count": count}
+        for phrase, count in sorted(bigram_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:max_items]
+        if count >= 3
+    ]
+    return {
+        "longest_sentences": [
+            {"words": len(words(sent)), "text": sent[:280]}
+            for sent in longest
+            if len(words(sent)) >= 20
+        ],
+        "repeated_bigrams": repeated,
+        "totals": {
+            "words": len(token_words),
+            "sentences": len(sents),
+            "paragraphs": len(split_paragraphs(text)),
+        },
+    }
+
+
+# Function: Build actionable retry feedback.
+def build_style_retry_feedback(
+    fingerprint: Dict[str, Any],
+    current_markdown: str,
+    compliance: Dict[str, Any],
+    threshold: float,
+    max_items: int = 5
+) -> Dict[str, Any]:
+    fp_meas = fingerprint.get("measurements", {}) if isinstance(fingerprint, dict) else {}
+    out_meas = compliance.get("output_measurements")
+    if not isinstance(out_meas, dict):
+        out_meas = compute_measurements(filter_author_voice_text(current_markdown))
+    raw_deltas = compliance.get("deltas", [])
+    deltas = [d for d in raw_deltas if isinstance(d, dict)]
+    deltas.sort(key=lambda d: float(d.get("diff", 0.0)) if isinstance(d.get("diff"), (int, float)) else 0.0, reverse=True)
+    constraints: List[Dict[str, Any]] = []
+    for delta in deltas[:max_items]:
+        metric = str(delta.get("metric", "unknown"))
+        fp_path, out_path = compliance_metric_paths(metric)
+        target = get_nested_value(fp_meas, fp_path) if fp_path else None
+        actual = get_nested_value(out_meas, out_path) if out_path else None
+        constraints.append({
+            "metric": metric,
+            "diff": delta.get("diff"),
+            "target": target,
+            "actual": actual,
+            "instruction": compliance_metric_instruction(metric, actual, target),
+        })
+    score = compliance.get("score")
+    return {
+        "score": score,
+        "threshold": threshold,
+        "deltas": raw_deltas,
+        "top_failed_constraints": constraints,
+        "response_diagnostics": build_response_style_diagnostics(current_markdown),
+        "revision_instructions": [
+            "Revise the current response to improve the listed failed style constraints.",
+            "Prioritize top_failed_constraints in order; do not chase unlisted style changes.",
+            "Preserve all facts, named entities, dates, examples, headings, Markdown structure, frozen placeholders, citations, links, and code.",
+            "Do not add new claims, examples, or supporting details.",
+        ],
+    }
+
+
 # Function: Compute entropy for data.
 def _entropy(counts: Dict[str, int]) -> float:
     total = sum(counts.values())
@@ -5238,17 +5638,212 @@ def chat_completions(cfg: LLMConfig, messages: List[Dict[str, str]]) -> tuple[st
             time.sleep(sleep_s)
     raise RuntimeError(f"LLM call failed after {cfg.max_retries + 1} attempts: {last_err}")
 
-# Function: Parse JSON strict.
-def parse_json_strict(s: str) -> Dict[str, Any]:
-    # Strip code fences if present and parse strictly as JSON.
+JSON_STRING_QUOTE_REPAIR_FIELDS = (
+    "final_markdown",
+    "chunk_summary",
+    "reason",
+    "rule_or_field",
+    "replacement",
+    "note",
+)
+JSON_STRING_ARRAY_QUOTE_REPAIR_FIELDS = ("notes",)
+
+# Function: Strip JSON code fences.
+def strip_json_code_fences(s: str) -> str:
+    # Strip code fences if present.
     s = s.strip()
     if s.startswith("```"):
         s = re.sub(r"^```(?:json)?\s*", "", s)
         s = re.sub(r"\s*```$", "", s)
-    return json.loads(s)
+    return s
+
+# Function: Check whether a quote closes a JSON string value.
+def looks_like_json_string_terminator(text: str, quote_idx: int) -> bool:
+    # A field value terminator is followed by object/array close or by a comma and another JSON key.
+    j = quote_idx + 1
+    while j < len(text) and text[j].isspace():
+        j += 1
+    if j >= len(text):
+        return True
+    if text[j] in "}]":
+        return True
+    if text[j] != ",":
+        return False
+    k = j + 1
+    while k < len(text) and text[k].isspace():
+        k += 1
+    if k >= len(text) or text[k] in "}]":
+        return True
+    if text[k] != '"':
+        return False
+    return re.match(r'"(?:[^"\\]|\\.)*"\s*:', text[k:]) is not None
+
+# Function: Escape unescaped quotes in known JSON string fields.
+def escape_unescaped_quotes_in_json_string_fields(
+    text: str,
+    fields: tuple[str, ...] = JSON_STRING_QUOTE_REPAIR_FIELDS
+) -> tuple[str, bool]:
+    # Repair common LLM JSON failures where Markdown quotes are emitted raw inside string fields.
+    changed = False
+    repaired = text
+    for field in fields:
+        pattern = re.compile(rf'("{re.escape(field)}"\s*:\s*)"')
+        pos = 0
+        parts: List[str] = []
+        field_changed = False
+        while True:
+            match = pattern.search(repaired, pos)
+            if not match:
+                parts.append(repaired[pos:])
+                break
+            parts.append(repaired[pos:match.end()])
+            i = match.end()
+            value_parts: List[str] = []
+            terminated = False
+            while i < len(repaired):
+                ch = repaired[i]
+                if ch == "\\":
+                    if i + 1 < len(repaired):
+                        value_parts.append(repaired[i:i + 2])
+                        i += 2
+                    else:
+                        value_parts.append(ch)
+                        i += 1
+                    continue
+                if ch == '"':
+                    if looks_like_json_string_terminator(repaired, i):
+                        value_parts.append(ch)
+                        i += 1
+                        terminated = True
+                        break
+                    value_parts.append('\\"')
+                    field_changed = True
+                    i += 1
+                    continue
+                value_parts.append(ch)
+                i += 1
+            if not terminated:
+                # Avoid returning a partially rewritten payload when the field itself is truncated.
+                return text, False
+            parts.append("".join(value_parts))
+            pos = i
+        if field_changed:
+            repaired = "".join(parts)
+            changed = True
+    return repaired, changed
+
+
+# Function: Escape unescaped quotes in known JSON string-array fields.
+def escape_unescaped_quotes_in_json_string_array_fields(
+    text: str,
+    fields: tuple[str, ...] = JSON_STRING_ARRAY_QUOTE_REPAIR_FIELDS
+) -> tuple[str, bool]:
+    # Repair string arrays such as self_check.notes when a model emits raw quotes inside an item.
+    changed = False
+    repaired = text
+    for field in fields:
+        pattern = re.compile(rf'("{re.escape(field)}"\s*:\s*\[)')
+        pos = 0
+        parts: List[str] = []
+        field_changed = False
+        while True:
+            match = pattern.search(repaired, pos)
+            if not match:
+                parts.append(repaired[pos:])
+                break
+            parts.append(repaired[pos:match.end()])
+            i = match.end()
+            while i < len(repaired):
+                ch = repaired[i]
+                if ch.isspace() or ch == ",":
+                    parts.append(ch)
+                    i += 1
+                    continue
+                if ch == "]":
+                    parts.append(ch)
+                    i += 1
+                    break
+                if ch != '"':
+                    parts.append(ch)
+                    i += 1
+                    continue
+                parts.append(ch)
+                i += 1
+                value_parts: List[str] = []
+                terminated = False
+                while i < len(repaired):
+                    inner = repaired[i]
+                    if inner == "\\":
+                        if i + 1 < len(repaired):
+                            value_parts.append(repaired[i:i + 2])
+                            i += 2
+                        else:
+                            value_parts.append(inner)
+                            i += 1
+                        continue
+                    if inner == '"':
+                        j = i + 1
+                        while j < len(repaired) and repaired[j].isspace():
+                            j += 1
+                        if j >= len(repaired) or repaired[j] in ",]":
+                            value_parts.append(inner)
+                            i += 1
+                            terminated = True
+                            break
+                        value_parts.append('\\"')
+                        field_changed = True
+                        i += 1
+                        continue
+                    value_parts.append(inner)
+                    i += 1
+                if not terminated:
+                    return text, False
+                parts.append("".join(value_parts))
+            pos = i
+        if field_changed:
+            repaired = "".join(parts)
+            changed = True
+    return repaired, changed
+
+# Function: Parse JSON strict.
+def parse_json_strict(s: str) -> Dict[str, Any]:
+    # Strip code fences and parse as JSON, with a local repair for unescaped Markdown quotes.
+    s = strip_json_code_fences(s)
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        repaired, changed = escape_unescaped_quotes_in_json_string_fields(s)
+        repaired, array_changed = escape_unescaped_quotes_in_json_string_array_fields(repaired)
+        changed = changed or array_changed
+        if changed:
+            return json.loads(repaired)
+        raise
+
+# Function: Print LLM JSON debug output.
+def debug_print_llm_json(purpose: str, payload: Any) -> None:
+    # Emit newline-delimited, jq-readable JSON objects on stderr.
+    print(
+        json.dumps(
+            {
+                "debug": "llm_json",
+                "script": "apply_fingerprint.py",
+                "purpose": purpose,
+                "payload": payload,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        file=sys.stderr,
+    )
 
 # Function: Repair JSON with LLM.
-def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any]) -> Dict[str, Any]:
+def repair_json_with_llm(
+    cfg: LLMConfig,
+    bad_output: str,
+    prompts: Dict[str, Any],
+    debug: bool = False,
+    purpose: str = "json repair"
+) -> Dict[str, Any]:
     # Ask the LLM to repair malformed JSON while preserving content.
     system = get_prompt_value(prompts, "repair_json", "system")
     task = get_prompt_value(prompts, "repair_json", "task")
@@ -5260,7 +5855,10 @@ def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any
         })}
     ]
     fixed, _ = chat_completions(cfg, messages)
-    return parse_json_strict(fixed)
+    result = parse_json_strict(fixed)
+    if debug:
+        debug_print_llm_json(purpose, result)
+    return result
 
 
 # ---- Prompting: apply fingerprint ----
@@ -5278,6 +5876,7 @@ def build_apply_prompt(
     voice_override: str | None = None,
     chunk_summary: Dict[str, Any] | None = None,
     local_spelling_llm: str = "none",
+    author_name: str | None = None,
 ) -> List[Dict[str, str]]:
     # Fill the apply prompt template with runtime data.
     system = get_prompt_value(prompts, "apply", "system")
@@ -5324,6 +5923,20 @@ def build_apply_prompt(
         elif rule:
             user["rules"] = [rule]
         user["voice_override"] = voice_override
+        clean_author_name = author_name.strip() if isinstance(author_name, str) else ""
+        if voice_override == "third" and clean_author_name:
+            user["author_name"] = clean_author_name
+            name_rule = (
+                f"When third-person prose refers to the author/narrator, occasionally use the name "
+                f"{clean_author_name!r} instead of he/she/they where it reads naturally. After each "
+                "Markdown heading, use that name once at the first natural author/narrator reference "
+                "in the following prose, then return to pronouns as appropriate. Do not force the name "
+                "where the section has no author/narrator reference, and do not alter quoted or frozen text."
+            )
+            if isinstance(user.get("rules"), list):
+                user["rules"].append(name_rule)
+            else:
+                user["rules"] = [name_rule]
     local_spelling_llm = normalize_spelling_locale(local_spelling_llm)
     if local_spelling_llm != "none":
         locale_labels = {
@@ -5409,7 +6022,7 @@ def apply_pronoun_override(fingerprint: Dict[str, Any], mode: str | None) -> Non
 
 
 # Function: Evaluate pronoun override.
-def evaluate_pronoun_override(text: str, mode: str) -> Dict[str, Any]:
+def evaluate_pronoun_override(text: str, mode: str, include_sentence_violations: bool = True) -> Dict[str, Any]:
     # Normalize token-like forms so contractions map to their pronoun root.
     def normalize_pronoun_token(tok: str) -> str:
         t = tok.lower()
@@ -5585,12 +6198,222 @@ def evaluate_pronoun_override(text: str, mode: str) -> Dict[str, Any]:
             label = f"{person}_person_non_subject"
             ignored_non_subject[label] = int(ignored_non_subject.get(label, 0)) + 1
 
-    return {
+    result = {
         "mode": mode_label,
         "allowed_count": allowed_count,
         "violations": violations,
         "ignored_non_subject": ignored_non_subject,
     }
+    if include_sentence_violations:
+        sentence_violations: List[Dict[str, Any]] = []
+        for sent_idx, sentence in enumerate(split_sentences(text)):
+            sent = sentence.strip()
+            if not sent:
+                continue
+            sent_eval = evaluate_pronoun_override(sent, mode_label, include_sentence_violations=False)
+            sent_violations = sent_eval.get("violations")
+            if not isinstance(sent_violations, dict) or not sent_violations:
+                continue
+            tokens: List[str] = []
+            for tok in re.findall(r"[A-Za-z]+(?:'[A-Za-z]+)?", sent):
+                norm_tok = normalize_pronoun_token(tok)
+                person = pronoun_person.get(norm_tok)
+                if person in disallowed:
+                    tokens.append(tok)
+            sentence_violations.append({
+                "index": sent_idx,
+                "text": sent,
+                "violations": sent_violations,
+                "tokens": tokens,
+                "target_voice": mode_label,
+            })
+        result["sentence_violations"] = sentence_violations
+    return result
+
+
+# Function: Replace first match preserving capitalization.
+def replace_first_preserve_case(text: str, pattern: str, replacement: str) -> tuple[str, bool]:
+    match = re.search(pattern, text, flags=re.IGNORECASE)
+    if not match:
+        return text, False
+    repl = replacement
+    if match.group(0)[:1].isupper():
+        repl = repl[:1].upper() + repl[1:]
+    return text[:match.start()] + repl + text[match.end():], True
+
+
+# Function: Deterministically repair high-confidence pronoun override violations.
+def deterministic_pronoun_sentence_repair(sentence: str, mode: str) -> tuple[str, bool]:
+    # Keep these transforms narrow. Ambiguous referential pronouns are left to the LLM micro-repair.
+    updated = sentence
+    changed = False
+
+    replacements_by_mode: Dict[str, List[tuple[str, str]]] = {
+        "third": [
+            (r"\byou can see\b", "it is possible to see"),
+            (r"\byou should note\b", "it is worth noting"),
+            (r"\byou might ask\b", "one might ask"),
+            (r"\byou may ask\b", "one may ask"),
+            (r"\byou have to\b", "it is necessary to"),
+            (r"\byou need to\b", "it is necessary to"),
+            (r"\bwe can see\b", "it is possible to see"),
+            (r"\bwe should note\b", "it is worth noting"),
+            (r"\bI argue that\b", "this analysis argues that"),
+            (r"\bI suggest that\b", "this analysis suggests that"),
+            (r"\bI think that\b", "this analysis suggests that"),
+            (r"\bI believe that\b", "this analysis suggests that"),
+        ],
+        "first": [
+            (r"\byou can see\b", "I can see"),
+            (r"\bone can see\b", "I can see"),
+            (r"\bit is possible to see\b", "I can see"),
+            (r"\bthis analysis argues that\b", "I argue that"),
+            (r"\bthis analysis suggests that\b", "I suggest that"),
+        ],
+        "second": [
+            (r"\bI can see\b", "you can see"),
+            (r"\bwe can see\b", "you can see"),
+            (r"\bone can see\b", "you can see"),
+            (r"\bit is possible to see\b", "you can see"),
+            (r"\bthis analysis argues that\b", "you can argue that"),
+            (r"\bthis analysis suggests that\b", "you can infer that"),
+        ],
+    }
+
+    for pattern, replacement in replacements_by_mode.get(mode, []):
+        updated, did_replace = replace_first_preserve_case(updated, pattern, replacement)
+        changed = changed or did_replace
+    if not changed:
+        return sentence, False
+    before_eval = evaluate_pronoun_override(sentence, mode, include_sentence_violations=False)
+    after_eval = evaluate_pronoun_override(updated, mode, include_sentence_violations=False)
+    if pronoun_override_quality(after_eval) <= pronoun_override_quality(before_eval):
+        return sentence, False
+    return updated, True
+
+
+# Function: Apply deterministic pronoun repairs to violating sentences.
+def apply_deterministic_pronoun_repairs(text: str, mode: str, override_eval: Dict[str, Any]) -> tuple[str, List[Dict[str, Any]]]:
+    sentence_violations = override_eval.get("sentence_violations")
+    if not isinstance(sentence_violations, list) or not sentence_violations:
+        return text, []
+    updated = text
+    repairs: List[Dict[str, Any]] = []
+    for item in sentence_violations:
+        if not isinstance(item, dict):
+            continue
+        sentence = item.get("text")
+        if not isinstance(sentence, str) or not sentence.strip():
+            continue
+        replacement, changed = deterministic_pronoun_sentence_repair(sentence, mode)
+        if not changed or replacement == sentence:
+            continue
+        if sentence not in updated:
+            continue
+        updated = updated.replace(sentence, replacement, 1)
+        repairs.append({
+            "index": item.get("index"),
+            "original": sentence,
+            "replacement": replacement,
+            "method": "deterministic",
+        })
+    return updated, repairs
+
+
+# Function: Build pronoun sentence repair prompt.
+def build_pronoun_sentence_repair_prompt(
+    mode: str,
+    sentence_violations: List[Dict[str, Any]],
+    author_name: str | None = None,
+) -> List[Dict[str, str]]:
+    system = (
+        "You are a sentence-level pronoun repair tool. Output valid JSON only. "
+        "Rewrite only the provided sentences to match the requested narrative voice while preserving meaning."
+    )
+    user = {
+        "task": "Rewrite only these sentences to satisfy the target narrative voice.",
+        "target_voice": mode,
+        "sentences": [
+            {
+                "index": item.get("index"),
+                "text": item.get("text"),
+                "violations": item.get("violations", {}),
+                "tokens": item.get("tokens", []),
+            }
+            for item in sentence_violations
+            if isinstance(item, dict) and isinstance(item.get("text"), str)
+        ],
+        "rules": [
+            "Preserve meaning strictly; do not add facts, claims, examples, or details.",
+            "Return the same indexes only.",
+            "Do not alter Markdown placeholders, links, citations, code spans, or quoted source material.",
+            "Return valid JSON only. Escape double quotes inside JSON strings.",
+        ],
+        "output_format": {
+            "sentences": [
+                {
+                    "index": "int",
+                    "replacement": "string",
+                }
+            ],
+            "deviations": [
+                {
+                    "index": "int",
+                    "reason": "string",
+                }
+            ],
+        },
+    }
+    clean_author_name = author_name.strip() if isinstance(author_name, str) else ""
+    if mode == "third" and clean_author_name:
+        user["author_name"] = clean_author_name
+        user["rules"].append(
+            f"When a sentence naturally refers to the author/narrator, prefer {clean_author_name!r} "
+            "once instead of he/she/they, especially for the first such reference after a Markdown heading."
+        )
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
+    ]
+
+
+# Function: Apply LLM sentence-level pronoun repairs.
+def apply_pronoun_sentence_repair_result(text: str, result: Dict[str, Any], sentence_violations: List[Dict[str, Any]], mode: str) -> tuple[str, List[Dict[str, Any]]]:
+    by_index = {
+        item.get("index"): item
+        for item in sentence_violations
+        if isinstance(item, dict)
+    }
+    replacements = result.get("sentences") if isinstance(result, dict) else None
+    if not isinstance(replacements, list):
+        return text, []
+    updated = text
+    repairs: List[Dict[str, Any]] = []
+    for item in replacements:
+        if not isinstance(item, dict):
+            continue
+        idx = item.get("index")
+        source = by_index.get(idx)
+        replacement = item.get("replacement")
+        if not isinstance(source, dict) or not isinstance(replacement, str):
+            continue
+        original = source.get("text")
+        if not isinstance(original, str) or original not in updated:
+            continue
+        if any(ph in original and ph not in replacement for ph in ("[[FROZEN_BLOCK_", "[[CITATION_", "[[BASE64_IMAGE_")):
+            continue
+        before_eval = evaluate_pronoun_override(original, mode, include_sentence_violations=False)
+        after_eval = evaluate_pronoun_override(replacement, mode, include_sentence_violations=False)
+        if pronoun_override_quality(after_eval) <= pronoun_override_quality(before_eval):
+            continue
+        updated = updated.replace(original, replacement, 1)
+        repairs.append({
+            "index": idx,
+            "original": original,
+            "replacement": replacement,
+            "method": "llm_sentence",
+        })
+    return updated, repairs
 
 
 # Function: Render pronoun override diagnostics for verbose logging.
@@ -5678,6 +6501,11 @@ def main() -> int:
     ap.add_argument("-o", "--out", type=Path, default=None, help="Output markdown path (default: <input>.styled.md)")
     ap.add_argument("-v", "--verbose", action="store_true", help="Enable progress logging")
     ap.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print jq-formatted JSON returned by LLM calls to stderr"
+    )
+    ap.add_argument(
         "--max-prompt-tokens",
         type=int,
         default=None,
@@ -5761,6 +6589,11 @@ def main() -> int:
         default=DEFAULT_MAX_STYLE_RETRIES,
         help="Maximum number of style retry passes (default: 1)"
     )
+    ap.add_argument(
+        "--author-name",
+        default=None,
+        help="Author/narrator name to use occasionally when --3rd-person is active"
+    )
     pronoun_group = ap.add_mutually_exclusive_group()
     pronoun_group.add_argument(
         "--1st-person",
@@ -5816,12 +6649,15 @@ def main() -> int:
     # Function: Verbose-print when enabled.
     def vprint(msg: str) -> None:
         if args.verbose:
-            print(msg)
+            print_console_detail(msg)
 
     vprint(f"Using config: {args.config}")
 
     # print("Use --license to view licensing terms")
-    print(f"Applying fingerprint {args.fingerprint.name} to {args.inp}")
+    print_console_kv_table([
+        ["Fingerprint", args.fingerprint.name],
+        ["Input", args.inp],
+    ])
 
     cfg = load_config(args.config)
     prompts = load_prompts()
@@ -5832,21 +6668,19 @@ def main() -> int:
     base_temperature = cfg.temperature
     temp_multiplier = perplexity_knobs.get("llm.temperature_multiplier", 1.0)
     cfg.temperature = apply_temperature_multiplier(base_temperature, temp_multiplier)
-    print(f"Perplexity level: {perplexity_level}")
     if args.verbose:
-        if args.perplexity:
-            vprint(f"Perplexity override: {args.perplexity} (CLI)")
-        vprint(
-            "Perplexity knobs: "
-            f"humanizer_variance.max_ops_per_1000w={perplexity_knobs.get('humanizer_variance.max_ops_per_1000w')}, "
-            f"humanization_controller.quantiles={perplexity_knobs.get('humanization_controller.quantiles')}, "
-            f"humanization_controller.range_pct={perplexity_knobs.get('humanization_controller.range_pct')}, "
-            f"chunking.max_input_tokens={perplexity_knobs.get('chunking.max_input_tokens')}, "
-            "chunking.min_chunks_when_perturbing="
-            f"{perplexity_knobs.get('chunking.min_chunks_when_perturbing')}, "
-            f"llm.temperature_multiplier={perplexity_knobs.get('llm.temperature_multiplier')}, "
-            f"llm.temperature_effective={cfg.temperature:.3f} (base={base_temperature:.3f})"
-        )
+        print_console_kv_table([
+            ["Perplexity", f"{perplexity_level}{' (CLI)' if args.perplexity else ''}"],
+            ["Temperature", f"{base_temperature:.3f} -> {cfg.temperature:.3f}"],
+            ["Variance ops/1k", perplexity_knobs.get("humanizer_variance.max_ops_per_1000w")],
+            [
+                "Controller",
+                f"{perplexity_knobs.get('humanization_controller.quantiles')} / "
+                f"{perplexity_knobs.get('humanization_controller.range_pct')}%",
+            ],
+            ["Chunk cap", perplexity_knobs.get("chunking.max_input_tokens")],
+            ["Min chunks", perplexity_knobs.get("chunking.min_chunks_when_perturbing")],
+        ], pairs_per_row=2)
 
     roster_cfgs: List[LLMConfig] = []
     roster_seed: int | None = None
@@ -5866,16 +6700,13 @@ def main() -> int:
         except ValueError as exc:
             print_error(f"Error: {exc}")
             return 2
-        if roster_seed is None:
-            print(f"LLM roster: ordered ({len(roster_cfgs)} models)")
-        else:
-            print(f"LLM roster: random seed={roster_seed} ({len(roster_cfgs)} models)")
+        roster_label = f"ordered ({len(roster_cfgs)} models)" if roster_seed is None else f"seed={roster_seed} ({len(roster_cfgs)} models)"
+        print_console_kv("Roster", roster_label)
         if args.verbose:
-            for idx, entry in enumerate(roster_cfgs, start=1):
-                vprint(
-                    f"  Roster[{idx}] model={entry.model} base_url={entry.base_url} "
-                    f"temperature={entry.temperature:.3f}"
-                )
+            print_console_table(["#", "Model", "Temp", "Base URL"], [
+                [idx, entry.model, f"{entry.temperature:.3f}", entry.base_url]
+                for idx, entry in enumerate(roster_cfgs, start=1)
+            ])
 
     variance_seed_override: int | None = None
     if args.seed is not None:
@@ -5909,11 +6740,12 @@ def main() -> int:
             )
     if args.verbose and not args.no_style_retry:
         max_chunk_attempts = 1 + args.max_style_retries + (max_voice_retries if args.force_person else 0)
-        vprint(
-            "Retry budgets: "
-            f"voice retries={max_voice_retries}, style retries={args.max_style_retries}, "
-            f"max chunk attempts={max_chunk_attempts}, threshold={args.style_retry_threshold:.3f}"
-        )
+        print_console_kv_table([
+            ["Voice retries", max_voice_retries],
+            ["Style retries", args.max_style_retries],
+            ["Max chunk attempts", max_chunk_attempts],
+            ["Style threshold", f"{args.style_retry_threshold:.3f}"],
+        ])
 
     humanizer_rules: List[Dict[str, Any]] = []
     humanizer_debug: Dict[str, Any] | None = None
@@ -5962,12 +6794,15 @@ def main() -> int:
     if args.local_spelling_rules:
         force_local_spelling_rules = args.local_spelling_rules
     if args.verbose:
+        spelling_override_rows: List[List[Any]] = []
         if args.local_spelling:
-            vprint(f"Local spelling override: {args.local_spelling} (CLI, applies to LLM + rules)")
+            spelling_override_rows.append(["LLM + rules", f"{args.local_spelling} (CLI)"])
         if args.local_spelling_llm:
-            vprint(f"Local spelling LLM override: {args.local_spelling_llm} (CLI)")
+            spelling_override_rows.append(["LLM", f"{args.local_spelling_llm} (CLI)"])
         if args.local_spelling_rules:
-            vprint(f"Local spelling rules override: {args.local_spelling_rules} (CLI)")
+            spelling_override_rows.append(["Rules", f"{args.local_spelling_rules} (CLI)"])
+        if spelling_override_rows:
+            print_console_kv_table(spelling_override_rows)
     local_spelling_rules = load_local_spelling_rules() if force_local_spelling_rules != "none" else {}
     emoji_policy = None
     if isinstance(tunables, dict):
@@ -5985,10 +6820,10 @@ def main() -> int:
     quoted_ratio_force = float(fiction_conf.get("quoted_ratio_force", 0.08))
     if args.fiction:
         fiction_mode = True
-        print("Assuming fiction: quoted passages may be rewritten.")
+        fiction_label = "fiction (forced)"
     elif args.non_fiction:
         fiction_mode = False
-        print("Assuming non-fiction: multi-word quotations will be preserved.")
+        fiction_label = "non-fiction (forced)"
     else:
         fiction_mode = detect_fiction_from_text(
             original_input_md,
@@ -5998,9 +6833,15 @@ def main() -> int:
             quoted_ratio_force=quoted_ratio_force
         )
         if fiction_mode:
-            print("Detected fiction: quoted passages may be rewritten.")
+            fiction_label = "fiction (detected)"
         else:
-            print("Detected non-fiction: multi-word quotations will be preserved.")
+            fiction_label = "non-fiction (detected)"
+    quote_policy = "quotes mutable" if fiction_mode else "quotes preserved"
+    print_console_kv_table([
+        ["Input type", fiction_label],
+        ["Quote policy", quote_policy],
+        ["Perplexity", perplexity_level],
+    ], pairs_per_row=3)
     global QUOTE_MODE
     QUOTE_MODE = "fiction" if fiction_mode else "non-fiction"
     # Strip base64 images to keep prompts within token limits.
@@ -6018,42 +6859,32 @@ def main() -> int:
     if not args.no_humanizer_guidelines:
         raw_guidelines, guidelines_path = load_general_guidelines()
         if raw_guidelines:
+            hard_constraints: List[str] = []
             if forbid_em_dashes:
-                vprint("Hard constraint active: em dashes are forbidden (humanizer_mandatory).")
+                hard_constraints.append("no em dashes")
             if normalize_double_quotes:
-                vprint("Hard constraint active: double quotes will be normalized to straight quotes (humanizer_mandatory).")
+                hard_constraints.append("straight double quotes")
             if normalize_single_quotes:
-                vprint("Hard constraint active: single quotes will be normalized to straight quotes (humanizer_mandatory).")
+                hard_constraints.append("straight single quotes")
             if sanitize_heading_qualifiers:
                 allowlist_note = f" (allowlist: {len(heading_allowlist)} pattern(s))" if heading_allowlist else ""
-                vprint(
-                    "Hard constraint active: heading qualifiers will be sanitized (humanizer_mandatory)."
-                    + allowlist_note
-                )
-            if heading_case_mode == "identical":
-                vprint("Hard constraint active: heading casing mode = identical (humanizer_mandatory).")
-            elif heading_case_mode == "by-level":
+                hard_constraints.append("sanitize heading qualifiers" + allowlist_note)
+            if emoji_policy and str(emoji_policy) != "none":
+                hard_constraints.append(f"emoji={emoji_policy}")
+            if hard_constraints:
+                print_console_kv_table([[item, "on"] for item in hard_constraints], pairs_per_row=3)
+            heading_case_value = heading_case_mode
+            if heading_case_mode == "by-level":
                 by_level_render = ", ".join(
                     f"H{lvl}={heading_case_by_level.get(lvl, 'automatic')}" for lvl in range(1, MAX_CONFIG_HEADING_LEVEL + 1)
                 )
                 preserve_note = "on" if preserve_proper_name_case else "off"
-                vprint(
-                    "Hard constraint active: heading casing mode = by-level "
-                    f"({by_level_render}; preserve proper names={preserve_note})."
-                )
-            if force_local_spelling_llm != "none":
-                vprint(f"Hard constraint active: LLM spelling target = {force_local_spelling_llm}.")
-            else:
-                vprint("Hard constraint active: LLM spelling target = none (no explicit spelling instruction).")
-            if force_local_spelling_rules != "none":
-                vprint(
-                    "Hard constraint active: "
-                    f"deterministic spelling rules target = {force_local_spelling_rules}."
-                )
-            else:
-                vprint("Hard constraint active: deterministic spelling rules target = none.")
-            if emoji_policy and str(emoji_policy) != "none":
-                vprint(f"Hard constraint active: emoji policy = {emoji_policy}.")
+                heading_case_value = f"by-level ({by_level_render}; proper names={preserve_note})"
+            print_console_kv_table([
+                ["Heading case", heading_case_value],
+                ["Spelling LLM", force_local_spelling_llm],
+                ["Spelling rules", force_local_spelling_rules],
+            ], pairs_per_row=3)
             parsed_rules: List[Dict[str, Any]] = []
             parser_used = "regex"
             cache_path = Path(__file__).resolve().parent / HUMANIZER_CACHE_FILENAME
@@ -6074,8 +6905,8 @@ def main() -> int:
             if not cache_used:
                 if not args.no_humanizer_llm_parse:
                     try:
-                        print("Parsing humanizer guidelines via LLM...")
-                        parsed_rules = parse_humanizer_guidelines_llm(cfg, prompts, raw_guidelines)
+                        vprint("Parsing humanizer guidelines via LLM")
+                        parsed_rules = parse_humanizer_guidelines_llm(cfg, prompts, raw_guidelines, args.debug)
                         if parsed_rules:
                             parser_used = "llm"
                     except Exception:
@@ -6123,7 +6954,7 @@ def main() -> int:
                 suffix = "..." if len(drop_labels) > 10 else ""
                 vprint(f"Dropped {len(drop_labels)} humanizer rule(s): {preview}{suffix}")
             if args.verbose:
-                print(f"Humanizer rules loaded: {len(humanizer_rules)} kept, {len(dropped_rules)} dropped")
+                vprint(f"Humanizer rules: {len(humanizer_rules)} kept, {len(dropped_rules)} dropped")
     # Mask non-voice blocks and inline citations so they are preserved verbatim.
     input_md, frozen_blocks = mask_non_voice_blocks(input_md)
     input_md, citation_map = mask_inline_citations(input_md)
@@ -6187,6 +7018,7 @@ def main() -> int:
             args.force_person,
             summary_payload,
             force_local_spelling_llm,
+            args.author_name,
         )
 
     # Function: Rewrite a single chunk via the LLM.
@@ -6316,9 +7148,16 @@ def main() -> int:
                         vprint("Invalid JSON returned; attempting repair...")
                         # Always repair with the primary config model, even when chunk generation
                         # is roster-routed, so repair behavior stays stable and predictable.
-                        out_obj = repair_json_with_llm(cfg, raw, prompts)
+                        out_obj = repair_json_with_llm(cfg, raw, prompts, args.debug, "apply chunk repair")
                     final_md = out_obj.get("final_markdown") if isinstance(out_obj, dict) else None
                     if isinstance(final_md, str) and final_md.strip():
+                        if args.debug:
+                            debug_purpose = "apply chunk"
+                            if chunk_index is not None and chunk_total is not None:
+                                debug_purpose = f"apply chunk {chunk_index}/{chunk_total}"
+                            if attempt_global > 0:
+                                debug_purpose = f"{debug_purpose} attempt {attempt_global}"
+                            debug_print_llm_json(debug_purpose, out_obj)
                         if attempt > 0:
                             print_warn(f"LLM output recovered after {attempt} retry(ies).")
                         break
@@ -6549,6 +7388,85 @@ def main() -> int:
             if args.force_person and not args.no_style_retry:
                 voice_text = filter_author_voice_text(final_md)
                 override_eval = evaluate_pronoun_override(voice_text, args.force_person)
+                if override_eval.get("violations"):
+                    repaired_md, deterministic_repairs = apply_deterministic_pronoun_repairs(
+                        final_md,
+                        args.force_person,
+                        override_eval,
+                    )
+                    if deterministic_repairs:
+                        repaired_eval = evaluate_pronoun_override(
+                            filter_author_voice_text(repaired_md),
+                            args.force_person,
+                        )
+                        if pronoun_override_quality(repaired_eval) > pronoun_override_quality(override_eval):
+                            final_md = repaired_md
+                            out_obj["final_markdown"] = final_md
+                            out_obj.setdefault("deviations", []).append({
+                                "rule_or_field": "pronoun_override",
+                                "reason": "Applied deterministic sentence-level pronoun repair.",
+                                "repairs": deterministic_repairs,
+                            })
+                            override_eval = repaired_eval
+                            if args.verbose and chunk_index is not None and chunk_total is not None:
+                                vprint(
+                                    f"Chunk {chunk_index}/{chunk_total}: deterministic voice repair "
+                                    f"{len(deterministic_repairs)} sentence(s)"
+                                )
+
+                if override_eval.get("violations"):
+                    sentence_violations = override_eval.get("sentence_violations")
+                    if isinstance(sentence_violations, list) and sentence_violations:
+                        try:
+                            repair_messages = build_pronoun_sentence_repair_prompt(
+                                args.force_person,
+                                sentence_violations[:8],
+                                args.author_name,
+                            )
+                            repair_raw, _repair_usage = chat_completions(active_cfg, repair_messages)
+                            try:
+                                repair_obj = parse_json_strict(repair_raw)
+                            except Exception:
+                                repair_obj = repair_json_with_llm(
+                                    cfg,
+                                    repair_raw,
+                                    prompts,
+                                    args.debug,
+                                    "pronoun sentence repair",
+                                )
+                            repaired_md, llm_sentence_repairs = apply_pronoun_sentence_repair_result(
+                                final_md,
+                                repair_obj,
+                                sentence_violations,
+                                args.force_person,
+                            )
+                            if llm_sentence_repairs:
+                                repaired_eval = evaluate_pronoun_override(
+                                    filter_author_voice_text(repaired_md),
+                                    args.force_person,
+                                )
+                                if pronoun_override_quality(repaired_eval) > pronoun_override_quality(override_eval):
+                                    final_md = repaired_md
+                                    out_obj["final_markdown"] = final_md
+                                    out_obj.setdefault("deviations", []).append({
+                                        "rule_or_field": "pronoun_override",
+                                        "reason": "Applied LLM sentence-level pronoun repair.",
+                                        "repairs": llm_sentence_repairs,
+                                    })
+                                    override_eval = repaired_eval
+                                    if args.debug:
+                                        debug_print_llm_json("pronoun sentence repair", repair_obj)
+                                    if args.verbose and chunk_index is not None and chunk_total is not None:
+                                        vprint(
+                                            f"Chunk {chunk_index}/{chunk_total}: sentence-level voice repair "
+                                            f"{len(llm_sentence_repairs)} sentence(s)"
+                                        )
+                        except Exception as exc:
+                            if args.verbose and chunk_index is not None and chunk_total is not None:
+                                vprint(
+                                    f"Chunk {chunk_index}/{chunk_total}: sentence-level voice repair failed ({exc})"
+                                )
+
                 voice_key = pronoun_override_quality(override_eval)
                 if best_voice_key is None or voice_key > best_voice_key:
                     best_voice_key = voice_key
@@ -6560,10 +7478,9 @@ def main() -> int:
                     if args.verbose and chunk_index is not None and chunk_total is not None:
                         reason = format_pronoun_override_debug(override_eval)
                         vprint(
-                            f"Chunk {chunk_index}/{chunk_total} pronoun override violations; "
-                            f"retrying (voice retry {voice_retries_used + 1}/{max_voice_retries})."
+                            f"Chunk {chunk_index}/{chunk_total}: voice retry "
+                            f"{voice_retries_used + 1}/{max_voice_retries} ({reason})"
                         )
-                        vprint(f"  Pronoun override detail: {reason}")
                     style_feedback = {
                         "pronoun_override": override_eval,
                         "notes": [
@@ -6586,10 +7503,9 @@ def main() -> int:
                     override_eval = best_voice_eval
                     if args.verbose and chunk_index is not None and chunk_total is not None:
                         vprint(
-                            f"Chunk {chunk_index}/{chunk_total} using best voice attempt "
-                            f"{best_voice_attempt} over attempt {attempt_global} after voice retries exhausted."
+                            f"Chunk {chunk_index}/{chunk_total}: best voice attempt {best_voice_attempt} "
+                            f"replaced attempt {attempt_global}"
                         )
-                        vprint(f"  Pronoun override detail: {format_pronoun_override_debug(override_eval)}")
 
             if summary_enabled:
                 if request_chunk_summary:
@@ -6649,15 +7565,13 @@ def main() -> int:
                 comp_score = compliance.get("score")
                 if isinstance(comp_score, (int, float)):
                     vprint(
-                        f"Chunk {chunk_index}/{chunk_total} attempt {attempt_no}/{max_chunk_attempts} "
-                        f"compliance score: {comp_score:.3f} "
-                        f"(threshold {args.style_retry_threshold})"
+                        f"Chunk {chunk_index}/{chunk_total}: attempt {attempt_no}/{max_chunk_attempts}, "
+                        f"score={comp_score:.3f}, threshold={args.style_retry_threshold}"
                     )
                 else:
                     vprint(
-                        f"Chunk {chunk_index}/{chunk_total} attempt {attempt_no}/{max_chunk_attempts} "
-                        f"compliance score: {comp_score} "
-                        f"(threshold {args.style_retry_threshold})"
+                        f"Chunk {chunk_index}/{chunk_total}: attempt {attempt_no}/{max_chunk_attempts}, "
+                        f"score={comp_score}, threshold={args.style_retry_threshold}"
                     )
 
             # If we forced narrative person, the voice-phase output is used only to generate
@@ -6668,10 +7582,12 @@ def main() -> int:
                 and not args.no_style_retry
                 and compliance["score"] < args.style_retry_threshold
             ):
-                style_feedback = {
-                    "score": compliance["score"],
-                    "deltas": compliance.get("deltas", [])
-                }
+                style_feedback = build_style_retry_feedback(
+                    fingerprint,
+                    final_md,
+                    compliance,
+                    args.style_retry_threshold,
+                )
                 if controller_overlay and isinstance(tunables, dict):
                     controller_conf = tunables.get("humanization_controller", {}) if isinstance(tunables.get("humanization_controller", {}), dict) else {}
                     if controller_conf.get("feedback_enabled", False):
@@ -6696,8 +7612,7 @@ def main() -> int:
                     if args.verbose and chunk_index is not None and chunk_total is not None:
                         reason = format_pronoun_override_debug(override_eval)
                         vprint(
-                            f"Chunk {chunk_index}/{chunk_total} carrying pronoun override "
-                            f"violations into style feedback: {reason}"
+                            f"Chunk {chunk_index}/{chunk_total}: carrying voice feedback ({reason})"
                         )
                 style_phase_started = True
                 continue
@@ -6710,13 +7625,15 @@ def main() -> int:
             ):
                 if args.verbose and chunk_index is not None and chunk_total is not None:
                     vprint(
-                        f"Chunk {chunk_index}/{chunk_total} below threshold; "
-                        f"retrying (style retry {style_retries_used + 1}/{args.max_style_retries})."
+                        f"Chunk {chunk_index}/{chunk_total}: style retry "
+                        f"{style_retries_used + 1}/{args.max_style_retries}"
                     )
-                style_feedback = {
-                    "score": compliance["score"],
-                    "deltas": compliance.get("deltas", [])
-                }
+                style_feedback = build_style_retry_feedback(
+                    fingerprint,
+                    final_md,
+                    compliance,
+                    args.style_retry_threshold,
+                )
                 if controller_overlay and isinstance(tunables, dict):
                     controller_conf = tunables.get("humanization_controller", {}) if isinstance(tunables.get("humanization_controller", {}), dict) else {}
                     if controller_conf.get("feedback_enabled", False):
@@ -6735,7 +7652,7 @@ def main() -> int:
             if chunk_index is not None and chunk_total is not None and args.verbose:
                 if isinstance(usage, dict):
                     vprint(
-                        f"Chunk {chunk_index}/{chunk_total} token usage: "
+                        f"Chunk {chunk_index}/{chunk_total}: tokens "
                         f"prompt={usage.get('prompt_tokens', 'n/a')}, "
                         f"completion={usage.get('completion_tokens', 'n/a')}, "
                         f"total={usage.get('total_tokens', 'n/a')}"
@@ -6743,16 +7660,15 @@ def main() -> int:
                 else:
                     output_tokens = estimate_tokens_for_text(final_md)
                     vprint(
-                        f"Chunk {chunk_index}/{chunk_total} token estimate: "
+                        f"Chunk {chunk_index}/{chunk_total}: token estimate "
                         f"in={input_tokens}, out={output_tokens}"
                     )
             last_out = out_obj
             if best_md is not None and best_out is not None and best_comp is not None:
                 if args.verbose and chunk_index is not None and chunk_total is not None and best_attempt != attempt_no:
                     vprint(
-                        f"Chunk {chunk_index}/{chunk_total} using best attempt "
-                        f"{best_attempt} (score {best_score:.3f}) over last attempt "
-                        f"{attempt_no} (score {score_val:.3f})."
+                        f"Chunk {chunk_index}/{chunk_total}: best attempt {best_attempt} "
+                        f"score={best_score:.3f} replaced attempt {attempt_no} score={score_val:.3f}"
                     )
                 return best_md, best_out, best_comp
             return final_md, out_obj, compliance
@@ -6817,27 +7733,29 @@ def main() -> int:
     input_tokens = estimate_tokens_for_text(input_md)
     initial_tokens = input_tokens + base_tokens
     if args.verbose:
-        vprint(
-            f"Prompt overhead tokens: {base_tokens}; "
-            f"input budget: {max_input_tokens}; input tokens: {input_tokens}"
-        )
+        print_console_kv_table([
+            ["Prompt overhead", base_tokens],
+            ["Input", input_tokens],
+            ["Chunk budget", max_input_tokens],
+        ], pairs_per_row=3)
         if summary_enabled:
-            vprint(f"Chunk summary chaining enabled: {summary_words} words")
-        vprint(
-            f"Chunk split strategy: {chunk_split_on} "
-            "(fallback to sentence/word if oversized; list lines treated as sentences)"
-        )
+            print_console_kv_table([["Chunk summaries", f"enabled ({summary_words} words)"]], pairs_per_row=3)
+        print_console_kv_table([
+            ["Split on", chunk_split_on],
+            ["Oversized fallback", "sentence/word"],
+            ["List lines", "sentence units"],
+        ], pairs_per_row=3)
     force_min_chunks = perturbations_active and min_chunks_when_perturbing > 1
     summary_active = summary_enabled and (input_tokens > max_input_tokens or force_min_chunks)
     if input_tokens <= max_input_tokens and not force_min_chunks:
-        vprint("Calling LLM to apply fingerprint...")
+        vprint(f"Single chunk: rewriting ({input_tokens} input tokens)")
         single_chunk_cfg = cfg
         if roster_cfgs:
             roster_idx = build_roster_indices(len(roster_cfgs), 1, roster_seed)[0]
             single_chunk_cfg = roster_cfgs[roster_idx]
             if args.verbose:
                 vprint(
-                    f"Single chunk roster model {roster_idx + 1}/{len(roster_cfgs)}: "
+                    f"Single chunk model: roster {roster_idx + 1}/{len(roster_cfgs)} "
                     f"{single_chunk_cfg.model} @ {single_chunk_cfg.base_url}"
                 )
         try:
@@ -6943,7 +7861,7 @@ def main() -> int:
         })
     else:
         if input_tokens > max_input_tokens:
-            vprint(f"Prompt too large ({initial_tokens} tokens); chunking input...")
+            vprint(f"Chunking required: prompt={initial_tokens} tokens exceeds budget")
         elif force_min_chunks and args.verbose:
             vprint(f"Perturbations enabled; enforcing minimum chunk count: {min_chunks_when_perturbing}")
         # Function: Build messages for chunk est.
@@ -6969,7 +7887,17 @@ def main() -> int:
         if len(non_empty) != len(chunks):
             vprint(f"Filtered out {len(chunks) - len(non_empty)} empty chunk(s).")
         chunks = enforce_min_chunks(input_md, non_empty, min_chunks_when_perturbing) if force_min_chunks else non_empty
-        vprint(f"Chunked into {len(chunks)} parts.")
+        chunk_token_counts = [estimate_tokens_for_text(c) for c in chunks]
+        if chunk_token_counts:
+            print_console_table(["Chunks", "Parts", "Min Tokens", "Avg Tokens", "Max Tokens"], [[
+                "Input",
+                len(chunks),
+                min(chunk_token_counts),
+                sum(chunk_token_counts) // len(chunk_token_counts),
+                max(chunk_token_counts),
+            ]])
+        else:
+            vprint("Chunks: 0 parts")
         roster_indices: List[int] = []
         if roster_cfgs:
             roster_indices = build_roster_indices(len(roster_cfgs), len(chunks), roster_seed)
@@ -6981,10 +7909,10 @@ def main() -> int:
                 chunk_cfg = roster_cfgs[roster_idx]
                 if args.verbose:
                     vprint(
-                        f"Chunk {idx}/{len(chunks)} roster model {roster_idx + 1}/{len(roster_cfgs)}: "
+                        f"Chunk {idx}/{len(chunks)}: model roster {roster_idx + 1}/{len(roster_cfgs)} "
                         f"{chunk_cfg.model} @ {chunk_cfg.base_url}"
                     )
-            vprint(f"Rewriting chunk {idx}/{len(chunks)}...")
+            vprint(f"Chunk {idx}/{len(chunks)}: rewriting ({estimate_tokens_for_text(chunk)} tokens)")
             try:
                 final_md, out_obj, compliance = rewrite_chunk(
                     chunk,
@@ -7420,26 +8348,22 @@ def main() -> int:
                     "merged_items": list_merged_items,
                 })
     if args.verbose:
-        vprint(
-            "Post-process redundancy: "
-            f"enabled={postprocess_enabled}; "
-            f"paragraph_dedupe(enabled={para_enabled}, dropped_blocks={para_dropped_blocks}); "
-            f"list_density(enabled={list_enabled}, runs={list_throttled_runs}, merged_items={list_merged_items})."
-        )
+        print_console_table(["Post-Process", "Enabled", "Result"], [
+            ["Redundancy", postprocess_enabled, ""],
+            ["Paragraph dedupe", para_enabled, f"dropped_blocks={para_dropped_blocks}"],
+            ["List density", list_enabled, f"runs={list_throttled_runs}, merged_items={list_merged_items}"],
+        ])
     line_count_in = len(original_input_md.splitlines())
     line_count_out = len(final_md.splitlines())
     line_change_pct = ((line_count_out - line_count_in) / max(1, line_count_in)) * 100.0
-    print(f"Line count change: {line_count_in} -> {line_count_out} ({line_change_pct:+.1f}%).")
 
     word_count_in = len(words(original_input_md))
     word_count_out = len(words(final_md))
     word_change_pct = ((word_count_out - word_count_in) / max(1, word_count_in)) * 100.0
-    vprint(f"Word count change: {word_count_in} -> {word_count_out} ({word_change_pct:+.1f}%).")
 
     para_count_in = len(split_paragraphs(original_input_md))
     para_count_out = len(split_paragraphs(final_md))
     para_change_pct = ((para_count_out - para_count_in) / max(1, para_count_in)) * 100.0
-    vprint(f"Paragraph count change: {para_count_in} -> {para_count_out} ({para_change_pct:+.1f}%).")
 
     sanity = tunables.get("sanity_checks", {}) if isinstance(tunables, dict) else {}
     line_warn = float(sanity.get("line_count_warn_pct", 10.0))
@@ -7534,23 +8458,17 @@ def main() -> int:
     out_path = args.out or args.inp.with_suffix(args.inp.suffix + f".styled{roster_suffix}.md")
     vprint(f"Writing output: {out_path}")
     out_path.write_text(final_md, encoding="utf-8")
-    print(f"Wrote rewritten markdown to: {out_path}")
+    metric_summaries: List[tuple[str, float | None, Dict[str, Any]]] = []
     if args.metrics and isinstance(humanization_metrics, dict):
         for label in ("input", "output"):
             metrics = humanization_metrics.get(label, {})
             scores = metrics.get("scores", {}) if isinstance(metrics, dict) else {}
             aggregate_100 = metrics.get("aggregate_score_100") if isinstance(metrics, dict) else None
-            if isinstance(scores, dict) and scores:
-                print(
-                    f"Humanization metrics ({label}, heuristic scores): "
-                    f"lexical_diversity={scores.get('lexical_diversity', 0):.2f}, "
-                    f"repetition_inverse={scores.get('repetition_inverse', 0):.2f}, "
-                    f"sentence_burstiness={scores.get('sentence_burstiness', 0):.2f}, "
-                    f"paragraph_burstiness={scores.get('paragraph_burstiness', 0):.2f}, "
-                    f"punctuation_variety={scores.get('punctuation_variety', 0):.2f}"
-                )
-            if isinstance(aggregate_100, (int, float)):
-                print(f"Humanization aggregate score ({label}, 0–100): {aggregate_100:.2f}")
+            metric_summaries.append((
+                label,
+                float(aggregate_100) if isinstance(aggregate_100, (int, float)) else None,
+                scores if isinstance(scores, dict) else {},
+            ))
 
     # Optionally also write deviations report
     if humanizer_debug:
@@ -7565,11 +8483,57 @@ def main() -> int:
             "rule_or_field": "humanization_metrics",
             "metrics": humanization_metrics
         })
+    rep: Path | None = None
     if all_deviations:
         rep = out_path.with_suffix(out_path.suffix + ".deviations.json")
         rep.write_text(json.dumps(all_deviations, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"Wrote deviations report to: {rep}")
-    vprint("Done.")
+    close_console_table()
+    print()
+    print_console_header("Result")
+    final_rows: List[List[Any]] = [["Artifact", "Output", out_path, "", "", ""]]
+    if rep is not None:
+        final_rows.append(["Artifact", "Deviations", rep, "", "", ""])
+    final_rows.append(["Count", "Lines", "", line_count_in, line_count_out, f"{line_change_pct:+.1f}%"])
+    if args.verbose:
+        final_rows.extend([
+            ["Count", "Words", "", word_count_in, word_count_out, f"{word_change_pct:+.1f}%"],
+            ["Count", "Paragraphs", "", para_count_in, para_count_out, f"{para_change_pct:+.1f}%"],
+        ])
+    metric_rows: List[List[Any]] = []
+    metric_by_label: Dict[str, tuple[float | None, Dict[str, Any]]] = {
+        label: (aggregate_100, scores)
+        for label, aggregate_100, scores in metric_summaries
+    }
+    input_aggregate, input_scores = metric_by_label.get("input", (None, {}))
+    output_aggregate, output_scores = metric_by_label.get("output", (None, {}))
+    if input_aggregate is not None or output_aggregate is not None:
+        metric_rows.append([
+            "Metric",
+            "aggregate",
+            "",
+            f"{input_aggregate:.2f}/100" if input_aggregate is not None else "",
+            f"{output_aggregate:.2f}/100" if output_aggregate is not None else "",
+            "",
+        ])
+    if args.verbose and (input_scores or output_scores):
+        for metric_name in (
+            "lexical_diversity",
+            "repetition_inverse",
+            "sentence_burstiness",
+            "paragraph_burstiness",
+            "punctuation_variety",
+        ):
+            metric_rows.append([
+                "Metric",
+                metric_name,
+                "",
+                f"{input_scores.get(metric_name, 0):.2f}" if input_scores else "",
+                f"{output_scores.get(metric_name, 0):.2f}" if output_scores else "",
+                "",
+            ])
+    if metric_rows:
+        final_rows.extend(metric_rows)
+    print_console_table(["Section", "Item", "Value", "Input", "Output", "Change"], final_rows)
 
     return 0
 

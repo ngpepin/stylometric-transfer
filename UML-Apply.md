@@ -42,6 +42,9 @@ class ApplyPipeline {
   +build_apply_prompt()
   +chat_completions()
   +compute_style_compliance()
+  +evaluate_pronoun_override()
+  +apply_deterministic_pronoun_repairs()
+  +build_pronoun_sentence_repair_prompt()
   +rewrite_with_retry()
   +rewrite_with_recovery_split()
   +enforce_heading_case_normalization_from_source()
@@ -160,6 +163,9 @@ endif
 :Apply bounded humanizer variance (optional);
 :Restore placeholders;
 :Apply mandatory output normalizations (em dashes, quotes, heading qualifiers, local spelling);
+:If forced-person mode, evaluate pronoun override;
+:Apply deterministic sentence-level pronoun repair when high confidence;
+:If violations remain, request sentence-only LLM repair;
 :Apply heading-case normalization policy (automatic/identical/by-level);
 stop
 ```
@@ -224,6 +230,9 @@ AF -> AF : recovery split if output invalid after retries (optional)
 AF -> AF : apply controller overlay feedback on retry (optional)
 AF -> AF : apply humanizer variance (optional)
 AF -> AF : restore placeholders
+AF -> AF : forced-person deterministic sentence repair (optional)
+AF -> LLM : sentence-only pronoun repair (optional)
+LLM --> AF : sentence replacements JSON
 AF -> AF : compute style compliance
 AF -> LLM : retry with deltas (optional)
 LLM --> AF : revised JSON

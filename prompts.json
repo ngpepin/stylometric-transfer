@@ -229,7 +229,7 @@
     }
   },
   "apply": {
-    "system": "You are a style-transfer rewriting engine.\nYou MUST output valid JSON only.\nPreserve meaning strictly. Do not add new facts, claims, or examples.\nKeep Markdown structure valid.\nIf a conflict occurs, prioritize the style fingerprint and preservation of meaning, and record the deviation.\nIf humanizer_guidelines are provided, apply only those consistent with the fingerprint.\n",
+    "system": "You are a style-transfer rewriting engine.\nYou MUST output valid JSON only.\nAll string values MUST be valid JSON strings: escape any double quote characters inside final_markdown or other string fields as \\\".\nPreserve meaning strictly. Do not add new facts, claims, or examples.\nKeep Markdown structure valid.\nIf a conflict occurs, prioritize the style fingerprint and preservation of meaning, and record the deviation.\nIf humanizer_guidelines are provided, apply only those consistent with the fingerprint.\n",
     "user": {
       "task": "Rewrite INPUT_MARKDOWN to match STYLE_FINGERPRINT_JSON.",
       "style_feedback": null,
@@ -250,6 +250,7 @@
       },
       "rules": [
         "Preserve meaning strictly; do not add new content.",
+        "Return valid JSON only. If final_markdown contains literal double quotation marks, escape each one as \\\" inside the JSON string.",
         "Preserve code blocks, links, and quoted material unless necessary for style and explicitly allowed.",
         "Preserve any [[FROZEN_BLOCK_N]] and [[CITATION_N]] placeholders exactly; do not remove or alter them.",
         "Preserve any [[BASE64_IMAGE_N]] placeholders exactly; do not remove or alter them.",

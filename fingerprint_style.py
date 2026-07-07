@@ -47,6 +47,7 @@ import textwrap
 import time
 import random
 import zipfile
+import atexit
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -70,9 +71,229 @@ except Exception:
     Document = None  # optional
 
 
+ANSI_GREEN = "\x1b[32m"
+ANSI_CYAN = "\x1b[36m"
+ANSI_BLUE = "\x1b[34m"
+ANSI_BOLD = "\x1b[1m"
+ANSI_DIM = "\x1b[2m"
+ANSI_BG_DARK_BLUE = "\x1b[48;5;17m"
+ANSI_BRIGHT_WHITE = "\x1b[97m"
+ANSI_RESET = "\x1b[0m"
+
+
+# Function: Colorize stdout console text.
+def console_color(text: str, color: str) -> str:
+    if os.getenv("NO_COLOR") or os.getenv("CLICOLOR") == "0":
+        return text
+    return f"{color}{text}{ANSI_RESET}"
+
+
 # Function: Print warnings to stderr.
 def print_warn(msg: str) -> None:
     print(msg, file=sys.stderr)
+
+
+# Function: Print a compact console section header.
+def print_console_header(title: str) -> None:
+    close_console_table()
+    print(console_color(title, ANSI_BOLD + ANSI_CYAN))
+    print(console_color("─" * len(title), ANSI_DIM))
+
+
+# Function: Print a compact console key/value line.
+def print_console_kv(label: str, value: Any) -> None:
+    close_console_table()
+    print(f"  {console_color(f'{label:<12}', ANSI_GREEN)} {value}")
+
+
+# Function: Close the currently active streaming table.
+def close_console_table() -> None:
+    if CONSOLE_TABLE_STATE.get("active"):
+        bottom = CONSOLE_TABLE_STATE.get("bottom")
+        if isinstance(bottom, str) and bottom:
+            print(bottom)
+    CONSOLE_TABLE_STATE["active"] = False
+    CONSOLE_TABLE_STATE["signature"] = None
+    CONSOLE_TABLE_STATE["bottom"] = ""
+    CONSOLE_TABLE_STATE["row_mid"] = ""
+
+
+atexit.register(close_console_table)
+
+
+# Function: Wrap table cells while preserving alignment.
+def wrap_console_cell(text: str, width: int) -> List[str]:
+    token = str(text)
+    if token == "":
+        return [""]
+    wrapped = textwrap.wrap(
+        token,
+        width=max(1, width),
+        break_long_words=True,
+        break_on_hyphens=False,
+    )
+    return wrapped or [""]
+
+
+# Function: Compute sensible table widths within the assumed terminal width.
+def compute_console_widths(headers: List[str], rows: List[List[Any]], initial_widths: List[int] | None = None) -> List[int]:
+    col_count = len(headers)
+    if initial_widths and len(initial_widths) == col_count:
+        widths = list(initial_widths)
+    else:
+        widths = [len(str(header)) for header in headers]
+        for row in rows:
+            for idx, cell in enumerate(row[:col_count]):
+                widths[idx] = max(widths[idx], min(len(str(cell)), 48))
+    max_width_sum = max(20, CONSOLE_WIDTH - 2 - (col_count + 1) - (2 * col_count))
+    while sum(widths) > max_width_sum and max(widths) > 10:
+        idx = max(range(col_count), key=lambda i: widths[i])
+        widths[idx] -= 1
+    return [max(3, width) for width in widths]
+
+
+# Function: Render table rows, optionally with the table header.
+def format_console_table(
+    headers: List[str],
+    rows: List[List[Any]],
+    widths: List[int],
+    include_header: bool,
+    leading_separator: bool = False,
+) -> str:
+    string_rows = [[str(cell) for cell in row] for row in rows]
+    border_color = ANSI_DIM
+    header_color = ANSI_BG_DARK_BLUE + ANSI_BOLD + ANSI_BRIGHT_WHITE
+    key_color = ANSI_GREEN
+    value_color = ANSI_BLUE
+    double_boundaries = {
+        idx
+        for idx in range(1, len(headers))
+        if str(headers[idx]).lower() == "setting"
+    }
+
+    def render_rule(left: str, single: str, double: str, horizontal: str, right: str) -> str:
+        parts = [left]
+        for idx, width in enumerate(widths):
+            parts.append(horizontal * (width + 2))
+            if idx < len(widths) - 1:
+                parts.append(double if idx + 1 in double_boundaries else single)
+        parts.append(right)
+        return console_color("  " + "".join(parts), border_color)
+
+    separators = [
+        console_color("║" if idx in double_boundaries else "│", border_color)
+        for idx in range(1, len(widths))
+    ]
+    top = render_rule("┌", "┬", "╥", "─", "┐")
+    header_mid = render_rule("╞", "╪", "╬", "═", "╡")
+    row_mid = render_rule("├", "┼", "╫", "─", "┤")
+    bottom = render_rule("└", "┴", "╨", "─", "┘")
+    sep = console_color("│", border_color)
+    key_cols = {idx for idx, header in enumerate(headers) if str(header).lower() in {"setting", "metric", "count", "artifact", "result", "mode", "policy", "hard constraint"}}
+    if not key_cols and headers:
+        key_cols = {0}
+    value_cols = {idx for idx, header in enumerate(headers) if str(header).lower() in {"value", "path", "input", "output", "score"}}
+    header_cells = [
+        console_color(f" {str(header):<{widths[idx]}} ", header_color)
+        for idx, header in enumerate(headers)
+    ]
+    header_line = "  " + sep + "".join(
+        cell + (separators[idx] if idx < len(separators) else sep)
+        for idx, cell in enumerate(header_cells)
+    )
+    rendered: List[str] = []
+    if include_header:
+        rendered.extend([top, header_line, header_mid])
+    elif leading_separator:
+        rendered.append(row_mid)
+    for row_idx, row in enumerate(string_rows):
+        if row_idx > 0:
+            rendered.append(row_mid)
+        normalized = row[:len(widths)] + [""] * max(0, len(widths) - len(row))
+        wrapped_cells = [wrap_console_cell(cell, widths[idx]) for idx, cell in enumerate(normalized[:len(widths)])]
+        height = max(len(lines) for lines in wrapped_cells)
+        for line_idx in range(height):
+            rendered_cells: List[str] = []
+            for idx, lines in enumerate(wrapped_cells):
+                cell = lines[line_idx] if line_idx < len(lines) else ""
+                padded = f" {cell:<{widths[idx]}} "
+                if cell.strip() and idx in key_cols:
+                    padded = console_color(padded, key_color)
+                elif cell.strip() and idx in value_cols:
+                    padded = console_color(padded, value_color)
+                rendered_cells.append(padded)
+            rendered.append("  " + sep + "".join(
+                cell + (separators[idx] if idx < len(separators) else sep)
+                for idx, cell in enumerate(rendered_cells)
+            ))
+    CONSOLE_TABLE_STATE["bottom"] = bottom
+    CONSOLE_TABLE_STATE["row_mid"] = row_mid
+    return "\n".join(rendered)
+
+
+# Function: Print a compact box-drawing table.
+def print_console_table(headers: List[str], rows: List[List[Any]]) -> None:
+    if not rows:
+        return
+    widths = compute_console_widths(headers, rows)
+    signature = (tuple(headers), tuple(widths))
+    include_header = (
+        not CONSOLE_TABLE_STATE.get("active")
+        or CONSOLE_TABLE_STATE.get("signature") != signature
+    )
+    leading_separator = bool(CONSOLE_TABLE_STATE.get("active") and CONSOLE_TABLE_STATE.get("signature") == signature)
+    if CONSOLE_TABLE_STATE.get("active") and CONSOLE_TABLE_STATE.get("signature") != signature:
+        close_console_table()
+        include_header = True
+        leading_separator = False
+    CONSOLE_TABLE_STATE["active"] = True
+    CONSOLE_TABLE_STATE["signature"] = signature
+    print(format_console_table(headers, rows, widths, include_header, leading_separator))
+
+
+# Function: Print key/value rows packed into multiple pairs per line.
+def print_console_kv_table(rows: List[List[Any]], pairs_per_row: int = 2) -> None:
+    if not rows:
+        return
+    packed_rows: List[List[Any]] = []
+    pair_count = max(1, pairs_per_row)
+    for start in range(0, len(rows), pairs_per_row):
+        row: List[Any] = []
+        for item in rows[start:start + pair_count]:
+            row.extend([item[0], item[1] if len(item) > 1 else ""])
+        while len(row) < pair_count * 2:
+            row.extend(["", ""])
+        packed_rows.append(row)
+    headers: List[str] = []
+    for _idx in range(pair_count):
+        headers.extend(["Setting", "Value"])
+    max_width_sum = max(20, CONSOLE_WIDTH - 2 - (len(headers) + 1) - (2 * len(headers)))
+    key_width = 18 if pair_count >= 3 else 22
+    value_width = max(8, (max_width_sum - (key_width * pair_count)) // pair_count)
+    initial_widths: List[int] = []
+    for _idx in range(pair_count):
+        initial_widths.extend([key_width, value_width])
+    widths = compute_console_widths(headers, packed_rows, initial_widths)
+    signature = (tuple(headers), tuple(widths))
+    include_header = (
+        not CONSOLE_TABLE_STATE.get("active")
+        or CONSOLE_TABLE_STATE.get("signature") != signature
+    )
+    leading_separator = bool(CONSOLE_TABLE_STATE.get("active") and CONSOLE_TABLE_STATE.get("signature") == signature)
+    if CONSOLE_TABLE_STATE.get("active") and CONSOLE_TABLE_STATE.get("signature") != signature:
+        close_console_table()
+        include_header = True
+        leading_separator = False
+    CONSOLE_TABLE_STATE["active"] = True
+    CONSOLE_TABLE_STATE["signature"] = signature
+    print(format_console_table(headers, packed_rows, widths, include_header, leading_separator))
+
+
+# Function: Print a verbose detail line.
+def print_console_detail(msg: str) -> None:
+    close_console_table()
+    print(f"  - {msg}")
+
 
 # Script overview:
 # - Extract a corpus archive into a temp directory
@@ -115,6 +336,8 @@ BOILERPLATE_HEADING_RE = re.compile(
 DEFAULT_MAX_FILES = 2000
 DEFAULT_MAX_BYTES_PER_FILE = 2_000_000  # 2 MB per file
 DEFAULT_MAX_TOTAL_CHARS_FOR_LLM = 180_000  # excerpt cap; we send stats + representative excerpts
+CONSOLE_WIDTH = 132
+CONSOLE_TABLE_STATE: Dict[str, Any] = {"active": False, "signature": None, "bottom": "", "row_mid": ""}
 PROMPTS_PATH = Path(__file__).resolve().parent / "prompts.json"
 LICENSE_FILENAME = "LICENSE.md"
 LEXICON_HINTS_FILENAME = "lexicon_hints.json"
@@ -2671,7 +2894,8 @@ def validate_common_phrases(
     prompts: Dict[str, Any],
     rare_word_candidates: List[Dict[str, Any]] | None = None,
     token_cap_ratios: Dict[str, float] | None = None,
-    entity_blacklist: List[str] | None = None
+    entity_blacklist: List[str] | None = None,
+    debug: bool = False
 ) -> Dict[str, Any]:
     # Ask the LLM to flag OCR/citation noise in common phrases.
     honorifics = {
@@ -2790,7 +3014,7 @@ def validate_common_phrases(
             )
         except Exception:
             pass
-    result, _ = request_json_with_retries(cfg, messages, prompts, "phrase validation")
+    result, _ = request_json_with_retries(cfg, messages, prompts, "phrase validation", debug)
     if dropped:
         result.setdefault("decisions", [])
         for d in dropped:
@@ -2992,8 +3216,31 @@ def parse_json_strict(s: str) -> Dict[str, Any]:
             return json.loads(candidate)
         raise
 
+# Function: Print LLM JSON debug output.
+def debug_print_llm_json(purpose: str, payload: Any) -> None:
+    # Emit newline-delimited, jq-readable JSON objects on stderr.
+    print(
+        json.dumps(
+            {
+                "debug": "llm_json",
+                "script": "fingerprint_style.py",
+                "purpose": purpose,
+                "payload": payload,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        file=sys.stderr,
+    )
+
 # Function: Repair JSON with LLM.
-def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any]) -> Dict[str, Any]:
+def repair_json_with_llm(
+    cfg: LLMConfig,
+    bad_output: str,
+    prompts: Dict[str, Any],
+    debug: bool = False,
+    purpose: str = "json repair"
+) -> Dict[str, Any]:
     # Ask the LLM to repair malformed JSON while preserving content.
     system = get_prompt_value(prompts, "repair_json", "system")
     task = get_prompt_value(prompts, "repair_json", "task")
@@ -3005,7 +3252,10 @@ def repair_json_with_llm(cfg: LLMConfig, bad_output: str, prompts: Dict[str, Any
         })}
     ]
     fixed, _ = chat_completions(cfg, messages)
-    return parse_json_strict(fixed)
+    result = parse_json_strict(fixed)
+    if debug:
+        debug_print_llm_json(purpose, result)
+    return result
 
 
 # Function: Call the LLM with retries and JSON parsing.
@@ -3013,7 +3263,8 @@ def request_json_with_retries(
     cfg: LLMConfig,
     messages: List[Dict[str, str]],
     prompts: Dict[str, Any],
-    purpose: str
+    purpose: str,
+    debug: bool = False
 ) -> tuple[Dict[str, Any], Dict[str, Any] | None]:
     last_err: Exception | None = None
     last_raw = ""
@@ -3024,8 +3275,10 @@ def request_json_with_retries(
             try:
                 result = parse_json_strict(raw)
             except Exception:
-                result = repair_json_with_llm(cfg, raw, prompts)
+                result = repair_json_with_llm(cfg, raw, prompts, debug, f"{purpose} repair")
             if isinstance(result, dict) and result:
+                if debug:
+                    debug_print_llm_json(purpose, result)
                 if attempt > 0:
                     print_warn(f"LLM output recovered after {attempt} retry(ies) ({purpose}).")
                 return result, usage
@@ -3071,6 +3324,11 @@ def main() -> int:
         help="Output fingerprint JSON path (adds .json if no extension)"
     )
     ap.add_argument("-v", "--verbose", action="store_true", help="Enable progress logging")
+    ap.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print jq-formatted JSON returned by LLM calls to stderr"
+    )
     ap.add_argument(
         "--max-prompt-tokens",
         type=int,
@@ -3123,10 +3381,14 @@ def main() -> int:
     # Function: Verbose-print when enabled.
     def vprint(msg: str) -> None:
         if args.verbose:
-            print(msg)
+            print_console_detail(msg)
 
+    print_console_header("Build fingerprint")
+    print_console_kv_table([
+        ["Archive", args.archive],
+        ["Output", args.out],
+    ])
     vprint(f"Using config: {args.config}")
-    vprint(f"Output path: {args.out}")
     # print("Use --license to view license.")
 
     cfg = load_config(args.config)
@@ -3170,10 +3432,10 @@ def main() -> int:
         quoted_ratio_force = float(fiction_conf.get("quoted_ratio_force", 0.08))
         if args.fiction:
             fiction_mode = True
-            print("Assuming fiction: quoted passages will be included in fingerprinting.")
+            fiction_label = "fiction (forced)"
         elif args.non_fiction:
             fiction_mode = False
-            print("Assuming non-fiction: multi-word quotations will be excluded from fingerprinting.")
+            fiction_label = "non-fiction (forced)"
         else:
             fiction_mode = detect_fiction_from_texts(
                 raw_texts,
@@ -3183,9 +3445,14 @@ def main() -> int:
                 quoted_ratio_force=quoted_ratio_force
             )
             if fiction_mode:
-                print("Detected fiction: quoted passages will be included in fingerprinting.")
+                fiction_label = "fiction (detected)"
             else:
-                print("Detected non-fiction: multi-word quotations will be excluded from fingerprinting.")
+                fiction_label = "non-fiction (detected)"
+        quote_policy = "quotes profiled" if fiction_mode else "quotes excluded"
+        print_console_kv_table([
+            ["Corpus type", fiction_label],
+            ["Quote policy", quote_policy],
+        ])
         global QUOTE_MODE
         QUOTE_MODE = "fiction" if fiction_mode else "non-fiction"
         filtered_files_and_texts: List[Tuple[str, str]] = []
@@ -3280,7 +3547,8 @@ def main() -> int:
                     prompts,
                     rare_word_candidates=rare_candidates,
                     token_cap_ratios=token_cap_ratios,
-                    entity_blacklist=entity_blacklist
+                    entity_blacklist=entity_blacklist,
+                    debug=args.debug
                 )
                 decisions = validation.get("decisions", []) or []
                 decision_map: Dict[Tuple[str, int], Dict[str, Any]] = {}
@@ -3371,7 +3639,13 @@ def main() -> int:
         messages = build_fingerprint_prompt(measurements, excerpts, cfg, prompts, lexicon_hints)
         prompt_tokens = estimate_tokens_for_messages(messages)
         if prompt_tokens <= cfg.max_prompt_tokens:
-            fingerprint, usage = request_json_with_retries(cfg, messages, prompts, "fingerprint synthesis")
+            fingerprint, usage = request_json_with_retries(
+                cfg,
+                messages,
+                prompts,
+                "fingerprint synthesis",
+                args.debug
+            )
         else:
             vprint(f"Prompt too large ({prompt_tokens} tokens); chunking excerpts...")
             batches = chunk_excerpts(excerpts, measurements, cfg, cfg.max_prompt_tokens, prompts, lexicon_hints)
@@ -3380,14 +3654,20 @@ def main() -> int:
             for idx, batch in enumerate(batches, start=1):
                 vprint(f"Synthesizing partial fingerprint {idx}/{len(batches)}...")
                 batch_messages = build_fingerprint_prompt(measurements, batch, cfg, prompts, lexicon_hints)
-                partial, usage = request_json_with_retries(cfg, batch_messages, prompts, "partial fingerprint")
+                partial, usage = request_json_with_retries(
+                    cfg,
+                    batch_messages,
+                    prompts,
+                    "partial fingerprint",
+                    args.debug
+                )
                 if usage and args.verbose:
-                    vprint(
-                        f"Partial {idx}/{len(batches)} token usage: "
-                        f"prompt={usage.get('prompt_tokens', 'n/a')}, "
-                        f"completion={usage.get('completion_tokens', 'n/a')}, "
-                        f"total={usage.get('total_tokens', 'n/a')}"
-                    )
+                    print_console_table(["Partial", "Prompt", "Completion", "Total"], [[
+                        f"{idx}/{len(batches)}",
+                        usage.get("prompt_tokens", "n/a"),
+                        usage.get("completion_tokens", "n/a"),
+                        usage.get("total_tokens", "n/a"),
+                    ]])
                 partials.append(partial)
 
             fingerprint = partials[0]
@@ -3400,14 +3680,20 @@ def main() -> int:
                     cfg,
                     prompts
                 )
-                fingerprint, usage = request_json_with_retries(cfg, merge_messages, prompts, "merge fingerprint")
+                fingerprint, usage = request_json_with_retries(
+                    cfg,
+                    merge_messages,
+                    prompts,
+                    "merge fingerprint",
+                    args.debug
+                )
                 if usage and args.verbose:
-                    vprint(
-                        f"Merge {idx}/{len(partials)} token usage: "
-                        f"prompt={usage.get('prompt_tokens', 'n/a')}, "
-                        f"completion={usage.get('completion_tokens', 'n/a')}, "
-                        f"total={usage.get('total_tokens', 'n/a')}"
-                    )
+                    print_console_table(["Merge", "Prompt", "Completion", "Total"], [[
+                        f"{idx}/{len(partials)}",
+                        usage.get("prompt_tokens", "n/a"),
+                        usage.get("completion_tokens", "n/a"),
+                        usage.get("total_tokens", "n/a"),
+                    ]])
 
         # Ensure essential fields
         fingerprint.setdefault("schema_version", "1.0.0")
@@ -3476,11 +3762,18 @@ def main() -> int:
             priority_conf = controls_norm.get("priority_order", {}) if isinstance(controls_norm, dict) else {}
             controls["priority_order"] = normalize_priority_order(controls.get("priority_order"), priority_conf)
 
-        vprint("Writing fingerprint JSON...")
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(fingerprint, ensure_ascii=False, indent=2), encoding="utf-8")
-        vprint("Done.")
-        print(f"Wrote fingerprint JSON to: {args.out}")
+        close_console_table()
+        print()
+        print_console_header("Result")
+        result_rows: List[List[Any]] = [
+            ["Fingerprint", args.out],
+            ["Documents", len(corpus_documents)],
+        ]
+        if isinstance(total_words, int):
+            result_rows.append(["Words", total_words])
+        print_console_kv_table(result_rows, pairs_per_row=2)
         return 0
 
 

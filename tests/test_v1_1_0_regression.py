@@ -190,6 +190,34 @@ class TestV110Regression(unittest.TestCase):
         self.assertLess(compliance["score"], 1.0)
         self.assertIsInstance(compliance.get("deltas"), list)
 
+    def test_style_retry_feedback_is_actionable(self) -> None:
+        fingerprint = {
+            "measurements": {
+                "punctuation": {"rates_per_1000w": {"commas": 2.0}},
+                "sentence": {"length_words": {"histogram_p": [0.1, 0.2, 0.5, 0.2]}},
+            }
+        }
+        current = (
+            "This sentence, with several commas, and additional clauses, keeps going longer than it should. "
+            "This sentence repeats repeats ideas and repeats words."
+        )
+        compliance = {
+            "score": 0.42,
+            "deltas": [
+                {"metric": "punctuation.commas", "diff": 3.0},
+                {"metric": "sentence_length_histogram", "diff": 0.25},
+            ],
+            "output_measurements": af.compute_measurements(current),
+        }
+        feedback = af.build_style_retry_feedback(fingerprint, current, compliance, 0.75)
+        self.assertEqual(feedback["score"], 0.42)
+        self.assertEqual(feedback["threshold"], 0.75)
+        self.assertEqual(feedback["top_failed_constraints"][0]["metric"], "punctuation.commas")
+        self.assertIn("actual", feedback["top_failed_constraints"][0])
+        self.assertIn("target", feedback["top_failed_constraints"][0])
+        self.assertTrue(feedback.get("response_diagnostics", {}).get("totals"))
+        self.assertTrue(any("Preserve all facts" in item for item in feedback["revision_instructions"]))
+
     def test_humanizer_rule_filtering(self) -> None:
         sample = (
             "### 13. Em Dash Overuse\n"

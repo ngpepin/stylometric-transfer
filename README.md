@@ -595,7 +595,7 @@ This project does not compute classic language-model perplexity directly. In pra
 
 Quick preset option:
 - Set `perplexity_level` in `config.tunables.json`, or pass `--perplexity {default|low|medium|high|extreme}` for a one-run override.
-- Regular logs print the active level; verbose logs print the effective knob values.
+- Normal output includes the active mode/perplexity in the compact run header; verbose output prints the effective tuning values.
 
 Recommended workflow:
 
@@ -649,7 +649,7 @@ Recommended workflow:
 
 <u>Troubleshooting: non-fiction detected as fiction (quotes getting rewritten)</u>
 
-If you see `Detected fiction: quoted passages may be rewritten.` but your document is non-fiction and you want multi-word quotations preserved:
+If the run header shows `Mode fiction (detected); quotes mutable` but your document is non-fiction and you want multi-word quotations preserved:
 
 1. Quick fix (per run): force the mode explicitly.
    - `apply_fingerprint.py`: pass `--non-fiction`
@@ -694,7 +694,7 @@ If you see `Detected fiction: quoted passages may be rewritten.` but your docume
 
 **Style/Voice Retry Budgets (`style_retry`)**
 *These budgets cap compliance retries and forced-person voice retries for each chunk.*
-- `style_retry.enabled` (boolean): enable/disable the delta‑feedback retry pass after measuring style compliance.
+- `style_retry.enabled` (boolean): enable/disable the actionable feedback retry pass after measuring style compliance.
 - `style_retry.threshold` (0–1): retry when compliance score is below this threshold (project config currently `0.60`; internal fallback default `0.75`). Lower values trigger fewer retries (more permissive); higher values trigger more retries (stricter). `0.0` effectively disables threshold-based retries, while `1.0` retries unless the output is nearly perfect.
 - `style_retry.max_retries` (integer): maximum additional retry passes for the style loop after the initial attempt.
 - `style_retry.voice_max_retries` (integer): maximum retry passes for the forced-person voice loop (`--1st-person` / `--2nd-person` / `--3rd-person`). If omitted, it inherits `style_retry.max_retries`.
@@ -713,7 +713,7 @@ Under the hood, the compliance score is a weighted average of section-level simi
 - Histogram sections (sentence length, paragraph length): distance is total variation, `d = 0.5 * sum_i |p_i - q_i|` (ranges 0-1), then `score = 1 - d`.
 - Scalar/rate sections (punctuation rates, stance signals, rhetoric moves, epistemic profile, syntax texture, etc.): distance is a clipped relative error, `d = |out - target| / max(|target|, 1)`, then `score = 1 - clip(d, 0, 1)`. Multi-field sections average their per-field distances before scoring.
 
-Section weights come from `fingerprint.validators.weights` when present; otherwise, sections are averaged equally. In verbose logs, the printed `compliance score: X.XXX` is this aggregate value.
+Section weights come from `fingerprint.validators.weights` when present; otherwise, sections are averaged equally. In verbose logs, the per-attempt `score=X.XXX` value is this aggregate compliance score.
 
 <u>How to pick a threshold:</u>
 
@@ -757,15 +757,17 @@ All thresholds are conservative defaults. Lowering a threshold increases the lik
 - `config.llm.json:backoff_base_seconds` / `backoff_max_seconds`:
   Controls the sleep schedule for the transport retries above.
 - `config.llm.json:max_retries` (second use in apply path):
-  The chunk-rewrite loop also uses this budget to recover invalid model payloads (for example missing/empty `final_markdown`), re-calling the model before falling back to split recovery or verbatim preserve.
+  The chunk-rewrite loop also uses this budget to recover invalid model payloads (for example missing/empty `final_markdown`), re-calling the model before falling back to split recovery or verbatim preserve. Before invoking LLM repair, the apply parser attempts deterministic repair for common malformed JSON string quoting in `final_markdown`, `chunk_summary`, deviation `reason` fields, and `self_check.notes`.
 - `style_retry.enabled`:
   Enables/disables threshold-based style retry logic entirely.
 - `style_retry.threshold`:
-  If local compliance score is below threshold, a style retry pass is attempted (subject to `style_retry.max_retries`).
+  If local compliance score is below threshold, a style retry pass is attempted (subject to `style_retry.max_retries`). Retry prompts include prioritized failed constraints, actual vs target measurements, response diagnostics such as long sentences/repetition, and explicit preservation instructions.
 - `style_retry.max_retries`:
   Sets retry budget for the style loop (additional passes after the base attempt).
 - `style_retry.voice_max_retries`:
   Sets retry budget for the voice loop when forced-person mode is enabled. If absent, uses `style_retry.max_retries`.
+- Forced-person voice repair:
+  Before consuming a full voice retry, the apply path first attempts high-confidence deterministic sentence repairs, then an optional sentence-only LLM repair for remaining violating sentences. Full chunk retry is used only if those local/micro repairs do not satisfy the forced-person check.
 - `humanization_controller.max_feedback_retries`:
   Caps only how many style retries carry controller-overlay delta feedback. It does not increase retry count; it only changes feedback content.
 
@@ -774,12 +776,13 @@ All thresholds are conservative defaults. Lowering a threshold increases the lik
 - Base attempt is always 1.
 - Style-only mode: up to `1 + style_retry.max_retries` attempts.
 - Forced-person mode:
+  - Before a full voice retry, sentence-level deterministic and micro-LLM repairs may resolve pronoun violations without resending the whole chunk.
   - Voice loop can consume up to `style_retry.voice_max_retries` additional attempts (or `style_retry.max_retries` if voice cap is unset).
   - Style loop can then consume up to `style_retry.max_retries` additional attempts.
   - Total attempts can therefore approach `1 + voice_cap + style_retry.max_retries` (plus transport retries inside each call).
 - Each attempt may itself contain up to `1 + config.llm.max_retries` transport attempts at HTTP level.
 
-In verbose mode, per-chunk logs show attempt number, compliance score, threshold, and whether best-attempt replacement was used after retries were exhausted.
+Console output is intentionally compact and table-oriented: normal runs print a short run header, mode table, and one consolidated final result table for artifacts, count deltas, and metrics. In verbose mode, grouped settings, retry budgets, token budgets, chunk token min/avg/max, metric scores, concise retry lines, and best-attempt replacement details are shown in compact colorized box-drawing tables where useful. Table headers use a very dark blue background with bright text. Compatible table rows stream under one header; double rules separate headers from data, single rules separate logical rows, and packed setting/value groups use double vertical separators between groups. Non-table status lines close the table so the next table reprints headers. Long cells wrap onto aligned continuation lines. Set `NO_COLOR=1` or `CLICOLOR=0` to disable ANSI colors.
 
 ---
 
@@ -832,7 +835,7 @@ Alternatively, use the wrapper script:
   --author-name "Me"
 ```
 
-To specify a non-default configuration path, pass `-c/--config`. If `--profile-id` or `--author-name` are not provided, they default to the output filename without the `.json` extension (for example, `my_fingerprint`). Progress logging is enabled with `-v/--verbose`.
+To specify a non-default configuration path, pass `-c/--config`. If `--profile-id` or `--author-name` are not provided, they default to the output filename without the `.json` extension (for example, `my_fingerprint`). Normal output is compact; progress details are enabled with `-v/--verbose`. To inspect LLM JSON responses, pass `--debug`; each parsed response is emitted to stderr as a jq-formatted JSON object.
 
 By default, common phrases are validated using an additional LLM pass to filter out OCR errors and citation fragments. This can be disabled via `--no-phrase-validation`.
 
@@ -864,23 +867,23 @@ Alternatively, use the wrapper script:
   -i draft.md
 ```
 
-Specify a non-default configuration path with `-c/--config`. Progress logging is enabled with `-v/--verbose`. `-f/--fingerprint` appends `.json` if no extension is given. Long inputs are chunked automatically based on `max_prompt_tokens`; override this with `--max-prompt-tokens`.
+Specify a non-default configuration path with `-c/--config`. Normal output is compact; progress details are enabled with `-v/--verbose`. To inspect LLM JSON responses, pass `--debug`; each parsed response is emitted to stderr as a jq-formatted JSON object. `-f/--fingerprint` appends `.json` if no extension is given. Long inputs are chunked automatically based on `max_prompt_tokens`; override this with `--max-prompt-tokens`.
 
-Style compliance is scored locally. If the score falls below the threshold, the system performs bounded retry passes according to `style_retry` tunables (or CLI overrides) and produces delta feedback between attempts (disable with `--no-style-retry`, adjust with `--style-retry-threshold` or `--max-style-retries`).
+Style compliance is scored locally. If the score falls below the threshold, the system performs bounded retry passes according to `style_retry` tunables (or CLI overrides) and produces actionable feedback between attempts: top failed constraints, actual vs target measurements, response diagnostics, and preservation instructions (disable with `--no-style-retry`, adjust with `--style-retry-threshold` or `--max-style-retries`).
 
 If `general-guidelines.md` is present in the repository root or next to the scripts, its humanization rules (adapted from softaworks/agent-toolkit by @leonardocouy) are parsed with an LLM by default. Deterministically conflicting guidance (based on fingerprint signals such as em-dash rate, hedging or first-person use) is dropped before prompting. This introduces one additional LLM call when enabled. Parsed rules are cached in `humanizer_rules.cache.json` next to the scripts and are only re-parsed when `general-guidelines.md` changes. LLM parsing can be disabled via `--no-humanizer-llm-parse`, or the guidelines can be disabled entirely via `--no-humanizer-guidelines`.
 
-Pronoun override flags let you force the narrative voice regardless of the fingerprint: `--1st-person`, `--2nd-person`, or `--3rd-person`.
+Pronoun override flags let you force the narrative voice regardless of the fingerprint: `--1st-person`, `--2nd-person`, or `--3rd-person`. When `--3rd-person` is combined with `--author-name AUTHOR_NAME`, the LLM is instructed to occasionally use that name instead of he/she/they where it reads naturally, including once after each Markdown heading when the following prose naturally refers to the author/narrator.
 
 #### Interpreting forced-voice logs (verbose mode)
 
-When a pronoun override is active, each chunk is checked for "wrong-person" pronouns used in subject-like roles. If violations are detected, the chunk is re-prompted with voice-specific feedback, up to the configured voice retry budget.
+When a pronoun override is active, each chunk is checked for "wrong-person" pronouns used in subject-like roles. If violations are detected, the system first tries deterministic sentence-level repair and then sentence-only LLM repair before spending a full chunk voice retry.
 
 You will see log lines like:
 
 ```
-Chunk 1/2 pronoun override violations; retrying (voice retry 1/1).
-  Pronoun override detail: mode=third; allowed_count=105; violations[first_person=1, second_person=8]; ignored[first_person_non_subject=4, second_person_non_subject=4]
+  - Chunk 1/2: sentence-level voice repair 2 sentence(s)
+  - Chunk 1/2: voice retry 1/1 (mode=third; allowed_count=105; violations[first_person=1, second_person=8]; ignored[first_person_non_subject=4, second_person_non_subject=4])
 ```
 
 How to read this:

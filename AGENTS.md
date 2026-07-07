@@ -63,7 +63,7 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Normalize verbose/duplicative `controls.rewrite_policy` clauses and filter `priority_order` to short tokens before writing the fingerprint
     - Normalize lexicon spelling to a US baseline (except literal hard avoids)
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-a` (archive), `-o` (out), `-v` (verbose)
-  - Extra: `--max-prompt-tokens` overrides chunking threshold
+  - Extra: `--max-prompt-tokens` overrides chunking threshold; `--debug` emits jq-formatted parsed LLM JSON responses to stderr
   - Defaults: if `--profile-id` or `--author-name` are omitted, both default to the output filename without the `.json` extension
 
 - `apply_fingerprint.py`
@@ -75,8 +75,9 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Preserve blockquotes, reference sections, footnotes, and inline citations verbatim (excluded from style transfer)
     - Strip embedded BASE64 images before prompt and re-insert after rewrite
     - Call LLM with fingerprint + measurements
+    - Parse LLM JSON with deterministic repair for common malformed quote escaping in `final_markdown`, `chunk_summary`, deviation `reason` fields, and `self_check.notes` before falling back to LLM repair
     - Enforce preservation of meaning
-    - Score style compliance locally and retry with delta feedback (disable with `--no-style-retry`)
+    - Score style compliance locally and retry with actionable feedback (prioritized failed constraints, actual/target measurements, response diagnostics, and preservation instructions; disable with `--no-style-retry`)
     - Apply `general-guidelines.md` humanizer rules when available, using an LLM parser by default then deterministically filtering out conflicts (disable with `--no-humanizer-llm-parse` or `--no-humanizer-guidelines`)
     - Cache parsed humanizer rules in `humanizer_rules.cache.json` (script directory) and re-parse only when guidelines change
     - Sanitize trailing parenthetical/comma qualifiers in headings when enabled (humanizer_mandatory)
@@ -87,11 +88,12 @@ Avoid ambiguous terms like “clone” in public documentation.
     - Optionally preserve source proper-name casing in deterministic heading transforms (`preserve_proper_name_case`)
     - Normalize verbose/duplicative `controls.rewrite_policy` clauses and filter `priority_order` when loading a fingerprint
     - Normalize lexical avoidance checks to US spelling for matching, then apply local spelling to final output
+    - In forced-person mode, attempt deterministic sentence-level pronoun repair and sentence-only LLM repair before resending the whole chunk
     - Return rewritten text and deviations
-    - In verbose mode, report per-chunk attempt scores and when best-attempt selection overrides the last attempt
+    - Console output uses compact colorized box-drawing tables for run settings, mode, artifacts, counts, and metrics (`NO_COLOR=1` or `CLICOLOR=0` disables ANSI colors); table headers use a very dark blue background with bright text; final apply output consolidates artifacts, count deltas, and metrics into one result table; compatible rows stream under one header, headers use double-line separators, logical rows use single-line separators, packed setting/value groups use double vertical separators between groups, status lines close/restart table sections, and long cells wrap onto aligned continuation lines; verbose mode also reports grouped tuning, retry budgets, chunk token summaries, concise retry lines, and best-attempt selection details
   - CLI short flags: `-c` (config, optional; defaults to `./config.llm.json` if present, else next to script), `-f` (fingerprint; adds `.json` if missing), `-i` (input), `-o` (out), `-v` (verbose)
-  - Extra: `--max-prompt-tokens` overrides chunking threshold
-  - Overrides: `--1st-person` / `--2nd-person` / `--3rd-person` force narrative voice regardless of fingerprint
+  - Extra: `--max-prompt-tokens` overrides chunking threshold; `--debug` emits jq-formatted parsed LLM JSON responses to stderr
+  - Overrides: `--1st-person` / `--2nd-person` / `--3rd-person` force narrative voice regardless of fingerprint; with `--3rd-person`, `--author-name AUTHOR_NAME` asks the LLM to occasionally use that name instead of he/she/they, including once after headings when natural
   - Runtime overrides: `--local-spelling {none|canadian|australian|british|us}` (applies to both LLM + deterministic rules), `--local-spelling-llm ...`, `--local-spelling-rules ...`, `--perplexity {default|low|medium|high|extreme}`, `--roster [N]` (optional seeded chunk-level roster shuffle), and `--seed [N]` (omitted value or `0` => random run seed)
 
 - `fingerprint_api.py`
@@ -339,6 +341,7 @@ Always handle:
 
 Current strategy:
 - Attempt strict parse
+- Apply deterministic repair for common malformed JSON string quoting in apply outputs
 - If failure, call LLM repair mode
 
 Preserve this pattern.
@@ -427,7 +430,7 @@ High‑value next steps, in priority order:
 - [x] Add post‑rewrite scoring against fingerprint  
 - [x] Compute divergence metrics (sentence length, punctuation)  
 - [x] Emit compliance score (0–1)  
-- [ ] Add per-chunk compliance reason breakdowns (top failed constraints) for operator diagnostics
+- [x] Add per-chunk compliance reason breakdowns (top failed constraints) for retry feedback/operator diagnostics
 
 ### Phase 4 — Tooling
 
