@@ -1,0 +1,293 @@
+{
+  "humanizer_conflicts": {
+    "em_dash_keep_rate": 0.5,
+    "hedge_keep_rate": 1.0,
+    "first_person_keep_rate": 0.5,
+    "contractions_avoid_threshold": 2.0,
+    "contractions_use_threshold": 0.5,
+    "heading_title_case_keep_rate": 0.6,
+    "boldface_keep_per_1000w": 100.0,
+    "inline_header_list_keep_rate": 0.2
+  },
+  "humanizer_mandatory": {
+    "avoid_em_dashes": true,
+    "emoji_policy": "replace",
+    "normalize_double_quotes": true,
+    "normalize_single_quotes": true,
+    "heading_case_normalization": "by-level",
+    "heading_case_by_level": {
+      "h1": "title-case",
+      "h2": "title-case",
+      "h3": "title-case",
+      "h4": "sentence-case",
+      "h5": "identical",
+      "h6": "automatic",
+      "h7": "lower",
+      "h8": "upper"
+    },
+    "preserve_proper_name_case": true,
+    "sanitize_heading_qualifiers": {
+      "enabled": true,
+      "allowlist": ["quick win"]
+    },
+    "force_local_spelling_LLM": "us",
+    "force_local_spelling_rules": "canadian"
+  },
+  "perplexity_level": "default",
+  "perplexity_profiles": {
+    "default": {
+      "humanizer_variance": {
+        "max_ops_per_1000w": 0.5
+      },
+      "humanization_controller": {
+        "quantiles": [0.25, 0.5, 0.75],
+        "range_pct": 0.15
+      },
+      "chunking": {
+        "max_input_tokens": 5750,
+        "min_chunks_when_perturbing": 2
+      },
+      "llm": {
+        "temperature_multiplier": 1.0
+      }
+    },
+    "low": {
+      "humanizer_variance": {
+        "max_ops_per_1000w": 1.0
+      },
+      "humanization_controller": {
+        "quantiles": [0.2, 0.5, 0.8],
+        "range_pct": 0.2
+      },
+      "chunking": {
+        "max_input_tokens": 5200,
+        "min_chunks_when_perturbing": 3
+      },
+      "llm": {
+        "temperature_multiplier": 1.0
+      }
+    },
+    "medium": {
+      "humanizer_variance": {
+        "max_ops_per_1000w": 1.5
+      },
+      "humanization_controller": {
+        "quantiles": [0.15, 0.5, 0.85],
+        "range_pct": 0.25
+      },
+      "chunking": {
+        "max_input_tokens": 4700,
+        "min_chunks_when_perturbing": 4
+      },
+      "llm": {
+        "temperature_multiplier": 1.0
+      }
+    },
+    "high": {
+      "humanizer_variance": {
+        "max_ops_per_1000w": 2.0
+      },
+      "humanization_controller": {
+        "quantiles": [0.1, 0.5, 0.9],
+        "range_pct": 0.3
+      },
+      "chunking": {
+        "max_input_tokens": 4200,
+        "min_chunks_when_perturbing": 5
+      },
+      "llm": {
+        "temperature_multiplier": 1.0
+      }
+    },
+    "extreme": {
+      "humanizer_variance": {
+        "max_ops_per_1000w": 2.0
+      },
+      "humanization_controller": {
+        "quantiles": [0.1, 0.5, 0.9],
+        "range_pct": 0.3
+      },
+      "chunking": {
+        "max_input_tokens": 4200,
+        "min_chunks_when_perturbing": 5
+      },
+      "llm": {
+        "temperature_multiplier": 2.0
+      }
+    }
+  },
+  "humanizer_variance": {
+    "enabled": true,
+    "seed": 12345,
+    "max_ops_per_1000w": 0.5,
+    "allowed_ops": ["swap_transition", "drop_filler"]
+  },
+  "humanization_metrics": {
+    "weights": {
+      "lexical_diversity": 1.0,
+      "herdan_c": 1.0,
+      "guiraud_r": 1.0,
+      "maas_ttr_inverse": 1.0,
+      "yules_k_inverse": 1.0,
+      "simpson_d_inverse": 1.0,
+      "repetition_inverse": 1.0,
+      "sentence_burstiness": 1.0,
+      "paragraph_burstiness": 1.0,
+      "punctuation_variety": 1.0,
+      "punctuation_entropy": 1.0,
+      "function_word_entropy": 1.0,
+      "function_word_kl_inverse": 1.0,
+      "sentence_length_js_inverse": 1.0,
+      "char_trigram_entropy": 1.0,
+      "avg_word_length": 1.0
+    }
+  },
+  "humanization_baseline": {
+    "enabled": true,
+    "window_words": 800,
+    "stride_words": 400,
+    "min_window_words": 250,
+    "max_windows": 200
+  },
+  "humanization_controller": {
+    "enabled": true,
+    "seed": 12345,
+    "quantiles": [0.25, 0.5, 0.75],
+    "range_pct": 0.15,
+    "min_width": 0.05,
+    "max_width": 6.0,
+    "allowed_metrics": [
+      "sentence_length_mean",
+      "sentence_length_stdev",
+      "one_sentence_paragraph_rate",
+      "comma_density_per_100w",
+      "punctuation_semicolons_per_1000w",
+      "punctuation_colons_per_1000w",
+      "punctuation_em_dashes_per_1000w"
+    ],
+    "feedback_enabled": true,
+    "feedback_tolerance": 0.35,
+    "max_feedback_retries": 3
+  },
+  "lexical_signals": {
+    "rare_words_limit": 100
+  },
+  "lexical_avoidance": {
+    "rare_words_limit": 100
+  },
+  "controls_normalization": {
+    "rewrite_policy": {
+      "jaccard_threshold": 0.6,
+      "dedupe_on_subset": true,
+      "prefer_more_specific": true,
+      "compress_directives": true,
+      "directive_verbs": [
+        "preserve",
+        "avoid",
+        "maintain",
+        "ensure",
+        "keep",
+        "favor",
+        "use",
+        "prefer",
+        "minimize",
+        "maximize",
+        "do not",
+        "don't"
+      ],
+      "stopwords": [
+        "the",
+        "and",
+        "of",
+        "to",
+        "a",
+        "an",
+        "in",
+        "on",
+        "for",
+        "with",
+        "or",
+        "but",
+        "as",
+        "by",
+        "from",
+        "into",
+        "at",
+        "that",
+        "this",
+        "these",
+        "those",
+        "be",
+        "is",
+        "are",
+        "was",
+        "were",
+        "been",
+        "being"
+      ]
+    },
+    "priority_order": {
+      "token_pattern": "^[A-Za-z][A-Za-z0-9_\\-]*$",
+      "dedupe_case_insensitive": true,
+      "exclude_tokens": ["lexical", "syntactic", "rhetorical"]
+    }
+  },
+  "fiction_detection": {
+    "quote_span_min": 6,
+    "quoted_ratio_min": 0.03,
+    "quote_para_ratio_min": 0.2,
+    "quoted_ratio_force": 0.08
+  },
+  "chunking": {
+    "max_input_tokens": 5750,
+    "chunk_split_on": "sentence",
+    "chunk_summary": {
+      "enabled": true,
+      "summary_words": 50
+    },
+    "min_chunks_when_perturbing": 2,
+    "recovery_split_max_depth": 2,
+    "recovery_split_min_chars": 800,
+    "variance_aware": {
+      "enabled": true,
+      "sentence_stdev_ref": 18.0,
+      "paragraph_burst_ref": 0.7,
+      "min_factor": 0.6,
+      "max_factor": 1.0
+    }
+  },
+  "style_retry": {
+    "enabled": true,
+    "threshold": 0.590,
+    "max_retries": 1,
+    "voice_max_retries": 1
+  },
+  "section_restore": {
+    "enabled": true,
+    "max_restore_sections": 20,
+    "heading_similarity_threshold": 0.5,
+    "signature_similarity_threshold": 0.35,
+    "signature_min_overlap": 6
+  },
+  "postprocess_redundancy": {
+    "enabled": true,
+    "paragraph_dedupe": {
+      "enabled": true,
+      "min_words": 30,
+      "similarity_threshold": 0.985,
+      "lookback_blocks": 20,
+      "max_drop_ratio": 0.15
+    },
+    "list_density": {
+      "enabled": true,
+      "min_run_length": 9,
+      "group_size": 2,
+      "joiner": "; "
+    }
+  },
+  "sanity_checks": {
+    "line_count_warn_pct": 10.0,
+    "word_count_warn_pct": 10.0,
+    "paragraph_count_warn_pct": 10.0
+  }
+}

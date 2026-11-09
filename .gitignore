@@ -21,3 +21,5 @@ config.llm_Gemma-SEA-LION.json
 config.llm_Olmo.json
 config.llm_catgpt.json
 WATERMARKING.md
+MCP-Rust/target
+MCP-Rust/Cargo.lock

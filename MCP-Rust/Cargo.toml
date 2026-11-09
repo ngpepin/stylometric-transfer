@@ -1,0 +1,31 @@
+[package]
+name = "stylometric-mcp"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance MCP server for stylometric profiling and author-conditioned style transfer"
+license = "PolyForm-Noncommercial-1.0.0"
+repository = "https://github.com/npepin/stylometric-transfer"
+
+[[bin]]
+name = "stylometric-mcp"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+regex = "1"
+ureq = { version = "3", features = ["json"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+flate2 = "1"
+tar = "0.4"
+uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"
+rand = "0.8"
+sha2 = "0.10"
+once_cell = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
