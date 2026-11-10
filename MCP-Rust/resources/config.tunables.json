@@ -1,12 +1,12 @@
 {
   "humanizer_conflicts": {
     "em_dash_keep_rate": 0.5,
-    "hedge_keep_rate": 1.0,
+    "hedge_keep_rate": 1,
     "first_person_keep_rate": 0.5,
-    "contractions_avoid_threshold": 2.0,
+    "contractions_avoid_threshold": 2,
     "contractions_use_threshold": 0.5,
     "heading_title_case_keep_rate": 0.6,
-    "boldface_keep_per_1000w": 100.0,
+    "boldface_keep_per_1000w": 100,
     "inline_header_list_keep_rate": 0.2
   },
   "humanizer_mandatory": {
@@ -28,7 +28,9 @@
     "preserve_proper_name_case": true,
     "sanitize_heading_qualifiers": {
       "enabled": true,
-      "allowlist": ["quick win"]
+      "allowlist": [
+        "quick win"
+      ]
     },
     "force_local_spelling_LLM": "us",
     "force_local_spelling_rules": "canadian"
@@ -40,31 +42,37 @@
         "max_ops_per_1000w": 0.5
       },
       "humanization_controller": {
-        "quantiles": [0.25, 0.5, 0.75],
+        "quantiles": [
+          0.25,
+          0.5,
+          0.75
+        ],
         "range_pct": 0.15
       },
       "chunking": {
-        "max_input_tokens": 5750,
         "min_chunks_when_perturbing": 2
       },
       "llm": {
-        "temperature_multiplier": 1.0
+        "temperature_multiplier": 1
       }
     },
     "low": {
       "humanizer_variance": {
-        "max_ops_per_1000w": 1.0
+        "max_ops_per_1000w": 1
       },
       "humanization_controller": {
-        "quantiles": [0.2, 0.5, 0.8],
+        "quantiles": [
+          0.2,
+          0.5,
+          0.8
+        ],
         "range_pct": 0.2
       },
       "chunking": {
-        "max_input_tokens": 5200,
         "min_chunks_when_perturbing": 3
       },
       "llm": {
-        "temperature_multiplier": 1.0
+        "temperature_multiplier": 1
       }
     },
     "medium": {
@@ -72,47 +80,56 @@
         "max_ops_per_1000w": 1.5
       },
       "humanization_controller": {
-        "quantiles": [0.15, 0.5, 0.85],
+        "quantiles": [
+          0.15,
+          0.5,
+          0.85
+        ],
         "range_pct": 0.25
       },
       "chunking": {
-        "max_input_tokens": 4700,
         "min_chunks_when_perturbing": 4
       },
       "llm": {
-        "temperature_multiplier": 1.0
+        "temperature_multiplier": 1
       }
     },
     "high": {
       "humanizer_variance": {
-        "max_ops_per_1000w": 2.0
+        "max_ops_per_1000w": 2
       },
       "humanization_controller": {
-        "quantiles": [0.1, 0.5, 0.9],
+        "quantiles": [
+          0.1,
+          0.5,
+          0.9
+        ],
         "range_pct": 0.3
       },
       "chunking": {
-        "max_input_tokens": 4200,
         "min_chunks_when_perturbing": 5
       },
       "llm": {
-        "temperature_multiplier": 1.0
+        "temperature_multiplier": 1
       }
     },
     "extreme": {
       "humanizer_variance": {
-        "max_ops_per_1000w": 2.0
+        "max_ops_per_1000w": 2
       },
       "humanization_controller": {
-        "quantiles": [0.1, 0.5, 0.9],
+        "quantiles": [
+          0.1,
+          0.5,
+          0.9
+        ],
         "range_pct": 0.3
       },
       "chunking": {
-        "max_input_tokens": 4200,
         "min_chunks_when_perturbing": 5
       },
       "llm": {
-        "temperature_multiplier": 2.0
+        "temperature_multiplier": 2
       }
     }
   },
@@ -120,26 +137,29 @@
     "enabled": true,
     "seed": 12345,
     "max_ops_per_1000w": 0.5,
-    "allowed_ops": ["swap_transition", "drop_filler"]
+    "allowed_ops": [
+      "swap_transition",
+      "drop_filler"
+    ]
   },
   "humanization_metrics": {
     "weights": {
-      "lexical_diversity": 1.0,
-      "herdan_c": 1.0,
-      "guiraud_r": 1.0,
-      "maas_ttr_inverse": 1.0,
-      "yules_k_inverse": 1.0,
-      "simpson_d_inverse": 1.0,
-      "repetition_inverse": 1.0,
-      "sentence_burstiness": 1.0,
-      "paragraph_burstiness": 1.0,
-      "punctuation_variety": 1.0,
-      "punctuation_entropy": 1.0,
-      "function_word_entropy": 1.0,
-      "function_word_kl_inverse": 1.0,
-      "sentence_length_js_inverse": 1.0,
-      "char_trigram_entropy": 1.0,
-      "avg_word_length": 1.0
+      "lexical_diversity": 1,
+      "herdan_c": 1,
+      "guiraud_r": 1,
+      "maas_ttr_inverse": 1,
+      "yules_k_inverse": 1,
+      "simpson_d_inverse": 1,
+      "repetition_inverse": 1,
+      "sentence_burstiness": 1,
+      "paragraph_burstiness": 1,
+      "punctuation_variety": 1,
+      "punctuation_entropy": 1,
+      "function_word_entropy": 1,
+      "function_word_kl_inverse": 1,
+      "sentence_length_js_inverse": 1,
+      "char_trigram_entropy": 1,
+      "avg_word_length": 1
     }
   },
   "humanization_baseline": {
@@ -152,10 +172,14 @@
   "humanization_controller": {
     "enabled": true,
     "seed": 12345,
-    "quantiles": [0.25, 0.5, 0.75],
+    "quantiles": [
+      0.25,
+      0.5,
+      0.75
+    ],
     "range_pct": 0.15,
     "min_width": 0.05,
-    "max_width": 6.0,
+    "max_width": 6,
     "allowed_metrics": [
       "sentence_length_mean",
       "sentence_length_stdev",
@@ -229,7 +253,11 @@
     "priority_order": {
       "token_pattern": "^[A-Za-z][A-Za-z0-9_\\-]*$",
       "dedupe_case_insensitive": true,
-      "exclude_tokens": ["lexical", "syntactic", "rhetorical"]
+      "exclude_tokens": [
+        "lexical",
+        "syntactic",
+        "rhetorical"
+      ]
     }
   },
   "fiction_detection": {
@@ -239,7 +267,7 @@
     "quoted_ratio_force": 0.08
   },
   "chunking": {
-    "max_input_tokens": 5750,
+    "max_input_tokens": 10000,
     "chunk_split_on": "sentence",
     "chunk_summary": {
       "enabled": true,
@@ -250,15 +278,15 @@
     "recovery_split_min_chars": 800,
     "variance_aware": {
       "enabled": true,
-      "sentence_stdev_ref": 18.0,
+      "sentence_stdev_ref": 18,
       "paragraph_burst_ref": 0.7,
       "min_factor": 0.6,
-      "max_factor": 1.0
+      "max_factor": 1
     }
   },
   "style_retry": {
     "enabled": true,
-    "threshold": 0.590,
+    "threshold": 0.59,
     "max_retries": 1,
     "voice_max_retries": 1
   },
@@ -286,8 +314,8 @@
     }
   },
   "sanity_checks": {
-    "line_count_warn_pct": 10.0,
-    "word_count_warn_pct": 10.0,
-    "paragraph_count_warn_pct": 10.0
+    "line_count_warn_pct": 10,
+    "word_count_warn_pct": 10,
+    "paragraph_count_warn_pct": 10
   }
 }

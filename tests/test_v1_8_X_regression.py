@@ -31,23 +31,23 @@ class TestV18XRegression(unittest.TestCase):
                 "default": {
                     "humanizer_variance": {"max_ops_per_1000w": 0.5},
                     "humanization_controller": {"quantiles": [0.25, 0.5, 0.75], "range_pct": 0.15},
-                    "chunking": {"max_input_tokens": 5750, "min_chunks_when_perturbing": 2},
+                    "chunking": {"max_input_tokens": 23000, "min_chunks_when_perturbing": 2},
                 },
                 "high": {
                     "humanizer_variance": {"max_ops_per_1000w": 2.0},
                     "humanization_controller": {"quantiles": [0.1, 0.5, 0.9], "range_pct": 0.3},
-                    "chunking": {"max_input_tokens": 4200, "min_chunks_when_perturbing": 5},
+                    "chunking": {"max_input_tokens": 23000, "min_chunks_when_perturbing": 5},
                 },
             },
             "humanizer_variance": {"max_ops_per_1000w": 0.5},
             "humanization_controller": {"quantiles": [0.25, 0.5, 0.75], "range_pct": 0.15},
-            "chunking": {"max_input_tokens": 5750, "min_chunks_when_perturbing": 2},
+            "chunking": {"max_input_tokens": 23000, "min_chunks_when_perturbing": 2},
         }
         applied, level, knobs = af.apply_perplexity_profile(tunables)
         self.assertEqual(level, "default")
         self.assertEqual(applied["humanizer_variance"]["max_ops_per_1000w"], 0.5)
         self.assertEqual(applied["humanization_controller"]["quantiles"], [0.25, 0.5, 0.75])
-        self.assertEqual(applied["chunking"]["max_input_tokens"], 5750)
+        self.assertEqual(applied["chunking"]["max_input_tokens"], 23000)
         self.assertEqual(knobs["chunking.min_chunks_when_perturbing"], 2)
 
     def test_perplexity_profile_cli_override(self) -> None:
@@ -57,25 +57,51 @@ class TestV18XRegression(unittest.TestCase):
                 "default": {
                     "humanizer_variance": {"max_ops_per_1000w": 0.5},
                     "humanization_controller": {"quantiles": [0.25, 0.5, 0.75], "range_pct": 0.15},
-                    "chunking": {"max_input_tokens": 5750, "min_chunks_when_perturbing": 2},
+                    "chunking": {"max_input_tokens": 23000, "min_chunks_when_perturbing": 2},
                 },
                 "high": {
                     "humanizer_variance": {"max_ops_per_1000w": 2.0},
                     "humanization_controller": {"quantiles": [0.1, 0.5, 0.9], "range_pct": 0.3},
-                    "chunking": {"max_input_tokens": 4200, "min_chunks_when_perturbing": 5},
+                    "chunking": {"max_input_tokens": 23000, "min_chunks_when_perturbing": 5},
                 },
             },
             "humanizer_variance": {"max_ops_per_1000w": 0.5},
             "humanization_controller": {"quantiles": [0.25, 0.5, 0.75], "range_pct": 0.15},
-            "chunking": {"max_input_tokens": 5750, "min_chunks_when_perturbing": 2},
+            "chunking": {"max_input_tokens": 23000, "min_chunks_when_perturbing": 2},
         }
         applied, level, knobs = af.apply_perplexity_profile(tunables, "high")
         self.assertEqual(level, "high")
         self.assertEqual(applied["humanizer_variance"]["max_ops_per_1000w"], 2.0)
         self.assertEqual(applied["humanization_controller"]["quantiles"], [0.1, 0.5, 0.9])
         self.assertEqual(applied["humanization_controller"]["range_pct"], 0.3)
-        self.assertEqual(applied["chunking"]["max_input_tokens"], 4200)
+        self.assertEqual(applied["chunking"]["max_input_tokens"], 23000)
         self.assertEqual(knobs["chunking.min_chunks_when_perturbing"], 5)
+
+    def test_perplexity_profiles_do_not_override_max_input_tokens(self) -> None:
+        profiles = af.DEFAULT_TUNABLES["perplexity_profiles"]
+        for level, prof in profiles.items():
+            self.assertNotIn("max_input_tokens", prof.get("chunking", {}), level)
+
+        config_path = ROOT / "config.tunables.json"
+        if config_path.exists():
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            for level, prof in config["perplexity_profiles"].items():
+                self.assertNotIn("max_input_tokens", prof.get("chunking", {}), level)
+            text = config_path.read_text(encoding="utf-8")
+            self.assertEqual(text.count('"max_input_tokens"'), 1)
+
+    def test_all_perplexity_levels_resolve_same_max_input_tokens(self) -> None:
+        config_path = ROOT / "config.tunables.json"
+        if not config_path.exists():
+            self.skipTest("config.tunables.json not present")
+        tunables = af.load_tunables(config_path)
+        caps = {}
+        for level in af.PERPLEXITY_LEVELS:
+            merged, _, knobs = af.apply_perplexity_profile(tunables, level)
+            self.assertEqual(knobs["chunking.max_input_tokens"], merged["chunking"]["max_input_tokens"])
+            caps[level] = merged["chunking"]["max_input_tokens"]
+        self.assertEqual(len(set(caps.values())), 1, caps)
+        self.assertEqual(next(iter(caps.values())), tunables["chunking"]["max_input_tokens"])
 
     def test_perplexity_profile_extreme_temperature_multiplier(self) -> None:
         tunables = {

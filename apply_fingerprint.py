@@ -140,7 +140,6 @@ DEFAULT_TUNABLES = {
                 "range_pct": 0.15
             },
             "chunking": {
-                "max_input_tokens": 5750,
                 "min_chunks_when_perturbing": 2
             },
             "llm": {
@@ -156,7 +155,6 @@ DEFAULT_TUNABLES = {
                 "range_pct": 0.2
             },
             "chunking": {
-                "max_input_tokens": 5200,
                 "min_chunks_when_perturbing": 3
             },
             "llm": {
@@ -172,7 +170,6 @@ DEFAULT_TUNABLES = {
                 "range_pct": 0.25
             },
             "chunking": {
-                "max_input_tokens": 4700,
                 "min_chunks_when_perturbing": 4
             },
             "llm": {
@@ -188,7 +185,6 @@ DEFAULT_TUNABLES = {
                 "range_pct": 0.3
             },
             "chunking": {
-                "max_input_tokens": 4200,
                 "min_chunks_when_perturbing": 5
             },
             "llm": {
@@ -204,7 +200,6 @@ DEFAULT_TUNABLES = {
                 "range_pct": 0.3
             },
             "chunking": {
-                "max_input_tokens": 4200,
                 "min_chunks_when_perturbing": 5
             },
             "llm": {

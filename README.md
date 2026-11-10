@@ -299,31 +299,31 @@ Example (`config.tunables.json` project configuration example):
     "default": {
       "humanizer_variance": { "max_ops_per_1000w": 0.5 },
       "humanization_controller": { "quantiles": [0.25, 0.5, 0.75], "range_pct": 0.15 },
-      "chunking": { "max_input_tokens": 5750, "min_chunks_when_perturbing": 2 },
+      "chunking": { "max_input_tokens": 23000, "min_chunks_when_perturbing": 2 },
       "llm": { "temperature_multiplier": 1.0 }
     },
     "low": {
       "humanizer_variance": { "max_ops_per_1000w": 1.0 },
       "humanization_controller": { "quantiles": [0.2, 0.5, 0.8], "range_pct": 0.2 },
-      "chunking": { "max_input_tokens": 5200, "min_chunks_when_perturbing": 3 },
+      "chunking": { "max_input_tokens": 23000, "min_chunks_when_perturbing": 3 },
       "llm": { "temperature_multiplier": 1.0 }
     },
     "medium": {
       "humanizer_variance": { "max_ops_per_1000w": 1.5 },
       "humanization_controller": { "quantiles": [0.15, 0.5, 0.85], "range_pct": 0.25 },
-      "chunking": { "max_input_tokens": 4700, "min_chunks_when_perturbing": 4 },
+      "chunking": { "max_input_tokens": 23000, "min_chunks_when_perturbing": 4 },
       "llm": { "temperature_multiplier": 1.0 }
     },
     "high": {
       "humanizer_variance": { "max_ops_per_1000w": 2.0 },
       "humanization_controller": { "quantiles": [0.1, 0.5, 0.9], "range_pct": 0.3 },
-      "chunking": { "max_input_tokens": 4200, "min_chunks_when_perturbing": 5 },
+      "chunking": { "max_input_tokens": 23000, "min_chunks_when_perturbing": 5 },
       "llm": { "temperature_multiplier": 1.0 }
     },
     "extreme": {
       "humanizer_variance": { "max_ops_per_1000w": 2.0 },
       "humanization_controller": { "quantiles": [0.1, 0.5, 0.9], "range_pct": 0.3 },
-      "chunking": { "max_input_tokens": 4200, "min_chunks_when_perturbing": 5 },
+      "chunking": { "max_input_tokens": 23000, "min_chunks_when_perturbing": 5 },
       "llm": { "temperature_multiplier": 2.0 }
     }
   },
@@ -450,7 +450,7 @@ Example (`config.tunables.json` project configuration example):
     "quoted_ratio_force": 0.08
   },
   "chunking": {
-    "max_input_tokens": 5750,
+    "max_input_tokens": 23000,
     "chunk_split_on": "sentence",
     "chunk_summary": {
       "enabled": true,

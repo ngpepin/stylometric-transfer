@@ -23,3 +23,4 @@ config.llm_catgpt.json
 WATERMARKING.md
 MCP-Rust/target
 MCP-Rust/Cargo.lock
+config.llm_Deepseek.json
